@@ -1,0 +1,18 @@
+[package]
+name = "naze-native"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native Linux desktop renderer for Naze apps"
+
+[[bin]]
+name = "naze-native"
+path = "src/main.rs"
+
+[dependencies]
+naze-ir = { path = "../naze-ir" }
+naze-layout = { path = "../naze-layout" }
+winit = "0.30"
+softbuffer = "0.4"
+tiny-skia = "0.11"
+fontdue = "0.9"

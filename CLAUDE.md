@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Naze is a new declarative, AI-native UI language designed to replace the HTML/CSS/JS paradigm. It compiles `.naze` source files to WebAssembly and renders via Canvas/WebGL, bypassing the DOM entirely. The project is under the Illuminaze umbrella.
 
-**Current status:** MVP Phase 1 complete. See `docs/MVP.md` for milestone tracking.
+**Current status:** Phase 1 complete (69KB WASM, 84 tests, 16 examples). See `docs/MVP.md` for summary, `docs/PHASE2.md` for next phase.
 
 ## Architecture
 
@@ -51,15 +51,16 @@ cargo clippy --workspace -- -D warnings
 
 ## Workspace Structure
 
-Cargo workspace with 6 crates in `crates/`:
+Cargo workspace with 7 crates in `crates/`:
 
 | Crate | Target | Purpose |
 |-------|--------|---------|
 | `nazec` | native | CLI binary (clap) — `new`, `build`, `check` commands |
 | `naze-parser` | native | PEG parser (pest) — `.naze` → AST |
 | `naze-compiler` | native | Type checker + binary serializer → `app_data.bin` |
+| `naze-ir` | both | Shared IR types (RenderTree, custom binary serialization) |
 | `naze-runtime` | WASM | Entry point — deserializes app data, orchestrates layout + render |
-| `naze-layout` | both | Layout engine (taffy) — computes positioned rectangles |
+| `naze-layout` | both | Custom layout engine (~200 LOC) — computes positioned rectangles |
 | `naze-renderer` | WASM | Canvas2D renderer (web-sys) — draws to browser canvas |
 
 Native crates build with `cargo build`. WASM crates build with `wasm-pack build --target web`.

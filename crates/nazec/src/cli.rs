@@ -30,6 +30,8 @@ pub enum Command {
     Build,
     /// Type-check without building
     Check,
+    /// Preview the built app in a native desktop window
+    Run,
     /// Parse a .naze file and dump the AST as JSON
     Parse {
         /// Path to the .naze file

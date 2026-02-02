@@ -16,11 +16,41 @@ app "Hello" {
 }
 ```
 
+## Why Naze?
+
+The modern web stack is a 9-step pipeline built for humans: TypeScript transpiled to JavaScript, bundled by Webpack/Vite, CSS processed through PostCSS/Tailwind, minified, tree-shaken, code-split, downloaded (often 1-5MB of JavaScript), parsed back into an AST, built into a DOM, CSS cascade resolved, layout computed, and finally pixels appear on screen. Most of this exists to manage complexity that humans created for humans. The frameworks, bundlers, and transpilers are developer ergonomics layers that end users never benefit from.
+
+AI is writing more and more of this code. AI doesn't need developer ergonomics. It doesn't need readable class names or semantic HTML. It could target something far more direct.
+
+**The key insight: WASM already runs in every major browser.** Chrome, Firefox, Safari, Edge all have WASM runtimes today. Projects like Flutter/web, Figma, and game engines already prove you can bypass the DOM entirely by rendering through WASM + Canvas. The runtime isn't the missing piece. The infrastructure exists. What's missing is the **language layer** -- a declarative, intent-based language designed for AI to author (and humans to read) that compiles down to WASM.
+
+Naze is that language. A purpose-built, AI-native UI format where:
+
+- **Intent goes straight to pixels.** No bundler. No framework selection. No "React or Vue or Svelte." No Webpack config. The compiler emits a compact binary render tree; the runtime renders it directly.
+- **Apps are kilobytes, not megabytes.** The Naze runtime is 69KB. A typical app's render tree is hundreds of bytes. Compare that to the megabytes of JavaScript, CSS frameworks (95% unused), and polyfills that a typical SPA ships.
+- **The syntax is readable but compilable.** `.naze` files read like a document describing what the UI should look like. A non-developer can understand them. An AI can generate them reliably. No JSX, no template literals, no CSS-in-JS.
+- **Compiled, not interpreted.** Naze is not another runtime-interpreted language. The compiler does the heavy lifting ahead of time -- parsing, type checking, import resolution, component inlining, dead code elimination -- and emits a compact binary. The runtime is a thin executor that deserializes and renders. No JIT, no eval, no parsing at runtime. This is closer to how C or Rust works than how JavaScript or Python works.
+- **One source, every platform.** The same `.naze` file targets web (WASM + Canvas), desktop (native renderer), and mobile -- without platform-specific code.
+
+### What this enables
+
+- **True cross-platform from a single source.** One `.naze` file compiles to web (WASM + Canvas), desktop (native window), and mobile (Android/iOS). No React Native, no Electron, no Flutter -- one language, every platform, identical output.
+- **Purpose-built AI models.** Today's coding LLMs are 70B-400B+ parameters because they're trained on 50+ languages, hundreds of frameworks, and millions of patterns. Naze is one language with a constrained grammar -- one way to express layout, data binding, events. A fine-tuned 3-7B model on `.naze` could match or outperform a general-purpose 70B model at Naze generation specifically. That's a model that runs locally on a laptop, offline, at zero cost -- not a cloud compromise, but potentially the *better* experience. The language is the constraint that makes this tractable.
+- **Instant app generation.** Because the language is declarative and the compiler is fast, the loop from "describe what you want" to "see it running" collapses. No `npm install`, no build config, no dependency resolution. `nazec build` produces a working app in milliseconds.
+- **Auditable by anyone.** `.naze` files are plain text, readable by non-developers. A product manager, designer, or client can open the source and understand the structure. AI-generated code becomes inspectable, not a black box.
+- **Tiny attack surface.** No `node_modules`. No supply chain of thousands of transitive dependencies. The compiler is a single Rust binary. The runtime is 69KB of WASM. There is very little to exploit.
+- **Testing built in from the ground up.** Tests are `.test.naze` files written in the same language as the app -- not a separate framework, not Jest, not Playwright. Component tests render with props and assert output; flow tests simulate multi-page user journeys. `nazec test` runs everything. Because the language is declarative and the output is deterministic (same input always produces the same render tree), tests are predictable and reproducible. AI generates tests alongside app code, and the compiler validates both.
+- **Offline-first development.** With a local Naze-trained LLM and the `nazec` compiler, you can generate and build apps with no internet connection. No CDN, no package registry, no cloud build service required.
+
+The competitive moat is the language, not the runtime. Whoever designs the right AI-native language wins, because the execution layer is commoditized. Think about what happened with JavaScript: the language was the innovation, not the browser.
+
+See [docs/BRAINSTORM.md](docs/BRAINSTORM.md) for the full design rationale and [docs/ROADMAP.md](docs/ROADMAP.md) for the long-term vision.
+
 ## Status
 
-**Phase 1 (Proof of Life) is complete.** `nazec new hello && cd hello && nazec build` produces a `dist/` directory with WASM + HTML that renders colored rectangles and text in the browser. Runtime binary is 75KB.
+**Phase 1 (Proof of Life) is complete.** `nazec new hello && cd hello && nazec build` produces a `dist/` directory with WASM + HTML that renders colored rectangles and text in the browser. Runtime binary is 69KB.
 
-See [docs/MVP.md](docs/MVP.md) for detailed milestone tracking.
+See [docs/MVP.md](docs/MVP.md) for Phase 1 summary and [docs/PHASE2.md](docs/PHASE2.md) for Phase 2 planning.
 
 ## Quick Start
 
@@ -153,6 +183,18 @@ npx serve dist
 
 Open `http://localhost:8080` in your browser. You'll see a heading, three colored rounded rectangles, and a line of text rendered on a full-page canvas.
 
+### 4b. Preview locally without a browser (Linux)
+
+Instead of serving files and opening a browser, you can preview directly in a native desktop window:
+
+```bash
+nazec run
+```
+
+This opens a window rendering your app using the same `app_data.bin` that the browser would use. No HTTP server, no WASM, no browser required -- just `nazec build` then `nazec run`.
+
+Currently Linux only. The native renderer uses a software rasterizer (tiny-skia) rather than Canvas2D, so there may be minor visual differences in font metrics or anti-aliasing compared to the browser. The layout and structure are identical -- both use the same layout engine and the same serialized render tree.
+
 ### 5. Edit and rebuild
 
 Open `hello/app.naze` in your editor and make changes. For example, replace the content with a dashboard layout:
@@ -247,16 +289,20 @@ Build and refresh — the component is inlined at compile time with prop values 
 ```
 naze-lang/
   crates/
-    nazec/            CLI binary — new, build, check, parse commands
+    nazec/            CLI binary — new, build, check, run, parse commands
     naze-parser/      PEG parser (pest) — .naze source to AST
     naze-compiler/    Type checker + binary serializer
     naze-ir/          Shared IR types (minimal deps, used by both native + WASM)
     naze-runtime/     WASM entry point — deserializes, lays out, renders
     naze-layout/      Layout engine — row, column, stack, grid
     naze-renderer/    Canvas2D renderer (web-sys)
+    naze-native/      Standalone native viewer for app_data.bin
   examples/           16 example .naze files
   docs/
-    MVP.md            Phase 1 milestone tracker
+    ROADMAP.md        Long-term vision (Phase 1-5)
+    PHASE2.md         Phase 2 milestone tracker
+    MVP.md            Phase 1 summary
+    LANGUAGE.md       Language reference
     PROTOTYPE.md      Component architecture spec
     BRAINSTORM.md     Original design brainstorm
 ```
@@ -266,6 +312,7 @@ naze-lang/
 ```
 nazec new <name>        Create a new project
 nazec build             Compile to dist/ (WASM + HTML)
+nazec run               Preview in a native desktop window (Linux)
 nazec check             Type-check without building
 nazec parse <file>      Dump AST as JSON
 nazec build --format json   Machine-readable error output
@@ -307,7 +354,10 @@ The compiler (native Rust) parses `.naze` files, resolves imports, type-checks, 
 ```
 .naze source → parse → resolve → typecheck → serialize → app_data.bin
                                                            ↓
-              browser ← index.html ← runtime.wasm ← deserialize → layout → Canvas2D
+                               ┌───────────────────────────┤
+                               ↓                           ↓
+                 nazec run (Linux)                 browser (all platforms)
+                 deserialize → layout → tiny-skia   runtime.wasm → layout → Canvas2D
 ```
 
 ## License

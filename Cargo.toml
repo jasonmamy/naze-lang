@@ -7,6 +7,7 @@ members = [
     "crates/naze-runtime",
     "crates/naze-layout",
     "crates/naze-renderer",
+    "crates/naze-native",
 ]
 resolver = "2"
 
