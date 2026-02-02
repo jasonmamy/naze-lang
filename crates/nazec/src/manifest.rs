@@ -1,21 +1,21 @@
 use serde::Deserialize;
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Manifest {
     pub app: App,
     #[serde(default)]
     pub build: Build,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct App {
     pub name: String,
     #[serde(default = "default_version")]
     pub version: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Build {
     #[serde(default = "default_entry")]
     pub entry: String,

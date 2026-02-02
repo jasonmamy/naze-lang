@@ -53,6 +53,7 @@ See [PHASE2.md](PHASE2.md) for the detailed milestone tracker.
 Make it pleasant to build Naze apps. Fast iteration, AI integration, rich tooling.
 
 - **AI integration layer** -- intent-to-Naze pipeline, validation feedback loop, fine-tuning dataset, constrained decoding
+- **Voice-driven development** -- speech-to-text → local LLM edits `.naze` → hot reload renders instantly → text-to-speech responds. The sub-second rebuild loop makes conversational app building viable: describe what you want, see it appear, refine by talking. Requires a local fine-tuned model (3-7B) and the hot-reload pipeline already built in Phase 2.
 - **Inspector** -- visual element inspector, component tree, property panel (like browser DevTools)
 - **Debugger** -- WASM source-mapped debugging, state inspection, event logging
 - **Hot reload** -- file watcher, incremental recompile, state-preserving hot-swap
