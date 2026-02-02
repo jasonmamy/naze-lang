@@ -1,0 +1,9 @@
+-- Colored rectangles
+app "Boxes" {
+  column padding: 24px, gap: 16px {
+    heading "Color Boxes"
+    rect width: 200px, height: 100px, color: #2563eb, radius: 8px
+    rect width: 200px, height: 100px, color: #dc2626, radius: 12px
+    rect width: 200px, height: 100px, color: #16a34a, radius: 0px
+  }
+}

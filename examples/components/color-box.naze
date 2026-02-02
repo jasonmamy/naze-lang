@@ -1,0 +1,4 @@
+-- A reusable colored box component
+component color-box(color: color, size: number = 80px) {
+  rect width: size, height: size, color: color, radius: 4px
+}

@@ -1,0 +1,17 @@
+[package]
+name = "nazec"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "nazec"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+toml = "0.8"
+serde = { workspace = true }
+serde_json = { workspace = true }
+naze-ir = { path = "../naze-ir", features = ["serde"] }
+naze-parser = { path = "../naze-parser" }
+naze-compiler = { path = "../naze-compiler" }

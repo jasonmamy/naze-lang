@@ -1,0 +1,28 @@
+-- Using multiple components together
+use components/card
+use components/color-box
+
+app "Multi Component" {
+  column padding: 20px, gap: 20px {
+    heading "Multiple Components"
+
+    -- Cards row
+    row gap: 16px {
+      card bg: #eff6ff, width: 200px
+      card bg: #fef2f2, width: 200px
+    }
+
+    -- Color boxes grid
+    text "Color Palette"
+    grid columns: 4, gap: 8px {
+      color-box color: #ef4444, size: 60px
+      color-box color: #f97316, size: 60px
+      color-box color: #eab308, size: 60px
+      color-box color: #22c55e, size: 60px
+      color-box color: #3b82f6, size: 60px
+      color-box color: #8b5cf6, size: 60px
+      color-box color: #ec4899, size: 60px
+      color-box color: #6b7280, size: 60px
+    }
+  }
+}

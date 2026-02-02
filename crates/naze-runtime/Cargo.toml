@@ -1,0 +1,17 @@
+[package]
+name = "naze-runtime"
+version.workspace = true
+edition.workspace = true
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+naze-ir = { path = "../naze-ir" }
+naze-layout = { path = "../naze-layout" }
+naze-renderer = { path = "../naze-renderer" }
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Window", "Document"] }

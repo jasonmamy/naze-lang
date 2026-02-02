@@ -1,0 +1,13 @@
+[package]
+name = "naze-compiler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+naze-ir = { path = "../naze-ir", features = ["serde"] }
+naze-parser = { path = "../naze-parser" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

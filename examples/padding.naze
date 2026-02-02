@@ -1,0 +1,15 @@
+-- Padding and spacing
+app "Padding" {
+  column padding: 40px, gap: 24px {
+    heading "Padding Example"
+    container padding: 20px, color: #f1f5f9, radius: 8px {
+      column gap: 8px {
+        text "Inside a padded container"
+        rect width: 150px, height: 40px, color: #6366f1, radius: 4px
+      }
+    }
+    container padding: 32px, color: #fef3c7, radius: 12px {
+      text "More padding here"
+    }
+  }
+}

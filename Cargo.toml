@@ -1,0 +1,27 @@
+[workspace]
+members = [
+    "crates/nazec",
+    "crates/naze-parser",
+    "crates/naze-compiler",
+    "crates/naze-ir",
+    "crates/naze-runtime",
+    "crates/naze-layout",
+    "crates/naze-renderer",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+lto = true
+opt-level = "z"
+strip = true
+codegen-units = 1
+panic = "abort"

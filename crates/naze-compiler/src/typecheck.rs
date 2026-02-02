@@ -1,0 +1,595 @@
+use std::collections::HashMap;
+
+use naze_parser::ast::{Node, Param, Prop, Span, Type, Value};
+
+use crate::error::{CompileError, Severity};
+use crate::resolve::{ComponentDef, ResolvedProject};
+
+/// Expected type for a built-in element property.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
+enum Expected {
+    Number,
+    Color,
+    Text,
+    Bool,
+    Any,
+}
+
+/// Built-in element property schemas: (element, prop_name) -> expected type.
+fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
+    // Common layout props accepted by all layout containers
+    let layout_prop = match prop {
+        "padding" | "gap" | "width" | "height" => Some(Expected::Number),
+        "color" => Some(Expected::Color),
+        "columns" => Some(Expected::Number),
+        _ => None,
+    };
+
+    match element {
+        "row" | "column" | "stack" | "grid" => match prop {
+            "padding" | "gap" | "width" | "height" => Some(Expected::Number),
+            "color" => Some(Expected::Color),
+            "columns" => Some(Expected::Number),
+            "align" | "justify" => Some(Expected::Any), // TODO: enum type
+            _ => None,
+        },
+        "spacer" => match prop {
+            "width" | "height" => Some(Expected::Number),
+            _ => None,
+        },
+        "rect" => match prop {
+            "width" | "height" | "radius" => Some(Expected::Number),
+            "color" => Some(Expected::Color),
+            _ => None,
+        },
+        "text" => match prop {
+            "color" => Some(Expected::Color),
+            "font-size" => Some(Expected::Number),
+            "__text" => Some(Expected::Text),
+            _ => None,
+        },
+        "heading" => match prop {
+            "color" => Some(Expected::Color),
+            "font-size" => Some(Expected::Number),
+            "__text" => Some(Expected::Text),
+            _ => None,
+        },
+        "container" => match prop {
+            "padding" | "width" | "height" | "radius" => Some(Expected::Number),
+            "color" => Some(Expected::Color),
+            _ => None,
+        },
+        _ => layout_prop,
+    }
+}
+
+/// Check whether a value matches an expected type.
+fn value_matches(value: &Value, expected: Expected) -> bool {
+    match expected {
+        Expected::Any => true,
+        Expected::Number => matches!(value, Value::Num(_, _)),
+        Expected::Color => matches!(value, Value::Color(_)),
+        Expected::Text => matches!(value, Value::Str(_)),
+        Expected::Bool => matches!(value, Value::Bool(_)),
+    }
+}
+
+fn expected_name(expected: Expected) -> &'static str {
+    match expected {
+        Expected::Number => "number",
+        Expected::Color => "color",
+        Expected::Text => "text",
+        Expected::Bool => "bool",
+        Expected::Any => "any",
+    }
+}
+
+fn value_type_name(value: &Value) -> &'static str {
+    match value {
+        Value::Str(_) => "text",
+        Value::Num(_, _) => "number",
+        Value::Color(_) => "color",
+        Value::Bool(_) => "bool",
+        Value::Ref(_) => "reference",
+    }
+}
+
+/// Type-check a resolved project. Returns a list of errors/warnings.
+pub fn typecheck(project: &ResolvedProject) -> Vec<CompileError> {
+    let mut errors = Vec::new();
+
+    // Build a lookup: component short name -> component def
+    let by_name: HashMap<&str, &ComponentDef> = project
+        .components
+        .values()
+        .map(|c| (c.name.as_str(), c))
+        .collect();
+
+    // Check entry file
+    check_nodes(&project.entry.nodes, &by_name, &[], &mut errors);
+
+    // Check component bodies (each component's body is checked with its own params in scope)
+    for comp in project.components.values() {
+        check_nodes(&comp.children, &by_name, &comp.params, &mut errors);
+    }
+
+    errors
+}
+
+/// Recursively type-check a list of nodes.
+/// `in_scope_params` are component parameters available as ref values in the current scope.
+fn check_nodes(
+    nodes: &[Node],
+    components: &HashMap<&str, &ComponentDef>,
+    in_scope_params: &[Param],
+    errors: &mut Vec<CompileError>,
+) {
+    for node in nodes {
+        match node {
+            Node::Element {
+                name,
+                props,
+                children,
+                span,
+            } => {
+                // Is this a component invocation?
+                if let Some(comp) = components.get(name.as_str()) {
+                    check_component_call(comp, props, span, in_scope_params, errors);
+                } else {
+                    // Built-in element — check prop types
+                    check_builtin_props(name, props, span, in_scope_params, errors);
+                }
+                check_nodes(children, components, in_scope_params, errors);
+            }
+            Node::App { children, .. } => {
+                check_nodes(children, components, in_scope_params, errors);
+            }
+            Node::Component {
+                children, params, ..
+            } => {
+                // Inside a component definition, its own params are in scope
+                check_nodes(children, components, params, errors);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Type-check a component invocation against its definition.
+fn check_component_call(
+    comp: &ComponentDef,
+    props: &[Prop],
+    call_span: &Span,
+    _in_scope_params: &[Param],
+    errors: &mut Vec<CompileError>,
+) {
+    let param_map: HashMap<&str, &Param> = comp.params.iter().map(|p| (p.name.as_str(), p)).collect();
+
+    // Check each provided prop
+    for prop in props {
+        if prop.key == "__text" {
+            // Text content shorthand — components don't accept this
+            errors.push(CompileError {
+                message: format!(
+                    "component '{}' does not accept inline text content",
+                    comp.name
+                ),
+                file: call_span.file.clone(),
+                line: call_span.line,
+                column: call_span.col,
+                severity: Severity::Error,
+            });
+            continue;
+        }
+
+        match param_map.get(prop.key.as_str()) {
+            Some(param) => {
+                // Skip type checking for refs — they're resolved at runtime or codegen
+                if !matches!(&prop.value, Value::Ref(_)) {
+                    if !value_matches_type(&prop.value, &param.ty) {
+                        errors.push(CompileError {
+                            message: format!(
+                                "type mismatch for prop '{}' on component '{}': expected {}, got {}",
+                                prop.key,
+                                comp.name,
+                                type_name(&param.ty),
+                                value_type_name(&prop.value),
+                            ),
+                            file: call_span.file.clone(),
+                            line: call_span.line,
+                            column: call_span.col,
+                            severity: Severity::Error,
+                        });
+                    }
+                }
+            }
+            None => {
+                errors.push(CompileError {
+                    message: format!(
+                        "unknown prop '{}' on component '{}'. Available: {}",
+                        prop.key,
+                        comp.name,
+                        comp.params
+                            .iter()
+                            .map(|p| p.name.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    ),
+                    file: call_span.file.clone(),
+                    line: call_span.line,
+                    column: call_span.col,
+                    severity: Severity::Error,
+                });
+            }
+        }
+    }
+
+    // Check required props (no default) are provided
+    for param in &comp.params {
+        if param.default.is_none() {
+            let provided = props.iter().any(|p| p.key == param.name);
+            if !provided {
+                errors.push(CompileError {
+                    message: format!(
+                        "missing required prop '{}' on component '{}'",
+                        param.name, comp.name
+                    ),
+                    file: call_span.file.clone(),
+                    line: call_span.line,
+                    column: call_span.col,
+                    severity: Severity::Error,
+                });
+            }
+        }
+    }
+}
+
+/// Type-check props on a built-in element.
+fn check_builtin_props(
+    element: &str,
+    props: &[Prop],
+    span: &Span,
+    in_scope_params: &[Param],
+    errors: &mut Vec<CompileError>,
+) {
+    for prop in props {
+        // Skip ref values — they reference component params, checked elsewhere
+        if matches!(&prop.value, Value::Ref(parts) if parts.len() == 1) {
+            // Single-segment ref: check it's a valid in-scope param
+            if let Value::Ref(parts) = &prop.value {
+                let name = &parts[0];
+                let is_param = in_scope_params.iter().any(|p| p.name == *name);
+                if !is_param && !name.contains('.') {
+                    // Not a known param — could be a forward reference or error.
+                    // For Phase 1, only warn if we're inside a component body.
+                    if !in_scope_params.is_empty() {
+                        errors.push(CompileError {
+                            message: format!(
+                                "unknown reference '{}' on element '{}': not a component parameter",
+                                name, element
+                            ),
+                            file: span.file.clone(),
+                            line: span.line,
+                            column: span.col,
+                            severity: Severity::Warning,
+                        });
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Multi-segment ref (e.g., theme.primary) — skip type checking
+        if matches!(&prop.value, Value::Ref(parts) if parts.len() > 1) {
+            continue;
+        }
+
+        if let Some(expected) = builtin_prop_type(element, &prop.key) {
+            if !value_matches(&prop.value, expected) {
+                errors.push(CompileError {
+                    message: format!(
+                        "type mismatch for prop '{}' on '{}': expected {}, got {}",
+                        prop.key,
+                        element,
+                        expected_name(expected),
+                        value_type_name(&prop.value),
+                    ),
+                    file: span.file.clone(),
+                    line: span.line,
+                    column: span.col,
+                    severity: Severity::Error,
+                });
+            }
+        }
+        // Unknown props on builtins are silently ignored for Phase 1 — the set will grow.
+    }
+}
+
+/// Check if a value matches a declared component parameter type.
+fn value_matches_type(value: &Value, ty: &Type) -> bool {
+    match ty {
+        Type::Text => matches!(value, Value::Str(_)),
+        Type::Number => matches!(value, Value::Num(_, _)),
+        Type::Bool => matches!(value, Value::Bool(_)),
+        Type::Color => matches!(value, Value::Color(_)),
+    }
+}
+
+fn type_name(ty: &Type) -> &'static str {
+    match ty {
+        Type::Text => "text",
+        Type::Number => "number",
+        Type::Bool => "bool",
+        Type::Color => "color",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resolve::resolve;
+    use std::fs;
+    use std::path::Path;
+
+    fn setup_and_check(files: &[(&str, &str)]) -> Vec<CompileError> {
+        let dir = tempfile::tempdir().unwrap();
+        for (name, content) in files {
+            let path = dir.path().join(name);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).unwrap();
+            }
+            fs::write(path, content).unwrap();
+        }
+        let project = resolve(dir.path(), "app.naze");
+        let mut errors = typecheck(&project);
+        errors.extend(project.errors);
+        errors
+    }
+
+    fn errors_only(errors: &[CompileError]) -> Vec<&CompileError> {
+        errors
+            .iter()
+            .filter(|e| matches!(e.severity, Severity::Error))
+            .collect()
+    }
+
+    #[test]
+    fn valid_app_no_errors() {
+        let errors = setup_and_check(&[(
+            "app.naze",
+            r#"app "Hello" {
+  column padding: 20px, gap: 16px {
+    heading "Title"
+    rect width: 100px, height: 50px, color: #ff0000, radius: 8px
+    text "body"
+  }
+}
+"#,
+        )]);
+        let errs = errors_only(&errors);
+        assert!(errs.is_empty(), "unexpected errors: {:?}", errs);
+    }
+
+    #[test]
+    fn valid_component_call() {
+        let errors = setup_and_check(&[
+            (
+                "components/box.naze",
+                "component box(color: color, size: number = 80px) {\n  rect width: size, height: size, color: color\n}\n",
+            ),
+            (
+                "app.naze",
+                "use components/box\n\napp \"Test\" {\n  box color: #ff0000\n  box color: #00ff00, size: 120px\n}\n",
+            ),
+        ]);
+        let errs = errors_only(&errors);
+        assert!(errs.is_empty(), "unexpected errors: {:?}", errs);
+    }
+
+    #[test]
+    fn missing_required_prop() {
+        let errors = setup_and_check(&[
+            (
+                "components/box.naze",
+                "component box(color: color) {\n  rect width: 80px, height: 80px, color: color\n}\n",
+            ),
+            (
+                "app.naze",
+                "use components/box\n\napp \"Test\" {\n  box size: 100px\n}\n",
+            ),
+        ]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter().any(|e| e.message.contains("missing required prop 'color'")),
+            "expected missing prop error, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn wrong_prop_type_on_component() {
+        let errors = setup_and_check(&[
+            (
+                "components/box.naze",
+                "component box(color: color) {\n  rect width: 80px, height: 80px, color: color\n}\n",
+            ),
+            (
+                "app.naze",
+                "use components/box\n\napp \"Test\" {\n  box color: 42px\n}\n",
+            ),
+        ]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("color")),
+            "expected type mismatch, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn unknown_prop_on_component() {
+        let errors = setup_and_check(&[
+            (
+                "components/box.naze",
+                "component box(color: color) {\n  rect width: 80px, height: 80px, color: color\n}\n",
+            ),
+            (
+                "app.naze",
+                "use components/box\n\napp \"Test\" {\n  box color: #ff0000, bogus: 10px\n}\n",
+            ),
+        ]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter().any(|e| e.message.contains("unknown prop 'bogus'")),
+            "expected unknown prop error, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn wrong_type_on_builtin() {
+        let errors = setup_and_check(&[(
+            "app.naze",
+            "app \"Test\" {\n  rect width: \"not a number\", color: #ff0000\n}\n",
+        )]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("width")),
+            "expected type mismatch on width, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn color_where_number_expected() {
+        let errors = setup_and_check(&[(
+            "app.naze",
+            "app \"Test\" {\n  rect width: #ff0000, height: 50px, color: #000000\n}\n",
+        )]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("width")),
+            "expected type mismatch, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn ref_to_valid_param_ok() {
+        let errors = setup_and_check(&[
+            (
+                "components/box.naze",
+                "component box(color: color, size: number = 80px) {\n  rect width: size, height: size, color: color\n}\n",
+            ),
+            (
+                "app.naze",
+                "use components/box\n\napp \"Test\" {\n  box color: #ff0000\n}\n",
+            ),
+        ]);
+        // The refs inside the component body (size, color) should not produce errors
+        let errs = errors_only(&errors);
+        assert!(errs.is_empty(), "unexpected errors: {:?}", errs);
+    }
+
+    #[test]
+    fn ref_to_unknown_param_warns() {
+        let errors = setup_and_check(&[(
+            "components/box.naze",
+            "component box(color: color) {\n  rect width: bogus, height: 80px, color: color\n}\n",
+        ),
+        (
+            "app.naze",
+            "use components/box\n\napp \"Test\" {\n  box color: #ff0000\n}\n",
+        )]);
+        assert!(
+            errors.iter().any(|e| e.message.contains("unknown reference 'bogus'")),
+            "expected unknown ref warning, got: {:?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn nested_elements_checked() {
+        let errors = setup_and_check(&[(
+            "app.naze",
+            r#"app "Test" {
+  column padding: 20px {
+    row gap: "bad" {
+      rect width: 50px, height: 50px, color: #000000
+    }
+  }
+}
+"#,
+        )]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("gap")),
+            "expected gap type error, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn all_examples_typecheck() {
+        let examples_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("examples");
+
+        // Parse examples that are self-contained apps (no use statements to external dirs)
+        for name in &[
+            "hello.naze",
+            "boxes.naze",
+            "columns.naze",
+            "rows.naze",
+            "nested.naze",
+            "padding.naze",
+            "rounded.naze",
+            "colors.naze",
+            "typography.naze",
+            "grid.naze",
+            "dashboard-static.naze",
+            "app-shell.naze",
+        ] {
+            let project = resolve(&examples_dir, name);
+            let tc_errors = typecheck(&project);
+            let all_errors: Vec<_> = project
+                .errors
+                .iter()
+                .chain(tc_errors.iter())
+                .filter(|e| matches!(e.severity, Severity::Error))
+                .collect();
+            assert!(
+                all_errors.is_empty(),
+                "errors in {}: {:?}",
+                name,
+                all_errors
+            );
+        }
+
+        // Examples with component imports (resolved from examples dir)
+        for name in &[
+            "component-basic.naze",
+            "component-props.naze",
+            "multi-component.naze",
+        ] {
+            let project = resolve(&examples_dir, name);
+            let tc_errors = typecheck(&project);
+            let all_errors: Vec<_> = project
+                .errors
+                .iter()
+                .chain(tc_errors.iter())
+                .filter(|e| matches!(e.severity, Severity::Error))
+                .collect();
+            assert!(
+                all_errors.is_empty(),
+                "errors in {}: {:?}",
+                name,
+                all_errors
+            );
+        }
+    }
+}

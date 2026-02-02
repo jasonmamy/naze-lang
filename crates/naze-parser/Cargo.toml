@@ -1,0 +1,10 @@
+[package]
+name = "naze-parser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pest = "2"
+pest_derive = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }

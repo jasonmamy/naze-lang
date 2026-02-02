@@ -1,0 +1,9 @@
+-- A card component with customizable background
+component card(bg: color = #ffffff, width: number = 200px) {
+  container padding: 16px, color: bg, radius: 8px, width: width {
+    column gap: 8px {
+      heading "Card Title" font-size: 18px
+      text "Card content goes here."
+    }
+  }
+}

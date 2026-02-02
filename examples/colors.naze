@@ -1,0 +1,30 @@
+-- Color palette display
+app "Colors" {
+  column padding: 20px, gap: 16px {
+    heading "Color Palette"
+    row gap: 8px {
+      rect width: 48px, height: 48px, color: #fecaca, radius: 4px
+      rect width: 48px, height: 48px, color: #fca5a5, radius: 4px
+      rect width: 48px, height: 48px, color: #f87171, radius: 4px
+      rect width: 48px, height: 48px, color: #ef4444, radius: 4px
+      rect width: 48px, height: 48px, color: #dc2626, radius: 4px
+      rect width: 48px, height: 48px, color: #b91c1c, radius: 4px
+    }
+    row gap: 8px {
+      rect width: 48px, height: 48px, color: #bbf7d0, radius: 4px
+      rect width: 48px, height: 48px, color: #86efac, radius: 4px
+      rect width: 48px, height: 48px, color: #4ade80, radius: 4px
+      rect width: 48px, height: 48px, color: #22c55e, radius: 4px
+      rect width: 48px, height: 48px, color: #16a34a, radius: 4px
+      rect width: 48px, height: 48px, color: #15803d, radius: 4px
+    }
+    row gap: 8px {
+      rect width: 48px, height: 48px, color: #bfdbfe, radius: 4px
+      rect width: 48px, height: 48px, color: #93c5fd, radius: 4px
+      rect width: 48px, height: 48px, color: #60a5fa, radius: 4px
+      rect width: 48px, height: 48px, color: #3b82f6, radius: 4px
+      rect width: 48px, height: 48px, color: #2563eb, radius: 4px
+      rect width: 48px, height: 48px, color: #1d4ed8, radius: 4px
+    }
+  }
+}

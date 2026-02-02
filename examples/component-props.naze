@@ -1,0 +1,13 @@
+-- Components with typed props
+use components/card
+
+app "Component Props" {
+  column padding: 20px, gap: 16px {
+    heading "Cards with Props"
+    row gap: 16px {
+      card bg: #f0f9ff, width: 220px
+      card bg: #fef3c7, width: 220px
+      card bg: #f0fdf4, width: 220px
+    }
+  }
+}

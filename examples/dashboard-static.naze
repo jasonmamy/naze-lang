@@ -1,0 +1,47 @@
+-- A static dashboard layout
+app "Dashboard" {
+  column gap: 0px {
+    -- Header bar
+    container padding: 16px, color: #1e293b {
+      heading "Dashboard" font-size: 20px, color: #ffffff
+    }
+
+    -- Main content
+    row padding: 20px, gap: 20px {
+      -- Sidebar
+      column width: 200px, gap: 8px, padding: 16px, color: #f8fafc {
+        text "Overview"
+        text "Analytics"
+        text "Reports"
+        text "Settings"
+      }
+
+      -- Content area
+      column gap: 16px {
+        heading "Overview"
+        row gap: 16px {
+          container padding: 16px, color: #eff6ff, radius: 8px, width: 180px {
+            column gap: 4px {
+              text "Revenue"
+              heading "$12,345" font-size: 24px
+            }
+          }
+          container padding: 16px, color: #f0fdf4, radius: 8px, width: 180px {
+            column gap: 4px {
+              text "Users"
+              heading "1,234" font-size: 24px
+            }
+          }
+          container padding: 16px, color: #fefce8, radius: 8px, width: 180px {
+            column gap: 4px {
+              text "Orders"
+              heading "567" font-size: 24px
+            }
+          }
+        }
+        -- Chart placeholder
+        rect width: 580px, height: 200px, color: #e2e8f0, radius: 8px
+      }
+    }
+  }
+}

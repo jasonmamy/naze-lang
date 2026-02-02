@@ -1,0 +1,13 @@
+-- Using a basic component
+use components/color-box
+
+app "Component Basic" {
+  column padding: 20px, gap: 16px {
+    heading "Component Reuse"
+    row gap: 12px {
+      color-box color: #ef4444
+      color-box color: #22c55e
+      color-box color: #3b82f6
+    }
+  }
+}

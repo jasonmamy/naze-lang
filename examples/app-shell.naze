@@ -1,0 +1,60 @@
+-- An application shell with header, sidebar, and content area
+app "App Shell" {
+  column gap: 0px {
+    -- Top navigation bar
+    container padding: 12px, color: #111827 {
+      row gap: 24px {
+        heading "MyApp" font-size: 18px, color: #ffffff
+        text "Home" color: #9ca3af
+        text "About" color: #9ca3af
+        text "Contact" color: #9ca3af
+      }
+    }
+
+    -- Body: sidebar + content
+    row gap: 0px {
+      -- Sidebar
+      container width: 220px, padding: 16px, color: #f9fafb {
+        column gap: 12px {
+          text "Dashboard"
+          text "Projects"
+          text "Team"
+          text "Calendar"
+          spacer height: 24px
+          text "Settings" color: #6b7280
+        }
+      }
+
+      -- Main content area
+      column padding: 24px, gap: 20px {
+        heading "Welcome back!"
+        text "Here's what's happening with your projects today."
+
+        -- Stats row
+        row gap: 16px {
+          container padding: 16px, color: #eef2ff, radius: 8px, width: 160px {
+            column gap: 4px {
+              text "Projects" color: #6366f1
+              heading "12" font-size: 28px
+            }
+          }
+          container padding: 16px, color: #ecfdf5, radius: 8px, width: 160px {
+            column gap: 4px {
+              text "Completed" color: #059669
+              heading "8" font-size: 28px
+            }
+          }
+          container padding: 16px, color: #fff7ed, radius: 8px, width: 160px {
+            column gap: 4px {
+              text "Pending" color: #ea580c
+              heading "4" font-size: 28px
+            }
+          }
+        }
+
+        -- Placeholder content
+        rect width: 500px, height: 240px, color: #f1f5f9, radius: 12px
+      }
+    }
+  }
+}

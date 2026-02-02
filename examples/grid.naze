@@ -1,0 +1,14 @@
+-- Grid of items
+app "Grid" {
+  column padding: 20px, gap: 16px {
+    heading "Grid Layout"
+    grid columns: 3, gap: 12px {
+      rect width: 100px, height: 100px, color: #f43f5e, radius: 8px
+      rect width: 100px, height: 100px, color: #8b5cf6, radius: 8px
+      rect width: 100px, height: 100px, color: #06b6d4, radius: 8px
+      rect width: 100px, height: 100px, color: #f59e0b, radius: 8px
+      rect width: 100px, height: 100px, color: #10b981, radius: 8px
+      rect width: 100px, height: 100px, color: #6366f1, radius: 8px
+    }
+  }
+}

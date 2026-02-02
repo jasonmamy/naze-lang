@@ -1,0 +1,7 @@
+-- A simple hello world
+app "Hello Naze" {
+  column padding: 20px, gap: 16px {
+    heading "Hello, Naze!"
+    text "Welcome to the future of UI."
+  }
+}

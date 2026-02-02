@@ -1,0 +1,10 @@
+-- Text at different sizes
+app "Typography" {
+  column padding: 20px, gap: 12px {
+    heading "Typography" font-size: 32px
+    heading "Heading Large" font-size: 24px
+    heading "Heading Medium" font-size: 20px
+    text "Body text at default size"
+    text "Small text" font-size: 12px
+  }
+}

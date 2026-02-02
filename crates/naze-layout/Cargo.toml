@@ -1,0 +1,18 @@
+[package]
+name = "naze-layout"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+serde = ["dep:serde", "naze-ir/serde"]
+
+[dependencies]
+naze-ir = { path = "../naze-ir" }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+naze-compiler = { path = "../naze-compiler" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tempfile = "3"
