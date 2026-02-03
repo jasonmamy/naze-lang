@@ -94,7 +94,7 @@ fn lower_nodes(
             } => {
                 if let Some(comp) = components.get(name.as_str()) {
                     // Component invocation: build substitution scope and inline body
-                    out.extend(inline_component(comp, props, components, scope));
+                    out.extend(inline_component(comp, props, children, components, scope));
                 } else {
                     // Built-in element
                     let resolved_props = resolve_props(props, scope);
@@ -105,8 +105,53 @@ fn lower_nodes(
                         props: resolved_props,
                         children: child_nodes,
                         handlers: ir_handlers,
+                        condition: None,
+                        else_children: None,
+                        each_binding: None,
                     });
                 }
+            }
+            Node::If {
+                condition,
+                then_children,
+                else_children,
+                ..
+            } => {
+                let then_nodes = lower_nodes(then_children, components, scope);
+                let else_nodes = if else_children.is_empty() {
+                    None
+                } else {
+                    Some(lower_nodes(else_children, components, scope))
+                };
+                out.push(RenderNode {
+                    kind: "__if".to_string(),
+                    props: HashMap::new(),
+                    children: then_nodes,
+                    handlers: vec![],
+                    condition: Some(lower_expression(condition)),
+                    else_children: else_nodes,
+                    each_binding: None,
+                });
+            }
+            Node::Each {
+                variable,
+                iterable,
+                children,
+                ..
+            } => {
+                let child_nodes = lower_nodes(children, components, scope);
+                out.push(RenderNode {
+                    kind: "__each".to_string(),
+                    props: HashMap::new(),
+                    children: child_nodes,
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: Some((variable.clone(), lower_expression(iterable))),
+                });
+            }
+            Node::Slot { .. } | Node::Fill { .. } => {
+                // Slots/fills outside component inlining context are no-ops
             }
             Node::Comment(_)
             | Node::UseStmt { .. }
@@ -125,31 +170,203 @@ fn lower_nodes(
 }
 
 /// Inline a component invocation: substitute call-site props into the component body.
+/// Call-site children are distributed to slots declared in the component.
 fn inline_component(
     comp: &ComponentDef,
     call_props: &[Prop],
+    call_children: &[Node],
     components: &HashMap<&str, &ComponentDef>,
     parent_scope: &HashMap<String, RenderValue>,
 ) -> Vec<RenderNode> {
-    // Build scope: start with defaults, then overlay call-site values
-    let mut scope = parent_scope.clone();
+    // Build component scope: start with parent, overlay defaults, then call-site props
+    let mut comp_scope = parent_scope.clone();
 
-    // Apply defaults first
     for param in &comp.params {
         if let Some(default) = &param.default {
-            scope.insert(param.name.clone(), lower_value(default, parent_scope));
+            comp_scope.insert(param.name.clone(), lower_value(default, parent_scope));
         }
     }
 
-    // Apply call-site props (overriding defaults)
     for prop in call_props {
         if prop.key == "__text" {
             continue; // components don't have text content
         }
-        scope.insert(prop.key.clone(), lower_value(&prop.value, parent_scope));
+        comp_scope.insert(prop.key.clone(), lower_value(&prop.value, parent_scope));
     }
 
-    lower_nodes(&comp.children, components, &scope)
+    // Partition call-site children into named fills and default-slot content
+    let mut fills: HashMap<String, Vec<&Node>> = HashMap::new();
+    let mut default_nodes: Vec<&Node> = Vec::new();
+
+    for child in call_children {
+        match child {
+            Node::Fill { name, children, .. } => {
+                fills.entry(name.clone()).or_default().extend(children.iter());
+            }
+            _ => {
+                default_nodes.push(child);
+            }
+        }
+    }
+
+    // Lower the component body with slot substitution
+    lower_nodes_with_slots(
+        &comp.children,
+        components,
+        &comp_scope,
+        parent_scope,
+        &default_nodes,
+        &fills,
+    )
+}
+
+/// Lower nodes from a component body, substituting slot markers with caller content.
+/// `comp_scope` is used for the component's own body, `caller_scope` for fill content.
+fn lower_nodes_with_slots(
+    nodes: &[Node],
+    components: &HashMap<&str, &ComponentDef>,
+    comp_scope: &HashMap<String, RenderValue>,
+    caller_scope: &HashMap<String, RenderValue>,
+    default_slot_nodes: &[&Node],
+    fills: &HashMap<String, Vec<&Node>>,
+) -> Vec<RenderNode> {
+    let mut out = Vec::new();
+    for node in nodes {
+        match node {
+            Node::Slot {
+                name,
+                default_children,
+                ..
+            } => {
+                match name {
+                    None => {
+                        // Default slot: substitute with caller's non-fill children
+                        if !default_slot_nodes.is_empty() {
+                            for child in default_slot_nodes {
+                                out.extend(lower_nodes(
+                                    std::slice::from_ref(*child),
+                                    components,
+                                    caller_scope,
+                                ));
+                            }
+                        } else if !default_children.is_empty() {
+                            // Fallback content in component's scope
+                            out.extend(lower_nodes_with_slots(
+                                default_children,
+                                components,
+                                comp_scope,
+                                caller_scope,
+                                &[],
+                                &HashMap::new(),
+                            ));
+                        }
+                    }
+                    Some(slot_name) => {
+                        if let Some(fill_nodes) = fills.get(slot_name) {
+                            for child in fill_nodes {
+                                out.extend(lower_nodes(
+                                    std::slice::from_ref(*child),
+                                    components,
+                                    caller_scope,
+                                ));
+                            }
+                        } else if !default_children.is_empty() {
+                            out.extend(lower_nodes_with_slots(
+                                default_children,
+                                components,
+                                comp_scope,
+                                caller_scope,
+                                &[],
+                                &HashMap::new(),
+                            ));
+                        }
+                    }
+                }
+            }
+            Node::Element {
+                name,
+                props,
+                children,
+                handlers,
+                ..
+            } => {
+                if let Some(comp) = components.get(name.as_str()) {
+                    out.extend(inline_component(comp, props, children, components, comp_scope));
+                } else {
+                    let resolved_props = resolve_props(props, comp_scope);
+                    let child_nodes = lower_nodes_with_slots(
+                        children, components, comp_scope, caller_scope,
+                        default_slot_nodes, fills,
+                    );
+                    let ir_handlers = lower_handlers(handlers);
+                    out.push(RenderNode {
+                        kind: name.clone(),
+                        props: resolved_props,
+                        children: child_nodes,
+                        handlers: ir_handlers,
+                        condition: None,
+                        else_children: None,
+                        each_binding: None,
+                    });
+                }
+            }
+            Node::If {
+                condition,
+                then_children,
+                else_children,
+                ..
+            } => {
+                let then_nodes = lower_nodes_with_slots(
+                    then_children, components, comp_scope, caller_scope,
+                    default_slot_nodes, fills,
+                );
+                let else_nodes = if else_children.is_empty() {
+                    None
+                } else {
+                    Some(lower_nodes_with_slots(
+                        else_children, components, comp_scope, caller_scope,
+                        default_slot_nodes, fills,
+                    ))
+                };
+                out.push(RenderNode {
+                    kind: "__if".to_string(),
+                    props: HashMap::new(),
+                    children: then_nodes,
+                    handlers: vec![],
+                    condition: Some(lower_expression(condition)),
+                    else_children: else_nodes,
+                    each_binding: None,
+                });
+            }
+            Node::Each {
+                variable,
+                iterable,
+                children,
+                ..
+            } => {
+                let child_nodes = lower_nodes_with_slots(
+                    children, components, comp_scope, caller_scope,
+                    default_slot_nodes, fills,
+                );
+                out.push(RenderNode {
+                    kind: "__each".to_string(),
+                    props: HashMap::new(),
+                    children: child_nodes,
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: Some((variable.clone(), lower_expression(iterable))),
+                });
+            }
+            Node::Fill { .. } => {
+                // Fill nodes inside a component body are meaningless — skip
+            }
+            _ => {
+                // Comments, Let, State, UseStmt, Component, App — skip
+            }
+        }
+    }
+    out
 }
 
 /// Resolve props on a built-in element, substituting Ref values from scope.
@@ -184,6 +401,9 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
         Value::Num(n, unit) => RenderValue::Num(*n, unit.as_ref().map(unit_str)),
         Value::Color(c) => RenderValue::Color(*c),
         Value::Bool(b) => RenderValue::Bool(*b),
+        Value::List(items) => {
+            RenderValue::List(items.iter().map(|v| lower_value(v, scope)).collect())
+        }
         Value::Ref(parts) => {
             if parts.len() == 1 {
                 // Single-segment ref: look up in scope
@@ -499,6 +719,7 @@ mod tests {
             "dashboard-static.naze",
             "app-shell.naze",
             "counter.naze",
+            "conditional.naze",
         ] {
             let project = resolve(&examples_dir, name);
             let tree = lower(&project);
@@ -556,7 +777,7 @@ mod tests {
             .unwrap()
             .join("examples");
 
-        for name in &["component-basic.naze", "component-props.naze", "multi-component.naze"] {
+        for name in &["component-basic.naze", "component-props.naze", "multi-component.naze", "slots.naze"] {
             let project = resolve(&examples_dir, name);
             let tree = lower(&project);
             assert!(!tree.title.is_empty(), "empty title in {}", name);
@@ -580,5 +801,201 @@ mod tests {
             let restored = deserialize(&bytes).unwrap();
             assert_eq!(tree, restored, "roundtrip failed for {}", name);
         }
+    }
+
+    #[test]
+    fn lower_if_condition() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            "app \"Test\" {\n  state count = 0\n  if count > 0 {\n    text \"positive\"\n  } else {\n    text \"zero\"\n  }\n}\n",
+        )]);
+        assert_eq!(tree.root.len(), 1);
+        let if_node = &tree.root[0];
+        assert_eq!(if_node.kind, "__if");
+        assert!(if_node.condition.is_some());
+        assert_eq!(if_node.children.len(), 1); // then branch
+        assert!(if_node.else_children.is_some());
+        assert_eq!(if_node.else_children.as_ref().unwrap().len(), 1); // else branch
+
+        // Roundtrip
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn lower_each_iteration() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            "app \"Test\" {\n  state items = [\"Apple\", \"Banana\"]\n  each item in items {\n    text \"{item}\"\n  }\n}\n",
+        )]);
+        assert_eq!(tree.root.len(), 1);
+        let each_node = &tree.root[0];
+        assert_eq!(each_node.kind, "__each");
+        assert!(each_node.each_binding.is_some());
+        let (var, _) = each_node.each_binding.as_ref().unwrap();
+        assert_eq!(var, "item");
+        assert_eq!(each_node.children.len(), 1); // template child
+
+        // Roundtrip
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn lower_list_state() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            "app \"Test\" {\n  state items = [\"a\", \"b\", \"c\"]\n  text \"hello\"\n}\n",
+        )]);
+        assert_eq!(tree.state.len(), 1);
+        assert_eq!(tree.state[0].name, "items");
+        match &tree.state[0].initial {
+            RenderValue::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], RenderValue::Str("a".to_string()));
+            }
+            other => panic!("expected List, got {:?}", other),
+        }
+
+        // Roundtrip
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn lower_component_with_default_slot() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            r#"component card(title: text) {
+  rect color: #f0f0f0 {
+    heading "{title}"
+    slot
+  }
+}
+
+app "Test" {
+  card title: "Hello" {
+    text "card body"
+    text "more content"
+  }
+}
+"#,
+        )]);
+        // card inlines to: rect { heading, text "card body", text "more content" }
+        assert_eq!(tree.root.len(), 1);
+        let rect = &tree.root[0];
+        assert_eq!(rect.kind, "rect");
+        assert_eq!(rect.children.len(), 3); // heading + 2 slot children
+        assert_eq!(rect.children[0].kind, "heading");
+        assert_eq!(rect.children[1].kind, "text");
+        assert_eq!(
+            rect.children[1].props.get("__text"),
+            Some(&RenderValue::Str("card body".to_string()))
+        );
+        assert_eq!(rect.children[2].kind, "text");
+    }
+
+    #[test]
+    fn lower_component_with_named_slots() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            r#"component page(title: text) {
+  column {
+    slot "header"
+    heading "{title}"
+    slot
+    slot "footer"
+  }
+}
+
+app "Test" {
+  page title: "My Page" {
+    fill "header" {
+      text "Header Content"
+    }
+    text "Main Content"
+    fill "footer" {
+      text "Footer Content"
+    }
+  }
+}
+"#,
+        )]);
+        assert_eq!(tree.root.len(), 1);
+        let col = &tree.root[0];
+        assert_eq!(col.kind, "column");
+        // header slot content + heading + default slot content + footer slot content
+        assert_eq!(col.children.len(), 4);
+        assert_eq!(
+            col.children[0].props.get("__text"),
+            Some(&RenderValue::Str("Header Content".to_string()))
+        );
+        assert_eq!(col.children[1].kind, "heading");
+        assert_eq!(
+            col.children[2].props.get("__text"),
+            Some(&RenderValue::Str("Main Content".to_string()))
+        );
+        assert_eq!(
+            col.children[3].props.get("__text"),
+            Some(&RenderValue::Str("Footer Content".to_string()))
+        );
+    }
+
+    #[test]
+    fn lower_slot_fallback() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            r#"component panel(title: text) {
+  rect color: #ffffff {
+    heading "{title}"
+    slot {
+      text "No content provided"
+    }
+  }
+}
+
+app "Test" {
+  panel title: "Empty"
+}
+"#,
+        )]);
+        let rect = &tree.root[0];
+        assert_eq!(rect.kind, "rect");
+        assert_eq!(rect.children.len(), 2); // heading + fallback text
+        assert_eq!(
+            rect.children[1].props.get("__text"),
+            Some(&RenderValue::Str("No content provided".to_string()))
+        );
+    }
+
+    #[test]
+    fn lower_slot_fallback_overridden() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            r#"component panel(title: text) {
+  rect color: #ffffff {
+    heading "{title}"
+    slot {
+      text "No content provided"
+    }
+  }
+}
+
+app "Test" {
+  panel title: "Full" {
+    text "Custom content"
+  }
+}
+"#,
+        )]);
+        let rect = &tree.root[0];
+        assert_eq!(rect.children.len(), 2); // heading + custom content
+        assert_eq!(
+            rect.children[1].props.get("__text"),
+            Some(&RenderValue::Str("Custom content".to_string()))
+        );
     }
 }

@@ -23,6 +23,7 @@ pub enum RenderValue {
     Color(u32),
     Bool(bool),
     InterpolatedStr(Vec<TextPart>), // string with embedded state references
+    List(Vec<RenderValue>),
 }
 
 /// A state variable declaration with its initial value.
@@ -91,6 +92,9 @@ pub struct RenderNode {
     pub props: HashMap<String, RenderValue>,
     pub children: Vec<RenderNode>,
     pub handlers: Vec<IrEventHandler>,
+    pub condition: Option<IrExpression>,
+    pub else_children: Option<Vec<RenderNode>>,
+    pub each_binding: Option<(String, IrExpression)>,
 }
 
 /// The serializable render tree for the entire app.
@@ -114,8 +118,13 @@ pub struct RenderTree {
 //     2 = Color(u32)
 //     3 = Bool(bool)
 //     4 = InterpolatedStr(u32 part_count + TextParts)
+//     5 = List(u32 count + RenderValues)
 //   StateDecl: String name + RenderValue initial
 //   RenderNode: String kind + u32 prop_count + props + u32 child_count + children
+//              + u32 handler_count + handlers + u8 flags + optional fields
+//     flags bit 0: has condition (IrExpression)
+//     flags bit 1: has else_children (u32 count + RenderNodes)
+//     flags bit 2: has each_binding (String variable + IrExpression iterable)
 //   RenderTree: String title + u32 state_count + states + u32 root_count + root nodes
 
 /// Serialize a RenderTree to compact binary bytes.
@@ -209,6 +218,13 @@ fn write_value(buf: &mut Vec<u8>, val: &RenderValue) {
                 }
             }
         }
+        RenderValue::List(items) => {
+            buf.push(5);
+            write_u32(buf, items.len() as u32);
+            for item in items {
+                write_value(buf, item);
+            }
+        }
     }
 }
 
@@ -226,6 +242,31 @@ fn write_node(buf: &mut Vec<u8>, node: &RenderNode) {
     write_u32(buf, node.handlers.len() as u32);
     for handler in &node.handlers {
         write_handler(buf, handler);
+    }
+    // Optional fields: flags byte
+    let mut flags: u8 = 0;
+    if node.condition.is_some() {
+        flags |= 1;
+    }
+    if node.else_children.is_some() {
+        flags |= 2;
+    }
+    if node.each_binding.is_some() {
+        flags |= 4;
+    }
+    buf.push(flags);
+    if let Some(cond) = &node.condition {
+        write_expression(buf, cond);
+    }
+    if let Some(else_nodes) = &node.else_children {
+        write_u32(buf, else_nodes.len() as u32);
+        for child in else_nodes {
+            write_node(buf, child);
+        }
+    }
+    if let Some((var, expr)) = &node.each_binding {
+        write_string(buf, var);
+        write_expression(buf, expr);
     }
 }
 
@@ -364,6 +405,14 @@ impl<'a> Cursor<'a> {
                 }
                 Ok(RenderValue::InterpolatedStr(parts))
             }
+            5 => {
+                let count = self.read_u32()? as usize;
+                let mut items = Vec::with_capacity(count);
+                for _ in 0..count {
+                    items.push(self.read_value()?);
+                }
+                Ok(RenderValue::List(items))
+            }
             _ => Err(format!("unknown value tag: {}", tag)),
         }
     }
@@ -387,11 +436,38 @@ impl<'a> Cursor<'a> {
         for _ in 0..handler_count {
             handlers.push(self.read_handler()?);
         }
+        // Optional fields
+        let flags = self.read_u8()?;
+        let condition = if flags & 1 != 0 {
+            Some(self.read_expression()?)
+        } else {
+            None
+        };
+        let else_children = if flags & 2 != 0 {
+            let count = self.read_u32()? as usize;
+            let mut nodes = Vec::with_capacity(count);
+            for _ in 0..count {
+                nodes.push(self.read_node()?);
+            }
+            Some(nodes)
+        } else {
+            None
+        };
+        let each_binding = if flags & 4 != 0 {
+            let var = self.read_string()?;
+            let expr = self.read_expression()?;
+            Some((var, expr))
+        } else {
+            None
+        };
         Ok(RenderNode {
             kind,
             props,
             children,
             handlers,
+            condition,
+            else_children,
+            each_binding,
         })
     }
 
@@ -476,6 +552,9 @@ mod tests {
                 },
                 children: vec![],
                 handlers: vec![],
+                condition: None,
+                else_children: None,
+                each_binding: None,
             }],
         };
         let bytes = serialize(&tree);
@@ -501,6 +580,9 @@ mod tests {
                 },
                 children: vec![],
                 handlers: vec![],
+                condition: None,
+                else_children: None,
+                each_binding: None,
             }],
         };
         let bytes = serialize(&tree);
@@ -526,6 +608,9 @@ mod tests {
                         },
                         children: vec![],
                         handlers: vec![],
+                        condition: None,
+                        else_children: None,
+                        each_binding: None,
                     },
                     RenderNode {
                         kind: "rect".to_string(),
@@ -536,9 +621,15 @@ mod tests {
                         },
                         children: vec![],
                         handlers: vec![],
+                        condition: None,
+                        else_children: None,
+                        each_binding: None,
                     },
                 ],
                 handlers: vec![],
+                condition: None,
+                else_children: None,
+                each_binding: None,
             }],
         };
         let bytes = serialize(&tree);

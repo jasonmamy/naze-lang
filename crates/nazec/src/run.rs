@@ -293,19 +293,52 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
 }
 
 fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> Vec<RenderNode> {
-    nodes
-        .iter()
-        .map(|node| RenderNode {
-            kind: node.kind.clone(),
-            props: node
-                .props
-                .iter()
-                .map(|(k, v)| (k.clone(), resolve_value(v, state)))
-                .collect(),
-            children: resolve_nodes(&node.children, state),
-            handlers: node.handlers.clone(),
-        })
-        .collect()
+    let mut out = Vec::new();
+    for node in nodes {
+        match node.kind.as_str() {
+            "__if" => {
+                let show_then = node.condition.as_ref().map_or(false, |cond| {
+                    match evaluate_expr(cond, state) {
+                        RenderValue::Bool(b) => b,
+                        RenderValue::Num(n, _) => n != 0.0,
+                        _ => false,
+                    }
+                });
+                if show_then {
+                    out.extend(resolve_nodes(&node.children, state));
+                } else if let Some(else_nodes) = &node.else_children {
+                    out.extend(resolve_nodes(else_nodes, state));
+                }
+            }
+            "__each" => {
+                if let Some((var, iterable_expr)) = &node.each_binding {
+                    if let RenderValue::List(items) = evaluate_expr(iterable_expr, state) {
+                        for item in &items {
+                            let mut child_state = state.clone();
+                            child_state.insert(var.clone(), item.clone());
+                            out.extend(resolve_nodes(&node.children, &child_state));
+                        }
+                    }
+                }
+            }
+            _ => {
+                out.push(RenderNode {
+                    kind: node.kind.clone(),
+                    props: node
+                        .props
+                        .iter()
+                        .map(|(k, v)| (k.clone(), resolve_value(v, state)))
+                        .collect(),
+                    children: resolve_nodes(&node.children, state),
+                    handlers: node.handlers.clone(),
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                });
+            }
+        }
+    }
+    out
 }
 
 fn resolve_value(value: &RenderValue, state: &HashMap<String, RenderValue>) -> RenderValue {

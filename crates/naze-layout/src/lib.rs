@@ -757,6 +757,7 @@ mod tests {
             "dashboard-static.naze",
             "app-shell.naze",
             "counter.naze",
+            "conditional.naze",
             "component-basic.naze",
             "component-props.naze",
             "multi-component.naze",

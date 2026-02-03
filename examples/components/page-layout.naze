@@ -1,0 +1,9 @@
+-- Component with named slots
+component page-layout(title: text) {
+  column padding: 20px, gap: 16px {
+    slot "header"
+    heading "{title}"
+    slot
+    slot "footer"
+  }
+}

@@ -1,0 +1,38 @@
+-- M4: Component Content Slots
+-- Demonstrates default slots, named slots, and fallback content
+use components/slot-card
+use components/page-layout
+use components/panel
+
+app "Slots Demo" {
+  column padding: 20px, gap: 20px {
+    heading "Slot Examples"
+
+    -- Default slot usage
+    slot-card title: "Card 1" {
+      text "This is the card body"
+      rect width: 50px, height: 50px, color: #3b82f6
+    }
+
+    -- Named slot usage
+    page-layout title: "My Page" {
+      fill "header" {
+        rect color: #1e40af, height: 40px {
+          text "Page Header"
+        }
+      }
+      text "Main content goes here"
+      fill "footer" {
+        text "Footer text"
+      }
+    }
+
+    -- Default fallback (no children)
+    panel title: "Empty Panel"
+
+    -- Override fallback
+    panel title: "Full Panel" {
+      text "Custom content replaces the default"
+    }
+  }
+}

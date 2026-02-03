@@ -321,6 +321,25 @@ fn check_unresolved_elements(
             Node::Component { children, .. } => {
                 check_unresolved_elements(children, imported_names, components, errors);
             }
+            Node::If {
+                then_children,
+                else_children,
+                ..
+            } => {
+                check_unresolved_elements(then_children, imported_names, components, errors);
+                check_unresolved_elements(else_children, imported_names, components, errors);
+            }
+            Node::Each { children, .. } => {
+                check_unresolved_elements(children, imported_names, components, errors);
+            }
+            Node::Slot {
+                default_children, ..
+            } => {
+                check_unresolved_elements(default_children, imported_names, components, errors);
+            }
+            Node::Fill { children, .. } => {
+                check_unresolved_elements(children, imported_names, components, errors);
+            }
             _ => {}
         }
     }

@@ -93,6 +93,7 @@ fn value_type_name(value: &Value) -> &'static str {
         Value::Color(_) => "color",
         Value::Bool(_) => "bool",
         Value::Ref(_) => "reference",
+        Value::List(_) => "list",
     }
 }
 
@@ -135,6 +136,25 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
             Node::Element { children, .. } => {
                 names.extend(collect_state_names(children));
             }
+            Node::If {
+                then_children,
+                else_children,
+                ..
+            } => {
+                names.extend(collect_state_names(then_children));
+                names.extend(collect_state_names(else_children));
+            }
+            Node::Each { children, .. } => {
+                names.extend(collect_state_names(children));
+            }
+            Node::Slot {
+                default_children, ..
+            } => {
+                names.extend(collect_state_names(default_children));
+            }
+            Node::Fill { children, .. } => {
+                names.extend(collect_state_names(children));
+            }
             _ => {}
         }
     }
@@ -162,7 +182,7 @@ fn check_nodes(
             } => {
                 // Is this a component invocation?
                 if let Some(comp) = components.get(name.as_str()) {
-                    check_component_call(comp, props, span, in_scope_params, errors);
+                    check_component_call(comp, props, children, span, in_scope_params, errors);
                 } else {
                     // Built-in element — check prop types
                     check_builtin_props(name, props, span, in_scope_params, errors);
@@ -181,6 +201,33 @@ fn check_nodes(
             } => {
                 // Inside a component definition, its own params are in scope
                 check_nodes(children, components, params, state_names, errors);
+            }
+            Node::If {
+                condition,
+                then_children,
+                else_children,
+                span,
+            } => {
+                check_expression(condition, state_names, span, errors);
+                check_nodes(then_children, components, in_scope_params, state_names, errors);
+                check_nodes(else_children, components, in_scope_params, state_names, errors);
+            }
+            Node::Each {
+                iterable,
+                children,
+                span,
+                ..
+            } => {
+                check_expression(iterable, state_names, span, errors);
+                check_nodes(children, components, in_scope_params, state_names, errors);
+            }
+            Node::Slot {
+                default_children, ..
+            } => {
+                check_nodes(default_children, components, in_scope_params, state_names, errors);
+            }
+            Node::Fill { children, .. } => {
+                check_nodes(children, components, in_scope_params, state_names, errors);
             }
             Node::Let { .. } | Node::State { .. } => {
                 // Declarations — no type-checking needed in Phase 2 M1
@@ -252,6 +299,7 @@ fn check_expression(
 fn check_component_call(
     comp: &ComponentDef,
     props: &[Prop],
+    call_children: &[Node],
     call_span: &Span,
     _in_scope_params: &[Param],
     errors: &mut Vec<CompileError>,
@@ -332,6 +380,42 @@ fn check_component_call(
                     column: call_span.col,
                     severity: Severity::Error,
                 });
+            }
+        }
+    }
+
+    // Check slot/fill usage
+    let has_slots = has_slot_in_tree(&comp.children);
+
+    if !call_children.is_empty() && !has_slots {
+        errors.push(CompileError {
+            message: format!(
+                "component '{}' does not declare any slots and cannot accept children",
+                comp.name
+            ),
+            file: call_span.file.clone(),
+            line: call_span.line,
+            column: call_span.col,
+            severity: Severity::Error,
+        });
+    }
+
+    if has_slots {
+        let declared_slots = collect_slot_names(&comp.children);
+        for child in call_children {
+            if let Node::Fill { name, span, .. } = child {
+                if !declared_slots.contains(name.as_str()) {
+                    errors.push(CompileError {
+                        message: format!(
+                            "component '{}' has no slot named '{}'",
+                            comp.name, name
+                        ),
+                        file: span.file.clone(),
+                        line: span.line,
+                        column: span.col,
+                        severity: Severity::Error,
+                    });
+                }
             }
         }
     }
@@ -420,6 +504,66 @@ fn type_name(ty: &Type) -> &'static str {
         Type::Bool => "bool",
         Type::Color => "color",
     }
+}
+
+/// Check if a node tree contains any Slot nodes.
+fn has_slot_in_tree(nodes: &[Node]) -> bool {
+    for node in nodes {
+        match node {
+            Node::Slot { .. } => return true,
+            Node::Element { children, .. } => {
+                if has_slot_in_tree(children) {
+                    return true;
+                }
+            }
+            Node::If {
+                then_children,
+                else_children,
+                ..
+            } => {
+                if has_slot_in_tree(then_children) || has_slot_in_tree(else_children) {
+                    return true;
+                }
+            }
+            Node::Each { children, .. } => {
+                if has_slot_in_tree(children) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Collect all named slot names from a component's body.
+fn collect_slot_names(nodes: &[Node]) -> HashSet<&str> {
+    let mut names = HashSet::new();
+    for node in nodes {
+        match node {
+            Node::Slot {
+                name: Some(n), ..
+            } => {
+                names.insert(n.as_str());
+            }
+            Node::Element { children, .. } => {
+                names.extend(collect_slot_names(children));
+            }
+            Node::If {
+                then_children,
+                else_children,
+                ..
+            } => {
+                names.extend(collect_slot_names(then_children));
+                names.extend(collect_slot_names(else_children));
+            }
+            Node::Each { children, .. } => {
+                names.extend(collect_slot_names(children));
+            }
+            _ => {}
+        }
+    }
+    names
 }
 
 #[cfg(test)]
@@ -651,6 +795,7 @@ mod tests {
             "dashboard-static.naze",
             "app-shell.naze",
             "counter.naze",
+            "conditional.naze",
         ] {
             let project = resolve(&examples_dir, name);
             let tc_errors = typecheck(&project);
@@ -673,6 +818,7 @@ mod tests {
             "component-basic.naze",
             "component-props.naze",
             "multi-component.naze",
+            "slots.naze",
         ] {
             let project = resolve(&examples_dir, name);
             let tc_errors = typecheck(&project);
@@ -689,5 +835,80 @@ mod tests {
                 all_errors
             );
         }
+    }
+
+    #[test]
+    fn component_without_slots_rejects_children() {
+        let errors = setup_and_check(&[(
+            "app.naze",
+            r#"component box(color: color) {
+  rect width: 80px, height: 80px, color: color
+}
+
+app "Test" {
+  box color: #ff0000 {
+    text "should not be here"
+  }
+}
+"#,
+        )]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter()
+                .any(|e| e.message.contains("does not declare any slots")),
+            "expected slot error, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn fill_unknown_slot_name_errors() {
+        let errors = setup_and_check(&[(
+            "app.naze",
+            r#"component card(title: text) {
+  rect color: #f0f0f0 {
+    heading "{title}"
+    slot
+  }
+}
+
+app "Test" {
+  card title: "Hello" {
+    fill "nonexistent" {
+      text "bad"
+    }
+  }
+}
+"#,
+        )]);
+        let errs = errors_only(&errors);
+        assert!(
+            errs.iter()
+                .any(|e| e.message.contains("has no slot named 'nonexistent'")),
+            "expected unknown slot error, got: {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn valid_slot_usage_no_errors() {
+        let errors = setup_and_check(&[(
+            "app.naze",
+            r#"component card(title: text) {
+  rect color: #f0f0f0 {
+    heading "{title}"
+    slot
+  }
+}
+
+app "Test" {
+  card title: "Hello" {
+    text "card body"
+  }
+}
+"#,
+        )]);
+        let errs = errors_only(&errors);
+        assert!(errs.is_empty(), "unexpected errors: {:?}", errs);
     }
 }

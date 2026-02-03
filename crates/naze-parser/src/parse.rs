@@ -56,7 +56,11 @@ pub fn parse(source: &str, file: &str) -> Result<Vec<Node>, ParseError> {
             Rule::use_stmt => nodes.push(parse_use(pair, file)),
             Rule::let_stmt => nodes.push(parse_let(pair, file)),
             Rule::state_stmt => nodes.push(parse_state(pair, file)),
+            Rule::if_stmt => nodes.push(parse_if_stmt(pair, file)),
+            Rule::each_stmt => nodes.push(parse_each_stmt(pair, file)),
             Rule::on_handler => {} // on_handler at file scope is meaningless; skip
+            Rule::slot_stmt => nodes.push(parse_slot_stmt(pair, file)),
+            Rule::fill_stmt => nodes.push(parse_fill_stmt(pair, file)),
             Rule::element => nodes.push(parse_element(pair, file)),
             Rule::comment => nodes.push(Node::Comment(
                 pair.as_str().trim_start_matches("--").trim().to_string(),
@@ -197,6 +201,110 @@ fn parse_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     Node::State { name, value, span }
 }
 
+fn parse_if_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let condition = parse_expression(inner.next().unwrap());
+    let then_block = inner.next().unwrap();
+    let then_contents = parse_block(then_block, file);
+
+    let else_children = if let Some(next) = inner.next() {
+        match next.as_rule() {
+            Rule::if_stmt => {
+                // else if — wrap the nested if in a single-element vec
+                vec![parse_if_stmt(next, file)]
+            }
+            Rule::block => {
+                parse_block(next, file).nodes
+            }
+            _ => Vec::new(),
+        }
+    } else {
+        Vec::new()
+    };
+
+    Node::If {
+        condition,
+        then_children: then_contents.nodes,
+        else_children,
+        span,
+    }
+}
+
+fn parse_each_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let variable = inner.next().unwrap().as_str().to_string();
+    let iterable_pair = inner.next().unwrap();
+    let iterable = match iterable_pair.as_rule() {
+        Rule::ref_path => {
+            let segments: Vec<String> = iterable_pair.as_str().split('.').map(String::from).collect();
+            Expression::StateRef(segments.join("."))
+        }
+        Rule::ident => Expression::StateRef(iterable_pair.as_str().to_string()),
+        _ => Expression::StateRef(iterable_pair.as_str().to_string()),
+    };
+    let body_block = inner.next().unwrap();
+    let contents = parse_block(body_block, file);
+
+    Node::Each {
+        variable,
+        iterable,
+        children: contents.nodes,
+        span,
+    }
+}
+
+fn parse_slot_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut name = None;
+    let mut default_children = Vec::new();
+
+    for p in pair.into_inner() {
+        match p.as_rule() {
+            Rule::string_lit => {
+                name = match parse_string_lit(p) {
+                    Value::Str(s) => Some(s),
+                    _ => None,
+                };
+            }
+            Rule::block => {
+                let contents = parse_block(p, file);
+                default_children = contents.nodes;
+            }
+            _ => {}
+        }
+    }
+
+    Node::Slot {
+        name,
+        default_children,
+        span,
+    }
+}
+
+fn parse_fill_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let name_pair = inner.next().unwrap();
+    let name = match parse_string_lit(name_pair) {
+        Value::Str(s) => s,
+        _ => String::new(),
+    };
+
+    let block_pair = inner.next().unwrap();
+    let contents = parse_block(block_pair, file);
+
+    Node::Fill {
+        name,
+        children: contents.nodes,
+        span,
+    }
+}
+
 fn parse_use(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let path_pair = pair.into_inner().next().unwrap();
@@ -302,6 +410,10 @@ fn parse_value(pair: pest::iterators::Pair<Rule>) -> Value {
             // Bare identifier used as a value (e.g., component prop reference)
             Value::Ref(vec![inner.as_str().to_string()])
         }
+        Rule::list_lit => {
+            let items: Vec<Value> = inner.into_inner().map(parse_value).collect();
+            Value::List(items)
+        }
         _ => panic!("unexpected value rule: {:?}", inner.as_rule()),
     }
 }
@@ -360,7 +472,11 @@ fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> BlockContents {
             Rule::use_stmt => nodes.push(parse_use(p, file)),
             Rule::let_stmt => nodes.push(parse_let(p, file)),
             Rule::state_stmt => nodes.push(parse_state(p, file)),
+            Rule::if_stmt => nodes.push(parse_if_stmt(p, file)),
+            Rule::each_stmt => nodes.push(parse_each_stmt(p, file)),
             Rule::on_handler => handlers.push(parse_on_handler(p, file)),
+            Rule::slot_stmt => nodes.push(parse_slot_stmt(p, file)),
+            Rule::fill_stmt => nodes.push(parse_fill_stmt(p, file)),
             Rule::element => nodes.push(parse_element(p, file)),
             Rule::comment => nodes.push(Node::Comment(
                 p.as_str().trim_start_matches("--").trim().to_string(),
@@ -923,6 +1039,251 @@ mod tests {
                 assert_eq!(children.len(), 3); // state, let, heading
                 assert!(matches!(&children[0], Node::State { name, .. } if name == "count"));
                 assert!(matches!(&children[1], Node::Let { name, .. } if name == "label"));
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_if_stmt() {
+        let source = r#"app "Test" {
+  state count = 0
+  if count > 0 {
+    text "positive"
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                // state + if
+                assert!(children.len() >= 2);
+                match &children[1] {
+                    Node::If {
+                        condition,
+                        then_children,
+                        else_children,
+                        ..
+                    } => {
+                        assert!(matches!(condition, Expression::BinOp { .. }));
+                        assert_eq!(then_children.len(), 1);
+                        assert!(else_children.is_empty());
+                    }
+                    other => panic!("expected If, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_if_else() {
+        let source = r#"app "Test" {
+  state count = 0
+  if count > 0 {
+    text "positive"
+  } else {
+    text "zero"
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::If {
+                        then_children,
+                        else_children,
+                        ..
+                    } => {
+                        assert_eq!(then_children.len(), 1);
+                        assert_eq!(else_children.len(), 1);
+                    }
+                    other => panic!("expected If, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_if_elseif_else() {
+        let source = r#"app "Test" {
+  state count = 0
+  if count > 10 {
+    text "big"
+  } else if count > 0 {
+    text "small"
+  } else {
+    text "zero"
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::If {
+                        then_children,
+                        else_children,
+                        ..
+                    } => {
+                        assert_eq!(then_children.len(), 1);
+                        // else_children contains a nested If node
+                        assert_eq!(else_children.len(), 1);
+                        assert!(matches!(&else_children[0], Node::If { .. }));
+                    }
+                    other => panic!("expected If, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_each_stmt() {
+        let source = r#"app "Test" {
+  state items = ["Apple", "Banana"]
+  each item in items {
+    text "{item}"
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Each {
+                        variable,
+                        iterable,
+                        children,
+                        ..
+                    } => {
+                        assert_eq!(variable, "item");
+                        assert!(matches!(iterable, Expression::StateRef(name) if name == "items"));
+                        assert_eq!(children.len(), 1);
+                    }
+                    other => panic!("expected Each, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_slot_default() {
+        let source = "component card(title: text) {\n  heading \"Title\"\n  slot\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Component { children, .. } => {
+                assert_eq!(children.len(), 2); // heading + slot
+                match &children[1] {
+                    Node::Slot {
+                        name,
+                        default_children,
+                        ..
+                    } => {
+                        assert!(name.is_none());
+                        assert!(default_children.is_empty());
+                    }
+                    other => panic!("expected Slot, got {:?}", other),
+                }
+            }
+            _ => panic!("expected Component"),
+        }
+    }
+
+    #[test]
+    fn parse_slot_named() {
+        let source = "component page(title: text) {\n  slot \"header\"\n  slot\n  slot \"footer\"\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Component { children, .. } => {
+                assert_eq!(children.len(), 3);
+                match &children[0] {
+                    Node::Slot { name, .. } => assert_eq!(name.as_deref(), Some("header")),
+                    other => panic!("expected Slot, got {:?}", other),
+                }
+                match &children[1] {
+                    Node::Slot { name, .. } => assert!(name.is_none()),
+                    other => panic!("expected Slot, got {:?}", other),
+                }
+                match &children[2] {
+                    Node::Slot { name, .. } => assert_eq!(name.as_deref(), Some("footer")),
+                    other => panic!("expected Slot, got {:?}", other),
+                }
+            }
+            _ => panic!("expected Component"),
+        }
+    }
+
+    #[test]
+    fn parse_slot_with_fallback() {
+        let source = "component panel(title: text) {\n  slot {\n    text \"default content\"\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Component { children, .. } => {
+                assert_eq!(children.len(), 1);
+                match &children[0] {
+                    Node::Slot {
+                        name,
+                        default_children,
+                        ..
+                    } => {
+                        assert!(name.is_none());
+                        assert_eq!(default_children.len(), 1);
+                    }
+                    other => panic!("expected Slot, got {:?}", other),
+                }
+            }
+            _ => panic!("expected Component"),
+        }
+    }
+
+    #[test]
+    fn parse_fill() {
+        let source = r#"app "Test" {
+  fill "header" {
+    heading "My Header"
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                assert_eq!(children.len(), 1);
+                match &children[0] {
+                    Node::Fill {
+                        name, children, ..
+                    } => {
+                        assert_eq!(name, "header");
+                        assert_eq!(children.len(), 1);
+                    }
+                    other => panic!("expected Fill, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_list_literal() {
+        let source = r#"app "Test" {
+  state items = [1, 2, "hello"]
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[0] {
+                    Node::State { name, value, .. } => {
+                        assert_eq!(name, "items");
+                        match value {
+                            Value::List(items) => {
+                                assert_eq!(items.len(), 3);
+                                assert!(matches!(&items[0], Value::Num(1.0, None)));
+                                assert!(matches!(&items[1], Value::Num(2.0, None)));
+                                assert!(matches!(&items[2], Value::Str(s) if s == "hello"));
+                            }
+                            other => panic!("expected List, got {:?}", other),
+                        }
+                    }
+                    other => panic!("expected State, got {:?}", other),
+                }
             }
             _ => panic!("expected App"),
         }

@@ -10,7 +10,7 @@ NEWLINE_CHAR = _{ "\n" }
 
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
-statement = _{ comment | use_stmt | component_def | app_block | let_stmt | state_stmt | on_handler | element }
+statement = _{ comment | use_stmt | component_def | app_block | let_stmt | state_stmt | if_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | element }
 
 // -- Comments
 comment = @{ "--" ~ (!NEWLINE_CHAR ~ ANY)* }
@@ -41,6 +41,19 @@ action = _{ set_action | navigate_action }
 set_action = { "set" ~ ident ~ "=" ~ expression }
 navigate_action = { "navigate" ~ string_lit }
 
+// -- Conditional: if expr { ... } else { ... }
+if_stmt = { "if" ~ expression ~ block ~ else_clause? }
+else_clause = _{ "else" ~ (if_stmt | block) }
+
+// -- Iteration: each item in list { ... }
+each_stmt = { "each" ~ ident ~ "in" ~ (ref_path | ident) ~ block }
+
+// -- Slot: marks where caller content is inserted (inside component definitions)
+slot_stmt = { "slot" ~ string_lit? ~ (block | NEWLINE_CHAR) }
+
+// -- Fill: provides content for a named slot at call sites
+fill_stmt = { "fill" ~ string_lit ~ block }
+
 // -- Expressions (for event handler actions)
 expression = { expr_atom ~ (bin_op ~ expr_atom)* }
 expr_atom = { number_lit | bool_lit | string_lit | "(" ~ expression ~ ")" | ref_path | ident }
@@ -61,7 +74,9 @@ prop = { ident ~ ":" ~ value }
 block = { "{" ~ (NEWLINE_CHAR | statement)* ~ "}" }
 
 // -- Values
-value = { string_lit | color_lit | number_lit | bool_lit | ref_path | ident }
+value = { list_lit | string_lit | color_lit | number_lit | bool_lit | ref_path | ident }
+
+list_lit = { "[" ~ (value ~ ("," ~ value)*)? ~ "]" }
 
 string_lit = ${ "\"" ~ string_part* ~ "\"" }
 string_part = _{ interpolation | string_chars }

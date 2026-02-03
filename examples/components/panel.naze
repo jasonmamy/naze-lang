@@ -1,0 +1,9 @@
+-- Component with slot defaults (fallback content)
+component panel(title: text) {
+  rect color: #ffffff, radius: 4px {
+    heading "{title}"
+    slot {
+      text "No content provided"
+    }
+  }
+}

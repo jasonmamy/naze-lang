@@ -15,6 +15,7 @@ const APP_NAZE_TEMPLATE: &str = r#"-- {{name}}
 
 app "{{name}}" {
   state count = 0
+  state items = ["Naze", "is", "declarative"]
 
   column padding: 20px, gap: 16px {
     heading "Welcome to {{name}}!"
@@ -29,6 +30,17 @@ app "{{name}}" {
         text "Reset"
         on click: set count = 0
       }
+    }
+
+    if count > 0 {
+      text "You clicked {count} times!"
+    } else {
+      text "Click Increment to get started."
+    }
+
+    heading "Items:"
+    each item in items {
+      text "- {item}"
     }
 
     text "Edit app.naze and run nazec build to see changes."

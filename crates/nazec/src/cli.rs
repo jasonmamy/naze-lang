@@ -37,4 +37,10 @@ pub enum Command {
         /// Path to the .naze file
         file: String,
     },
+    /// Build and serve example gallery
+    Gallery {
+        /// Only build, don't serve
+        #[arg(long)]
+        build: bool,
+    },
 }

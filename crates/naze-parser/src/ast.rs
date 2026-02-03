@@ -45,6 +45,28 @@ pub enum Node {
         value: Value,
         span: Span,
     },
+    If {
+        condition: Expression,
+        then_children: Vec<Node>,
+        else_children: Vec<Node>, // empty if no else clause
+        span: Span,
+    },
+    Each {
+        variable: String,
+        iterable: Expression, // StateRef to a list variable
+        children: Vec<Node>,
+        span: Span,
+    },
+    Slot {
+        name: Option<String>,       // None = default slot, Some("x") = named slot
+        default_children: Vec<Node>, // fallback content if caller provides nothing
+        span: Span,
+    },
+    Fill {
+        name: String,      // slot name to fill
+        children: Vec<Node>,
+        span: Span,
+    },
     Comment(String),
 }
 
@@ -130,6 +152,7 @@ pub enum Value {
     Color(u32),
     Bool(bool),
     Ref(Vec<String>),
+    List(Vec<Value>),
 }
 
 /// Dimension units.

@@ -1,0 +1,31 @@
+-- Conditional rendering: if/else and each (Phase 2 M3)
+app "Conditional" {
+  state count = 0
+  state items = ["Apple", "Banana", "Cherry"]
+
+  column padding: 20px, gap: 16px {
+    heading "Conditional Demo"
+
+    row gap: 12px {
+      rect width: 120px, height: 50px, color: #2563eb, radius: 8px {
+        text "Increment"
+        on click: set count = count + 1
+      }
+      rect width: 120px, height: 50px, color: #dc2626, radius: 8px {
+        text "Reset"
+        on click: set count = 0
+      }
+    }
+
+    if count > 0 {
+      text "Count is {count} (positive)"
+    } else {
+      text "Count is zero"
+    }
+
+    heading "Items:"
+    each item in items {
+      text "{item}"
+    }
+  }
+}

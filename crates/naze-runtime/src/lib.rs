@@ -63,6 +63,36 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
     Ok(())
 }
 
+/// Reload the app with new app_data without reinitializing WASM.
+/// Used by the gallery to switch between examples.
+#[wasm_bindgen]
+pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
+    // 1. Deserialize the new render tree
+    let render_tree: RenderTree = naze_ir::deserialize(app_data)
+        .map_err(|e| JsValue::from_str(&format!("failed to deserialize app data: {}", e)))?;
+
+    // 2. Initialize state store from new declarations
+    let mut state_store = HashMap::new();
+    for decl in &render_tree.state {
+        state_store.insert(decl.name.clone(), decl.initial.clone());
+    }
+
+    // 3. Update global app state
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        if let Some(app) = borrow.as_mut() {
+            app.render_tree = render_tree;
+            app.state_store = state_store;
+            app.layout = None; // Force re-layout on next render
+        }
+    });
+
+    // 4. Re-render with new content
+    do_render()?;
+
+    Ok(())
+}
+
 // ─── Render loop ────────────────────────────────────────────────────────────
 
 /// Perform a full render: resolve state → layout → draw.
@@ -153,19 +183,52 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
 }
 
 fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> Vec<RenderNode> {
-    nodes
-        .iter()
-        .map(|node| RenderNode {
-            kind: node.kind.clone(),
-            props: node
-                .props
-                .iter()
-                .map(|(k, v)| (k.clone(), resolve_value(v, state)))
-                .collect(),
-            children: resolve_nodes(&node.children, state),
-            handlers: node.handlers.clone(),
-        })
-        .collect()
+    let mut out = Vec::new();
+    for node in nodes {
+        match node.kind.as_str() {
+            "__if" => {
+                let show_then = node.condition.as_ref().map_or(false, |cond| {
+                    match evaluate_expr(cond, state) {
+                        RenderValue::Bool(b) => b,
+                        RenderValue::Num(n, _) => n != 0.0,
+                        _ => false,
+                    }
+                });
+                if show_then {
+                    out.extend(resolve_nodes(&node.children, state));
+                } else if let Some(else_nodes) = &node.else_children {
+                    out.extend(resolve_nodes(else_nodes, state));
+                }
+            }
+            "__each" => {
+                if let Some((var, iterable_expr)) = &node.each_binding {
+                    if let RenderValue::List(items) = evaluate_expr(iterable_expr, state) {
+                        for item in &items {
+                            let mut child_state = state.clone();
+                            child_state.insert(var.clone(), item.clone());
+                            out.extend(resolve_nodes(&node.children, &child_state));
+                        }
+                    }
+                }
+            }
+            _ => {
+                out.push(RenderNode {
+                    kind: node.kind.clone(),
+                    props: node
+                        .props
+                        .iter()
+                        .map(|(k, v)| (k.clone(), resolve_value(v, state)))
+                        .collect(),
+                    children: resolve_nodes(&node.children, state),
+                    handlers: node.handlers.clone(),
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                });
+            }
+        }
+    }
+    out
 }
 
 /// Resolve a single value. InterpolatedStr parts are concatenated into a plain Str.

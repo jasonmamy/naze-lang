@@ -2,6 +2,12 @@
 /* eslint-disable */
 
 /**
+ * Reload the app with new app_data without reinitializing WASM.
+ * Used by the gallery to switch between examples.
+ */
+export function reset_and_reload(app_data: Uint8Array): void;
+
+/**
  * Entry point called from JavaScript.
  * `app_data` is a binary-encoded RenderTree.
  * `canvas_id` is the HTML id of the canvas element to render into.
@@ -12,7 +18,11 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly reset_and_reload: (a: number, b: number, c: number) => void;
     readonly start: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly __wasm_bindgen_func_elem_52: (a: number, b: number) => void;
+    readonly __wasm_bindgen_func_elem_133: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_132: (a: number, b: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

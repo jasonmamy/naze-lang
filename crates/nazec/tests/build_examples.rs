@@ -103,6 +103,11 @@ fn build_app_shell() { build_example("app-shell.naze"); }
 #[test]
 fn build_counter() { build_example("counter.naze"); }
 
+// --- Examples with conditionals (Phase 2 M3) ---
+
+#[test]
+fn build_conditional() { build_example("conditional.naze"); }
+
 // --- Examples with component imports ---
 
 #[test]
@@ -113,6 +118,11 @@ fn build_component_props() { build_example("component-props.naze"); }
 
 #[test]
 fn build_multi_component() { build_example("multi-component.naze"); }
+
+// --- Examples with slots (Phase 2 M4) ---
+
+#[test]
+fn build_slots() { build_example("slots.naze"); }
 
 // --- Runtime WASM size check ---
 

@@ -1,6 +1,7 @@
 mod build;
 mod cli;
 mod diagnostic;
+mod gallery;
 mod manifest;
 mod native_renderer;
 mod new;
@@ -24,6 +25,7 @@ fn main() {
         Command::Check => do_check(format),
         Command::Run => do_run(),
         Command::Parse { file } => parse_file(&file),
+        Command::Gallery { build } => gallery::run(build),
     };
 
     if let Err(e) = result {

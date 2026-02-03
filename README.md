@@ -285,6 +285,31 @@ app "Pills" {
 
 Build and refresh — the component is inlined at compile time with prop values substituted. The three `pill` invocations become three `rect` elements with the colors and sizes filled in.
 
+### 8. Browse all examples
+
+The repository includes 18 example `.naze` files demonstrating various features. You can browse them interactively with the gallery command:
+
+```bash
+# From the repository root
+nazec gallery
+```
+
+This builds all examples to `examples/dist/`, starts a local server, and opens your browser to an interactive gallery. Click any example name in the sidebar to instantly switch between demos — no page reload required.
+
+To just build the gallery without serving:
+
+```bash
+nazec gallery --build
+# Then serve manually: cd examples/dist && python3 -m http.server 8000
+```
+
+Examples include:
+- **Layout**: `rows`, `columns`, `grid`, `nested`, `padding`
+- **Styling**: `colors`, `rounded`, `typography`
+- **Components**: `component-basic`, `component-props`, `multi-component`, `slots`
+- **State**: `counter`, `conditional`
+- **Apps**: `hello`, `boxes`, `app-shell`, `dashboard-static`
+
 ## Project Structure
 
 ```
@@ -298,7 +323,7 @@ naze-lang/
     naze-layout/      Layout engine — row, column, stack, grid
     naze-renderer/    Canvas2D renderer (web-sys)
     naze-native/      Standalone native viewer for app_data.bin
-  examples/           16 example .naze files
+  examples/           18 example .naze files
   docs/
     ROADMAP.md        Long-term vision (Phase 1-5)
     PHASE2.md         Phase 2 milestone tracker
@@ -318,6 +343,8 @@ nazec build             Compile to dist/ (WASM + HTML)
 nazec run               Preview in a native desktop window (Linux)
 nazec check             Type-check without building
 nazec parse <file>      Dump AST as JSON
+nazec gallery           Build and serve interactive example gallery
+nazec gallery --build   Build gallery only (no server)
 nazec build --format json   Machine-readable error output
 ```
 
@@ -325,7 +352,7 @@ nazec build --format json   Machine-readable error output
 
 ```bash
 cargo build -p nazec                  # Build the CLI
-cargo test --workspace                # Run all 84 tests
+cargo test --workspace                # Run all tests
 cargo check --workspace               # Type-check all crates
 cargo fmt --all                       # Format
 cargo clippy --workspace              # Lint
