@@ -14,4 +14,12 @@ naze-ir = { path = "../naze-ir" }
 naze-layout = { path = "../naze-layout" }
 naze-renderer = { path = "../naze-renderer" }
 wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["Window", "Document"] }
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "MouseEvent",
+    "EventTarget",
+    "HtmlCanvasElement",
+    "CssStyleDeclaration",
+] }

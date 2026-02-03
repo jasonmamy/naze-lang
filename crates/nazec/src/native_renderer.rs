@@ -33,6 +33,21 @@ fn get_num_prop(props: &HashMap<String, RenderValue>, key: &str, default: f64) -
 fn get_text_content(props: &HashMap<String, RenderValue>) -> String {
     match props.get("__text") {
         Some(RenderValue::Str(s)) => s.clone(),
+        Some(RenderValue::InterpolatedStr(parts)) => {
+            use naze_ir::TextPart;
+            let mut result = String::new();
+            for part in parts {
+                match part {
+                    TextPart::Literal(s) => result.push_str(s),
+                    TextPart::StateRef(name) => {
+                        result.push('{');
+                        result.push_str(name);
+                        result.push('}');
+                    }
+                }
+            }
+            result
+        }
         _ => String::new(),
     }
 }

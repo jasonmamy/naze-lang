@@ -32,9 +32,78 @@ pub enum Node {
         name: String,
         props: Vec<Prop>,
         children: Vec<Node>,
+        handlers: Vec<EventHandler>,
+        span: Span,
+    },
+    Let {
+        name: String,
+        value: Value,
+        span: Span,
+    },
+    State {
+        name: String,
+        value: Value,
         span: Span,
     },
     Comment(String),
+}
+
+/// An event handler attached to the parent element.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventHandler {
+    pub event: String,
+    pub action: Action,
+    pub span: Span,
+}
+
+/// An action triggered by an event.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Action {
+    Set {
+        target: String,
+        expr: Expression,
+        span: Span,
+    },
+    Navigate {
+        path: String,
+        span: Span,
+    },
+}
+
+/// An expression used in event handler actions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Expression {
+    Literal(Value),
+    StateRef(String),
+    BinOp {
+        left: Box<Expression>,
+        op: BinOp,
+        right: Box<Expression>,
+    },
+}
+
+/// Binary operators.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    Neq,
+    Gt,
+    Lt,
+    Gte,
+    Lte,
+    And,
+    Or,
+}
+
+/// A segment of an interpolated string.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StringPart {
+    Literal(String),
+    Interpolation(Vec<String>), // ref path segments, e.g. ["count"] or ["theme", "primary"]
 }
 
 /// Component parameter declaration.
@@ -56,6 +125,7 @@ pub struct Prop {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
     Str(String),
+    InterpolatedStr(Vec<StringPart>),
     Num(f64, Option<Unit>),
     Color(u32),
     Bool(bool),

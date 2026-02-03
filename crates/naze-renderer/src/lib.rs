@@ -33,11 +33,29 @@ pub fn get_num_prop(
 }
 
 /// Extract text content from a `__text` prop.
+/// Handles both plain strings and interpolated strings (fallback: joins parts).
 pub fn get_text_content(
     props: &std::collections::HashMap<String, RenderValue>,
 ) -> String {
     match props.get("__text") {
         Some(RenderValue::Str(s)) => s.clone(),
+        Some(RenderValue::InterpolatedStr(parts)) => {
+            // Fallback: runtime should resolve these before layout/render,
+            // but handle gracefully if not.
+            use naze_ir::TextPart;
+            let mut result = String::new();
+            for part in parts {
+                match part {
+                    TextPart::Literal(s) => result.push_str(s),
+                    TextPart::StateRef(name) => {
+                        result.push('{');
+                        result.push_str(name);
+                        result.push('}');
+                    }
+                }
+            }
+            result
+        }
         _ => String::new(),
     }
 }
@@ -216,6 +234,16 @@ pub mod canvas {
         /// Get the device pixel ratio.
         pub fn dpr(&self) -> f64 {
             self.dpr
+        }
+
+        /// Get a reference to the underlying canvas element.
+        pub fn canvas_element(&self) -> &HtmlCanvasElement {
+            &self.canvas
+        }
+
+        /// Set the cursor style on the canvas element.
+        pub fn set_cursor(&self, cursor: &str) {
+            let _ = self.canvas.style().set_property("cursor", cursor);
         }
     }
 }

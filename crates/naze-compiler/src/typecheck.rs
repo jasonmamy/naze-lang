@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use naze_parser::ast::{Node, Param, Prop, Span, Type, Value};
+use naze_parser::ast::{Action, EventHandler, Expression, Node, Param, Prop, Span, Type, Value};
 
 use crate::error::{CompileError, Severity};
 use crate::resolve::{ComponentDef, ResolvedProject};
@@ -70,7 +70,7 @@ fn value_matches(value: &Value, expected: Expected) -> bool {
         Expected::Any => true,
         Expected::Number => matches!(value, Value::Num(_, _)),
         Expected::Color => matches!(value, Value::Color(_)),
-        Expected::Text => matches!(value, Value::Str(_)),
+        Expected::Text => matches!(value, Value::Str(_) | Value::InterpolatedStr(_)),
         Expected::Bool => matches!(value, Value::Bool(_)),
     }
 }
@@ -88,6 +88,7 @@ fn expected_name(expected: Expected) -> &'static str {
 fn value_type_name(value: &Value) -> &'static str {
     match value {
         Value::Str(_) => "text",
+        Value::InterpolatedStr(_) => "text",
         Value::Num(_, _) => "number",
         Value::Color(_) => "color",
         Value::Bool(_) => "bool",
@@ -106,15 +107,38 @@ pub fn typecheck(project: &ResolvedProject) -> Vec<CompileError> {
         .map(|c| (c.name.as_str(), c))
         .collect();
 
+    // Collect state variable names from the entry file
+    let state_names: HashSet<String> = collect_state_names(&project.entry.nodes);
+
     // Check entry file
-    check_nodes(&project.entry.nodes, &by_name, &[], &mut errors);
+    check_nodes(&project.entry.nodes, &by_name, &[], &state_names, &mut errors);
 
     // Check component bodies (each component's body is checked with its own params in scope)
     for comp in project.components.values() {
-        check_nodes(&comp.children, &by_name, &comp.params, &mut errors);
+        check_nodes(&comp.children, &by_name, &comp.params, &state_names, &mut errors);
     }
 
     errors
+}
+
+/// Collect all state variable names declared in the node tree.
+fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for node in nodes {
+        match node {
+            Node::State { name, .. } => {
+                names.insert(name.clone());
+            }
+            Node::App { children, .. } | Node::Component { children, .. } => {
+                names.extend(collect_state_names(children));
+            }
+            Node::Element { children, .. } => {
+                names.extend(collect_state_names(children));
+            }
+            _ => {}
+        }
+    }
+    names
 }
 
 /// Recursively type-check a list of nodes.
@@ -123,6 +147,7 @@ fn check_nodes(
     nodes: &[Node],
     components: &HashMap<&str, &ComponentDef>,
     in_scope_params: &[Param],
+    state_names: &HashSet<String>,
     errors: &mut Vec<CompileError>,
 ) {
     for node in nodes {
@@ -131,7 +156,9 @@ fn check_nodes(
                 name,
                 props,
                 children,
+                handlers,
                 span,
+                ..
             } => {
                 // Is this a component invocation?
                 if let Some(comp) = components.get(name.as_str()) {
@@ -140,19 +167,84 @@ fn check_nodes(
                     // Built-in element — check prop types
                     check_builtin_props(name, props, span, in_scope_params, errors);
                 }
-                check_nodes(children, components, in_scope_params, errors);
+                // Validate event handlers
+                for handler in handlers {
+                    check_handler(handler, state_names, errors);
+                }
+                check_nodes(children, components, in_scope_params, state_names, errors);
             }
             Node::App { children, .. } => {
-                check_nodes(children, components, in_scope_params, errors);
+                check_nodes(children, components, in_scope_params, state_names, errors);
             }
             Node::Component {
                 children, params, ..
             } => {
                 // Inside a component definition, its own params are in scope
-                check_nodes(children, components, params, errors);
+                check_nodes(children, components, params, state_names, errors);
+            }
+            Node::Let { .. } | Node::State { .. } => {
+                // Declarations — no type-checking needed in Phase 2 M1
+                // (Future: validate names don't shadow builtins)
             }
             _ => {}
         }
+    }
+}
+
+/// Validate an event handler: check that set targets are state variables
+/// and that expression state refs exist.
+fn check_handler(
+    handler: &EventHandler,
+    state_names: &HashSet<String>,
+    errors: &mut Vec<CompileError>,
+) {
+    match &handler.action {
+        Action::Set { target, expr, span } => {
+            if !state_names.contains(target) {
+                errors.push(CompileError {
+                    message: format!(
+                        "cannot set '{}': not a declared state variable",
+                        target
+                    ),
+                    file: span.file.clone(),
+                    line: span.line,
+                    column: span.col,
+                    severity: Severity::Error,
+                });
+            }
+            check_expression(expr, state_names, &handler.span, errors);
+        }
+        Action::Navigate { .. } => {}
+    }
+}
+
+/// Validate that all state refs in an expression refer to declared state variables.
+fn check_expression(
+    expr: &Expression,
+    state_names: &HashSet<String>,
+    span: &Span,
+    errors: &mut Vec<CompileError>,
+) {
+    match expr {
+        Expression::StateRef(name) => {
+            if !state_names.contains(name) {
+                errors.push(CompileError {
+                    message: format!(
+                        "unknown state variable '{}' in expression",
+                        name
+                    ),
+                    file: span.file.clone(),
+                    line: span.line,
+                    column: span.col,
+                    severity: Severity::Error,
+                });
+            }
+        }
+        Expression::BinOp { left, right, .. } => {
+            check_expression(left, state_names, span, errors);
+            check_expression(right, state_names, span, errors);
+        }
+        Expression::Literal(_) => {}
     }
 }
 
@@ -254,6 +346,11 @@ fn check_builtin_props(
     errors: &mut Vec<CompileError>,
 ) {
     for prop in props {
+        // Skip interpolated strings — they contain state refs resolved at runtime
+        if matches!(&prop.value, Value::InterpolatedStr(_)) {
+            continue;
+        }
+
         // Skip ref values — they reference component params, checked elsewhere
         if matches!(&prop.value, Value::Ref(parts) if parts.len() == 1) {
             // Single-segment ref: check it's a valid in-scope param
@@ -309,7 +406,7 @@ fn check_builtin_props(
 /// Check if a value matches a declared component parameter type.
 fn value_matches_type(value: &Value, ty: &Type) -> bool {
     match ty {
-        Type::Text => matches!(value, Value::Str(_)),
+        Type::Text => matches!(value, Value::Str(_) | Value::InterpolatedStr(_)),
         Type::Number => matches!(value, Value::Num(_, _)),
         Type::Bool => matches!(value, Value::Bool(_)),
         Type::Color => matches!(value, Value::Color(_)),
@@ -553,6 +650,7 @@ mod tests {
             "grid.naze",
             "dashboard-static.naze",
             "app-shell.naze",
+            "counter.naze",
         ] {
             let project = resolve(&examples_dir, name);
             let tc_errors = typecheck(&project);

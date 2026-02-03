@@ -296,7 +296,7 @@ fn check_unresolved_elements(
                 name,
                 children,
                 span,
-                ..
+                ..  // handlers, props
             } => {
                 if !BUILTIN_ELEMENTS.contains(&name.as_str())
                     && !imported_names.contains(name.as_str())

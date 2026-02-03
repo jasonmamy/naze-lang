@@ -6,6 +6,14 @@ use std::collections::HashMap;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+/// A segment of an interpolated string in the render tree.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum TextPart {
+    Literal(String),
+    StateRef(String), // reference to a state variable by name
+}
+
 /// A property value in the render tree, stripped of AST-specific details.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -14,6 +22,64 @@ pub enum RenderValue {
     Num(f64, Option<String>), // value + optional unit ("px", "%", "em")
     Color(u32),
     Bool(bool),
+    InterpolatedStr(Vec<TextPart>), // string with embedded state references
+}
+
+/// A state variable declaration with its initial value.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct StateDecl {
+    pub name: String,
+    pub initial: RenderValue,
+}
+
+/// Binary operators for expressions.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum IrBinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    Neq,
+    Gt,
+    Lt,
+    Gte,
+    Lte,
+    And,
+    Or,
+}
+
+/// An expression in the IR (used in event handler actions).
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum IrExpression {
+    Num(f64),
+    Str(String),
+    Bool(bool),
+    StateRef(String),
+    BinOp {
+        left: Box<IrExpression>,
+        op: IrBinOp,
+        right: Box<IrExpression>,
+    },
+}
+
+/// An action triggered by an event handler.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum IrAction {
+    Set { target: String, expr: IrExpression },
+    Navigate { path: String },
+}
+
+/// An event handler on a render node.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct IrEventHandler {
+    pub event: String,
+    pub action: IrAction,
 }
 
 /// A node in the flattened render tree.
@@ -24,6 +90,7 @@ pub struct RenderNode {
     pub kind: String,
     pub props: HashMap<String, RenderValue>,
     pub children: Vec<RenderNode>,
+    pub handlers: Vec<IrEventHandler>,
 }
 
 /// The serializable render tree for the entire app.
@@ -32,23 +99,34 @@ pub struct RenderNode {
 pub struct RenderTree {
     pub title: String,
     pub root: Vec<RenderNode>,
+    pub state: Vec<StateDecl>,
 }
 
 // ─── Simple binary encoding ─────────────────────────────────────────────────
 // Format:
 //   String: u32 len + utf8 bytes
+//   TextPart: u8 tag + payload
+//     0 = Literal(String)
+//     1 = StateRef(String)
 //   RenderValue: u8 tag + payload
 //     0 = Str(String)
 //     1 = Num(f64, Option<String>)
 //     2 = Color(u32)
 //     3 = Bool(bool)
+//     4 = InterpolatedStr(u32 part_count + TextParts)
+//   StateDecl: String name + RenderValue initial
 //   RenderNode: String kind + u32 prop_count + props + u32 child_count + children
-//   RenderTree: String title + u32 root_count + root nodes
+//   RenderTree: String title + u32 state_count + states + u32 root_count + root nodes
 
 /// Serialize a RenderTree to compact binary bytes.
 pub fn serialize(tree: &RenderTree) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string(&mut buf, &tree.title);
+    write_u32(&mut buf, tree.state.len() as u32);
+    for decl in &tree.state {
+        write_string(&mut buf, &decl.name);
+        write_value(&mut buf, &decl.initial);
+    }
     write_u32(&mut buf, tree.root.len() as u32);
     for node in &tree.root {
         write_node(&mut buf, node);
@@ -60,12 +138,19 @@ pub fn serialize(tree: &RenderTree) -> Vec<u8> {
 pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
     let mut cursor = Cursor::new(data);
     let title = cursor.read_string()?;
+    let state_count = cursor.read_u32()? as usize;
+    let mut state = Vec::with_capacity(state_count);
+    for _ in 0..state_count {
+        let name = cursor.read_string()?;
+        let initial = cursor.read_value()?;
+        state.push(StateDecl { name, initial });
+    }
     let count = cursor.read_u32()? as usize;
     let mut root = Vec::with_capacity(count);
     for _ in 0..count {
         root.push(cursor.read_node()?);
     }
-    Ok(RenderTree { title, root })
+    Ok(RenderTree { title, root, state })
 }
 
 // ─── Writer ─────────────────────────────────────────────────────────────────
@@ -108,6 +193,22 @@ fn write_value(buf: &mut Vec<u8>, val: &RenderValue) {
             buf.push(3);
             buf.push(if *b { 1 } else { 0 });
         }
+        RenderValue::InterpolatedStr(parts) => {
+            buf.push(4);
+            write_u32(buf, parts.len() as u32);
+            for part in parts {
+                match part {
+                    TextPart::Literal(s) => {
+                        buf.push(0);
+                        write_string(buf, s);
+                    }
+                    TextPart::StateRef(name) => {
+                        buf.push(1);
+                        write_string(buf, name);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -122,6 +223,73 @@ fn write_node(buf: &mut Vec<u8>, node: &RenderNode) {
     for child in &node.children {
         write_node(buf, child);
     }
+    write_u32(buf, node.handlers.len() as u32);
+    for handler in &node.handlers {
+        write_handler(buf, handler);
+    }
+}
+
+fn write_handler(buf: &mut Vec<u8>, handler: &IrEventHandler) {
+    write_string(buf, &handler.event);
+    write_action(buf, &handler.action);
+}
+
+fn write_action(buf: &mut Vec<u8>, action: &IrAction) {
+    match action {
+        IrAction::Set { target, expr } => {
+            buf.push(0);
+            write_string(buf, target);
+            write_expression(buf, expr);
+        }
+        IrAction::Navigate { path } => {
+            buf.push(1);
+            write_string(buf, path);
+        }
+    }
+}
+
+fn write_expression(buf: &mut Vec<u8>, expr: &IrExpression) {
+    match expr {
+        IrExpression::Num(n) => {
+            buf.push(0);
+            write_f64(buf, *n);
+        }
+        IrExpression::Str(s) => {
+            buf.push(1);
+            write_string(buf, s);
+        }
+        IrExpression::Bool(b) => {
+            buf.push(2);
+            buf.push(if *b { 1 } else { 0 });
+        }
+        IrExpression::StateRef(name) => {
+            buf.push(3);
+            write_string(buf, name);
+        }
+        IrExpression::BinOp { left, op, right } => {
+            buf.push(4);
+            write_binop(buf, *op);
+            write_expression(buf, left);
+            write_expression(buf, right);
+        }
+    }
+}
+
+fn write_binop(buf: &mut Vec<u8>, op: IrBinOp) {
+    buf.push(match op {
+        IrBinOp::Add => 0,
+        IrBinOp::Sub => 1,
+        IrBinOp::Mul => 2,
+        IrBinOp::Div => 3,
+        IrBinOp::Eq => 4,
+        IrBinOp::Neq => 5,
+        IrBinOp::Gt => 6,
+        IrBinOp::Lt => 7,
+        IrBinOp::Gte => 8,
+        IrBinOp::Lte => 9,
+        IrBinOp::And => 10,
+        IrBinOp::Or => 11,
+    });
 }
 
 // ─── Reader ─────────────────────────────────────────────────────────────────
@@ -183,6 +351,19 @@ impl<'a> Cursor<'a> {
             }
             2 => Ok(RenderValue::Color(self.read_u32()?)),
             3 => Ok(RenderValue::Bool(self.read_u8()? != 0)),
+            4 => {
+                let part_count = self.read_u32()? as usize;
+                let mut parts = Vec::with_capacity(part_count);
+                for _ in 0..part_count {
+                    let part_tag = self.read_u8()?;
+                    match part_tag {
+                        0 => parts.push(TextPart::Literal(self.read_string()?)),
+                        1 => parts.push(TextPart::StateRef(self.read_string()?)),
+                        _ => return Err(format!("unknown text part tag: {}", part_tag)),
+                    }
+                }
+                Ok(RenderValue::InterpolatedStr(parts))
+            }
             _ => Err(format!("unknown value tag: {}", tag)),
         }
     }
@@ -201,11 +382,79 @@ impl<'a> Cursor<'a> {
         for _ in 0..child_count {
             children.push(self.read_node()?);
         }
+        let handler_count = self.read_u32()? as usize;
+        let mut handlers = Vec::with_capacity(handler_count);
+        for _ in 0..handler_count {
+            handlers.push(self.read_handler()?);
+        }
         Ok(RenderNode {
             kind,
             props,
             children,
+            handlers,
         })
+    }
+
+    fn read_handler(&mut self) -> Result<IrEventHandler, String> {
+        let event = self.read_string()?;
+        let action = self.read_action()?;
+        Ok(IrEventHandler { event, action })
+    }
+
+    fn read_action(&mut self) -> Result<IrAction, String> {
+        let tag = self.read_u8()?;
+        match tag {
+            0 => {
+                let target = self.read_string()?;
+                let expr = self.read_expression()?;
+                Ok(IrAction::Set { target, expr })
+            }
+            1 => {
+                let path = self.read_string()?;
+                Ok(IrAction::Navigate { path })
+            }
+            _ => Err(format!("unknown action tag: {}", tag)),
+        }
+    }
+
+    fn read_expression(&mut self) -> Result<IrExpression, String> {
+        let tag = self.read_u8()?;
+        match tag {
+            0 => Ok(IrExpression::Num(self.read_f64()?)),
+            1 => Ok(IrExpression::Str(self.read_string()?)),
+            2 => Ok(IrExpression::Bool(self.read_u8()? != 0)),
+            3 => Ok(IrExpression::StateRef(self.read_string()?)),
+            4 => {
+                let op = self.read_binop()?;
+                let left = self.read_expression()?;
+                let right = self.read_expression()?;
+                Ok(IrExpression::BinOp {
+                    left: Box::new(left),
+                    op,
+                    right: Box::new(right),
+                })
+            }
+            _ => Err(format!("unknown expression tag: {}", tag)),
+        }
+    }
+
+    fn read_binop(&mut self) -> Result<IrBinOp, String> {
+        let tag = self.read_u8()?;
+        match tag {
+            0 => Ok(IrBinOp::Add),
+            1 => Ok(IrBinOp::Sub),
+            2 => Ok(IrBinOp::Mul),
+            3 => Ok(IrBinOp::Div),
+            4 => Ok(IrBinOp::Eq),
+            5 => Ok(IrBinOp::Neq),
+            6 => Ok(IrBinOp::Gt),
+            7 => Ok(IrBinOp::Lt),
+            8 => Ok(IrBinOp::Gte),
+            9 => Ok(IrBinOp::Lte),
+            10 => Ok(IrBinOp::And),
+            11 => Ok(IrBinOp::Or),
+            _ => Err(format!("unknown binop tag: {}", tag)),
+        }
     }
 }
 
@@ -217,6 +466,7 @@ mod tests {
     fn roundtrip_simple() {
         let tree = RenderTree {
             title: "Hello".to_string(),
+            state: vec![],
             root: vec![RenderNode {
                 kind: "text".to_string(),
                 props: {
@@ -225,6 +475,7 @@ mod tests {
                     m
                 },
                 children: vec![],
+                handlers: vec![],
             }],
         };
         let bytes = serialize(&tree);
@@ -236,6 +487,7 @@ mod tests {
     fn roundtrip_all_value_types() {
         let tree = RenderTree {
             title: "Test".to_string(),
+            state: vec![],
             root: vec![RenderNode {
                 kind: "rect".to_string(),
                 props: {
@@ -248,6 +500,7 @@ mod tests {
                     m
                 },
                 children: vec![],
+                handlers: vec![],
             }],
         };
         let bytes = serialize(&tree);
@@ -259,6 +512,7 @@ mod tests {
     fn roundtrip_nested() {
         let tree = RenderTree {
             title: "Nested".to_string(),
+            state: vec![],
             root: vec![RenderNode {
                 kind: "column".to_string(),
                 props: HashMap::new(),
@@ -271,6 +525,7 @@ mod tests {
                             m
                         },
                         children: vec![],
+                        handlers: vec![],
                     },
                     RenderNode {
                         kind: "rect".to_string(),
@@ -280,8 +535,10 @@ mod tests {
                             m
                         },
                         children: vec![],
+                        handlers: vec![],
                     },
                 ],
+                handlers: vec![],
             }],
         };
         let bytes = serialize(&tree);

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use naze_parser::ast::{Node, Prop, Unit, Value};
+use naze_parser::ast::{Node, Prop, StringPart, Unit, Value, EventHandler, Action, Expression, BinOp};
 
 use crate::resolve::{ComponentDef, ResolvedProject};
 
 // Re-export IR types so existing consumers can use `naze_compiler::codegen::*`
-pub use naze_ir::{RenderNode, RenderTree, RenderValue};
+pub use naze_ir::{IrAction, IrBinOp, IrEventHandler, IrExpression, RenderNode, RenderTree, RenderValue, StateDecl, TextPart};
 
 /// Lower a resolved project into a flattened RenderTree.
 /// All component invocations are inlined with prop substitution.
@@ -18,6 +18,8 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
 
     let mut title = String::new();
     let mut root = Vec::new();
+    let mut state = Vec::new();
+    let mut let_scope: HashMap<String, RenderValue> = HashMap::new();
 
     for node in &project.entry.nodes {
         match node {
@@ -27,14 +29,48 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                 ..
             } => {
                 title = t.clone();
-                root = lower_nodes(children, &by_name, &HashMap::new());
+                // Collect state and let declarations from inside the app block
+                collect_declarations(children, &mut state, &mut let_scope);
+                root = lower_nodes(children, &by_name, &let_scope);
+            }
+            // Top-level let/state outside app block
+            Node::Let { name, value, .. } => {
+                let_scope.insert(name.clone(), lower_value(value, &let_scope));
+            }
+            Node::State { name, value, .. } => {
+                state.push(StateDecl {
+                    name: name.clone(),
+                    initial: lower_value(value, &let_scope),
+                });
             }
             // Skip use statements, comments, component defs at top level
             _ => {}
         }
     }
 
-    RenderTree { title, root }
+    RenderTree { title, root, state }
+}
+
+/// Walk children to collect state/let declarations (does not recurse into elements).
+fn collect_declarations(
+    nodes: &[Node],
+    state: &mut Vec<StateDecl>,
+    let_scope: &mut HashMap<String, RenderValue>,
+) {
+    for node in nodes {
+        match node {
+            Node::Let { name, value, .. } => {
+                let_scope.insert(name.clone(), lower_value(value, let_scope));
+            }
+            Node::State { name, value, .. } => {
+                state.push(StateDecl {
+                    name: name.clone(),
+                    initial: lower_value(value, let_scope),
+                });
+            }
+            _ => {}
+        }
+    }
 }
 
 // Re-export serialize/deserialize from naze-ir
@@ -53,6 +89,7 @@ fn lower_nodes(
                 name,
                 props,
                 children,
+                handlers,
                 ..
             } => {
                 if let Some(comp) = components.get(name.as_str()) {
@@ -62,15 +99,21 @@ fn lower_nodes(
                     // Built-in element
                     let resolved_props = resolve_props(props, scope);
                     let child_nodes = lower_nodes(children, components, scope);
+                    let ir_handlers = lower_handlers(handlers);
                     out.push(RenderNode {
                         kind: name.clone(),
                         props: resolved_props,
                         children: child_nodes,
+                        handlers: ir_handlers,
                     });
                 }
             }
-            Node::Comment(_) | Node::UseStmt { .. } | Node::Component { .. } => {
-                // Skip non-renderable nodes
+            Node::Comment(_)
+            | Node::UseStmt { .. }
+            | Node::Component { .. }
+            | Node::Let { .. }
+            | Node::State { .. } => {
+                // Skip non-renderable nodes (declarations processed separately)
             }
             Node::App { children, .. } => {
                 // Nested apps shouldn't happen, but handle gracefully
@@ -125,6 +168,19 @@ fn resolve_props(
 fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderValue {
     match value {
         Value::Str(s) => RenderValue::Str(s.clone()),
+        Value::InterpolatedStr(parts) => {
+            let text_parts: Vec<TextPart> = parts
+                .iter()
+                .map(|p| match p {
+                    StringPart::Literal(s) => TextPart::Literal(s.clone()),
+                    StringPart::Interpolation(segments) => {
+                        // For now, join segments with "." for multi-part refs
+                        TextPart::StateRef(segments.join("."))
+                    }
+                })
+                .collect();
+            RenderValue::InterpolatedStr(text_parts)
+        }
         Value::Num(n, unit) => RenderValue::Num(*n, unit.as_ref().map(unit_str)),
         Value::Color(c) => RenderValue::Color(*c),
         Value::Bool(b) => RenderValue::Bool(*b),
@@ -142,6 +198,59 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
                 RenderValue::Str(format!("<unresolved:{}>", parts.join(".")))
             }
         }
+    }
+}
+
+fn lower_handlers(handlers: &[EventHandler]) -> Vec<IrEventHandler> {
+    handlers.iter().map(lower_handler).collect()
+}
+
+fn lower_handler(h: &EventHandler) -> IrEventHandler {
+    IrEventHandler {
+        event: h.event.clone(),
+        action: lower_action(&h.action),
+    }
+}
+
+fn lower_action(a: &Action) -> IrAction {
+    match a {
+        Action::Set { target, expr, .. } => IrAction::Set {
+            target: target.clone(),
+            expr: lower_expression(expr),
+        },
+        Action::Navigate { path, .. } => IrAction::Navigate { path: path.clone() },
+    }
+}
+
+fn lower_expression(e: &Expression) -> IrExpression {
+    match e {
+        Expression::Literal(Value::Num(n, _)) => IrExpression::Num(*n),
+        Expression::Literal(Value::Str(s)) => IrExpression::Str(s.clone()),
+        Expression::Literal(Value::Bool(b)) => IrExpression::Bool(*b),
+        Expression::Literal(_) => IrExpression::Str(String::new()),
+        Expression::StateRef(name) => IrExpression::StateRef(name.clone()),
+        Expression::BinOp { left, op, right } => IrExpression::BinOp {
+            left: Box::new(lower_expression(left)),
+            op: lower_binop(*op),
+            right: Box::new(lower_expression(right)),
+        },
+    }
+}
+
+fn lower_binop(op: BinOp) -> IrBinOp {
+    match op {
+        BinOp::Add => IrBinOp::Add,
+        BinOp::Sub => IrBinOp::Sub,
+        BinOp::Mul => IrBinOp::Mul,
+        BinOp::Div => IrBinOp::Div,
+        BinOp::Eq => IrBinOp::Eq,
+        BinOp::Neq => IrBinOp::Neq,
+        BinOp::Gt => IrBinOp::Gt,
+        BinOp::Lt => IrBinOp::Lt,
+        BinOp::Gte => IrBinOp::Gte,
+        BinOp::Lte => IrBinOp::Lte,
+        BinOp::And => IrBinOp::And,
+        BinOp::Or => IrBinOp::Or,
     }
 }
 
@@ -389,6 +498,7 @@ mod tests {
             "grid.naze",
             "dashboard-static.naze",
             "app-shell.naze",
+            "counter.naze",
         ] {
             let project = resolve(&examples_dir, name);
             let tree = lower(&project);
@@ -400,6 +510,41 @@ mod tests {
             let restored = deserialize(&bytes).unwrap();
             assert_eq!(tree, restored, "roundtrip failed for {}", name);
         }
+    }
+
+    #[test]
+    fn lower_state_declarations() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            "app \"Counter\" {\n  state count = 0\n  let label = \"Count\"\n  heading \"{label}: {count}\"\n}\n",
+        )]);
+        assert_eq!(tree.title, "Counter");
+        // State declaration should be collected
+        assert_eq!(tree.state.len(), 1);
+        assert_eq!(tree.state[0].name, "count");
+        assert_eq!(tree.state[0].initial, RenderValue::Num(0.0, None));
+        // heading should have interpolated text
+        assert_eq!(tree.root.len(), 1);
+        assert_eq!(tree.root[0].kind, "heading");
+        match tree.root[0].props.get("__text") {
+            Some(RenderValue::InterpolatedStr(parts)) => {
+                assert_eq!(parts.len(), 3); // StateRef("label"), Literal(": "), StateRef("count")
+            }
+            other => panic!("expected InterpolatedStr, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn lower_let_inlines_plain_string() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            "app \"Test\" {\n  let greeting = \"Hello\"\n  text \"world\"\n}\n",
+        )]);
+        // let binding shouldn't produce render nodes
+        assert_eq!(tree.root.len(), 1);
+        assert_eq!(tree.root[0].kind, "text");
+        // No state declarations from let bindings
+        assert!(tree.state.is_empty());
     }
 
     #[test]

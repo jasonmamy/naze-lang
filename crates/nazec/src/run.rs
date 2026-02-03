@@ -1,13 +1,15 @@
+use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::Path;
 use std::sync::Arc;
 
-use naze_ir::RenderTree;
+use naze_ir::{IrAction, IrBinOp, IrExpression, RenderNode, RenderTree, RenderValue, TextPart};
+use naze_layout::{LayoutTree, PositionedNode};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
-use winit::window::{Window, WindowId};
+use winit::window::{CursorIcon, Window, WindowId};
 
 use crate::build;
 use crate::diagnostic::Format;
@@ -22,9 +24,12 @@ enum AppEvent {
 struct App {
     manifest: Manifest,
     render_tree: RenderTree,
+    state_store: HashMap<String, RenderValue>,
     font: fontdue::Font,
     window: Option<Arc<Window>>,
     surface: Option<softbuffer::Surface<Arc<Window>, Arc<Window>>>,
+    layout: Option<LayoutTree>,
+    cursor_pos: Option<(f32, f32)>,
 }
 
 impl ApplicationHandler<AppEvent> for App {
@@ -56,6 +61,33 @@ impl ApplicationHandler<AppEvent> for App {
             WindowEvent::RedrawRequested => {
                 self.render();
             }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.cursor_pos = Some((position.x as f32, position.y as f32));
+                if let (Some(layout), Some(window)) = (&self.layout, &self.window) {
+                    let is_clickable = hit_test_any_handler(
+                        &layout.root,
+                        position.x as f32,
+                        position.y as f32,
+                        "click",
+                    );
+                    window.set_cursor(if is_clickable {
+                        CursorIcon::Pointer
+                    } else {
+                        CursorIcon::Default
+                    });
+                }
+            }
+            WindowEvent::MouseInput {
+                state: ElementState::Released,
+                button: MouseButton::Left,
+                ..
+            } => {
+                if let Some((x, y)) = self.cursor_pos {
+                    if self.handle_click(x, y) {
+                        self.render();
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -81,7 +113,13 @@ impl App {
                         .map_err(std::io::Error::other)
                 }) {
                     Ok(tree) => {
+                        let mut state_store = HashMap::new();
+                        for decl in &tree.state {
+                            state_store
+                                .insert(decl.name.clone(), decl.initial.clone());
+                        }
                         self.render_tree = tree;
+                        self.state_store = state_store;
                         self.render();
                         eprintln!("reloaded");
                     }
@@ -104,7 +142,9 @@ impl App {
             return;
         }
 
-        let layout = naze_layout::compute_layout(&self.render_tree, w as f32, h as f32);
+        let resolved = resolve_tree(&self.render_tree, &self.state_store);
+        let layout = naze_layout::compute_layout(&resolved, w as f32, h as f32);
+        self.layout = Some(layout.clone());
 
         let mut pixmap = match tiny_skia::Pixmap::new(w, h) {
             Some(p) => p,
@@ -130,6 +170,24 @@ impl App {
             buffer[i] = (r << 16) | (g << 8) | b;
         }
         buffer.present().unwrap();
+    }
+
+    fn handle_click(&mut self, x: f32, y: f32) -> bool {
+        let layout = match &self.layout {
+            Some(l) => l,
+            None => return false,
+        };
+        let handlers = find_click_handlers(&layout.root, x, y);
+        if handlers.is_empty() {
+            return false;
+        }
+        let mut changed = false;
+        for handler in &handlers {
+            if execute_action(&handler.action, &mut self.state_store) {
+                changed = true;
+            }
+        }
+        changed
     }
 }
 
@@ -204,14 +262,234 @@ pub fn run(manifest: &Manifest) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    let mut state_store = HashMap::new();
+    for decl in &render_tree.state {
+        state_store.insert(decl.name.clone(), decl.initial.clone());
+    }
+
     let mut app = App {
         manifest: manifest.clone(),
         render_tree,
+        state_store,
         font,
         window: None,
         surface: None,
+        layout: None,
+        cursor_pos: None,
     };
     event_loop.run_app(&mut app)?;
 
     Ok(())
+}
+
+// ─── State resolution ───────────────────────────────────────────────────────
+
+fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> RenderTree {
+    RenderTree {
+        title: tree.title.clone(),
+        state: tree.state.clone(),
+        root: resolve_nodes(&tree.root, state),
+    }
+}
+
+fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> Vec<RenderNode> {
+    nodes
+        .iter()
+        .map(|node| RenderNode {
+            kind: node.kind.clone(),
+            props: node
+                .props
+                .iter()
+                .map(|(k, v)| (k.clone(), resolve_value(v, state)))
+                .collect(),
+            children: resolve_nodes(&node.children, state),
+            handlers: node.handlers.clone(),
+        })
+        .collect()
+}
+
+fn resolve_value(value: &RenderValue, state: &HashMap<String, RenderValue>) -> RenderValue {
+    match value {
+        RenderValue::InterpolatedStr(parts) => {
+            let mut result = String::new();
+            for part in parts {
+                match part {
+                    TextPart::Literal(s) => result.push_str(s),
+                    TextPart::StateRef(name) => match state.get(name.as_str()) {
+                        Some(RenderValue::Str(s)) => result.push_str(s),
+                        Some(RenderValue::Num(n, _)) => {
+                            if n.fract() == 0.0 {
+                                result.push_str(&format!("{}", *n as i64));
+                            } else {
+                                result.push_str(&format!("{}", n));
+                            }
+                        }
+                        Some(RenderValue::Bool(b)) => {
+                            result.push_str(if *b { "true" } else { "false" });
+                        }
+                        Some(RenderValue::Color(c)) => {
+                            result.push_str(&format!("#{:06x}", c));
+                        }
+                        _ => {
+                            result.push('{');
+                            result.push_str(name);
+                            result.push('}');
+                        }
+                    },
+                }
+            }
+            RenderValue::Str(result)
+        }
+        other => other.clone(),
+    }
+}
+
+// ─── Hit testing ─────────────────────────────────────────────────────────────
+
+fn hit_test_any_handler(nodes: &[PositionedNode], x: f32, y: f32, event: &str) -> bool {
+    for node in nodes.iter().rev() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        if hit_test_any_handler(&node.children, x, y, event) {
+            return true;
+        }
+        if node.handlers.iter().any(|h| h.event == event) {
+            return true;
+        }
+    }
+    false
+}
+
+fn find_click_handlers(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+) -> Vec<naze_ir::IrEventHandler> {
+    for node in nodes.iter().rev() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        let child_handlers = find_click_handlers(&node.children, x, y);
+        if !child_handlers.is_empty() {
+            return child_handlers;
+        }
+        let click_handlers: Vec<_> = node
+            .handlers
+            .iter()
+            .filter(|h| h.event == "click")
+            .cloned()
+            .collect();
+        if !click_handlers.is_empty() {
+            return click_handlers;
+        }
+    }
+    Vec::new()
+}
+
+fn point_in_node(node: &PositionedNode, x: f32, y: f32) -> bool {
+    x >= node.x && x <= node.x + node.width && y >= node.y && y <= node.y + node.height
+}
+
+// ─── Action execution ────────────────────────────────────────────────────────
+
+fn execute_action(
+    action: &IrAction,
+    state: &mut HashMap<String, RenderValue>,
+) -> bool {
+    match action {
+        IrAction::Set { target, expr } => {
+            let value = evaluate_expr(expr, state);
+            state.insert(target.clone(), value);
+            true
+        }
+        IrAction::Navigate { .. } => false,
+    }
+}
+
+fn evaluate_expr(
+    expr: &IrExpression,
+    state: &HashMap<String, RenderValue>,
+) -> RenderValue {
+    match expr {
+        IrExpression::Num(n) => RenderValue::Num(*n, None),
+        IrExpression::Str(s) => RenderValue::Str(s.clone()),
+        IrExpression::Bool(b) => RenderValue::Bool(*b),
+        IrExpression::StateRef(name) => {
+            state.get(name).cloned().unwrap_or(RenderValue::Num(0.0, None))
+        }
+        IrExpression::BinOp { left, op, right } => {
+            let lval = evaluate_expr(left, state);
+            let rval = evaluate_expr(right, state);
+            eval_binop(&lval, op, &rval)
+        }
+    }
+}
+
+fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderValue {
+    let left_num = match left {
+        RenderValue::Num(n, _) => Some(*n),
+        RenderValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        _ => None,
+    };
+    let right_num = match right {
+        RenderValue::Num(n, _) => Some(*n),
+        RenderValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        _ => None,
+    };
+
+    match op {
+        IrBinOp::Add => {
+            if let (Some(l), Some(r)) = (left_num, right_num) {
+                RenderValue::Num(l + r, None)
+            } else {
+                RenderValue::Str(format!(
+                    "{}{}",
+                    render_value_to_string(left),
+                    render_value_to_string(right)
+                ))
+            }
+        }
+        IrBinOp::Sub => RenderValue::Num(
+            left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0),
+            None,
+        ),
+        IrBinOp::Mul => RenderValue::Num(
+            left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0),
+            None,
+        ),
+        IrBinOp::Div => {
+            let r = right_num.unwrap_or(1.0);
+            let r = if r == 0.0 { 1.0 } else { r };
+            RenderValue::Num(left_num.unwrap_or(0.0) / r, None)
+        }
+        IrBinOp::Eq => RenderValue::Bool(left_num == right_num),
+        IrBinOp::Neq => RenderValue::Bool(left_num != right_num),
+        IrBinOp::Gt => RenderValue::Bool(left_num.unwrap_or(0.0) > right_num.unwrap_or(0.0)),
+        IrBinOp::Lt => RenderValue::Bool(left_num.unwrap_or(0.0) < right_num.unwrap_or(0.0)),
+        IrBinOp::Gte => RenderValue::Bool(left_num.unwrap_or(0.0) >= right_num.unwrap_or(0.0)),
+        IrBinOp::Lte => RenderValue::Bool(left_num.unwrap_or(0.0) <= right_num.unwrap_or(0.0)),
+        IrBinOp::And => {
+            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
+            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            RenderValue::Bool(l && r)
+        }
+        IrBinOp::Or => {
+            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
+            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            RenderValue::Bool(l || r)
+        }
+    }
+}
+
+fn render_value_to_string(v: &RenderValue) -> String {
+    match v {
+        RenderValue::Str(s) => s.clone(),
+        RenderValue::Num(n, _) => {
+            if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+        }
+        RenderValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
+        RenderValue::Color(c) => format!("#{:06x}", c),
+        _ => String::new(),
+    }
 }

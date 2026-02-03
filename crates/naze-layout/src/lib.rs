@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use naze_ir::{RenderNode, RenderTree, RenderValue};
+use naze_ir::{IrEventHandler, RenderNode, RenderTree, RenderValue};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct PositionedNode {
     pub kind: String,
     pub props: HashMap<String, RenderValue>,
+    pub handlers: Vec<IrEventHandler>,
     pub x: f32,
     pub y: f32,
     pub width: f32,
@@ -276,6 +277,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
     PositionedNode {
         kind: node.kind.clone(),
         props: node.props.clone(),
+        handlers: node.handlers.clone(),
         x,
         y,
         width,
@@ -459,6 +461,21 @@ fn get_num_prop(node: &RenderNode, key: &str) -> Option<f64> {
 fn get_text_content(node: &RenderNode) -> String {
     match node.props.get("__text") {
         Some(RenderValue::Str(s)) => s.clone(),
+        Some(RenderValue::InterpolatedStr(parts)) => {
+            use naze_ir::TextPart;
+            let mut result = String::new();
+            for part in parts {
+                match part {
+                    TextPart::Literal(s) => result.push_str(s),
+                    TextPart::StateRef(name) => {
+                        result.push('{');
+                        result.push_str(name);
+                        result.push('}');
+                    }
+                }
+            }
+            result
+        }
         _ => String::new(),
     }
 }
@@ -739,6 +756,7 @@ mod tests {
             "grid.naze",
             "dashboard-static.naze",
             "app-shell.naze",
+            "counter.naze",
             "component-basic.naze",
             "component-props.naze",
             "multi-component.naze",

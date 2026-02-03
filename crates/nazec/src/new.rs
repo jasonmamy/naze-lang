@@ -14,13 +14,21 @@ const APP_NAZE_TEMPLATE: &str = r#"-- {{name}}
 -- Created with nazec
 
 app "{{name}}" {
+  state count = 0
+
   column padding: 20px, gap: 16px {
-    heading "Hello, {{name}}!"
+    heading "Welcome to {{name}}!"
+    text "Count: {count}"
 
     row gap: 12px {
-      rect width: 80px, height: 80px, color: #2563eb, radius: 8px
-      rect width: 80px, height: 80px, color: #dc2626, radius: 8px
-      rect width: 80px, height: 80px, color: #16a34a, radius: 8px
+      rect width: 120px, height: 50px, color: #2563eb, radius: 8px {
+        text "Increment"
+        on click: set count = count + 1
+      }
+      rect width: 120px, height: 50px, color: #dc2626, radius: 8px {
+        text "Reset"
+        on click: set count = 0
+      }
     }
 
     text "Edit app.naze and run nazec build to see changes."

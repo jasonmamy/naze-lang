@@ -103,3 +103,8 @@ fn parse_app_shell() {
 fn parse_multi_component() {
     parse_example("multi-component.naze");
 }
+
+#[test]
+fn parse_counter() {
+    parse_example("counter.naze");
+}

@@ -98,6 +98,11 @@ fn build_dashboard_static() { build_example("dashboard-static.naze"); }
 #[test]
 fn build_app_shell() { build_example("app-shell.naze"); }
 
+// --- Examples with state (Phase 2 M1) ---
+
+#[test]
+fn build_counter() { build_example("counter.naze"); }
+
 // --- Examples with component imports ---
 
 #[test]

@@ -962,6 +962,7 @@ dependencies = [
 name = "naze-runtime"
 version = "0.1.0"
 dependencies = [
+ "js-sys",
  "naze-ir",
  "naze-layout",
  "naze-renderer",

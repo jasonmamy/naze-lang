@@ -120,6 +120,62 @@ Multi-page apps.
 - [ ] Runtime: page switching without full reload
 - [ ] `navigate "/path"` action in event handlers
 
+### M8b: Form Inputs
+**Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`, `naze-renderer`
+
+Standard form elements for interactive apps. Depends on M1 (state) and M2 (events).
+
+- [ ] `input` element: `input bind: username, placeholder: "Enter name", type: "text"`
+- [ ] Input types: `"text"`, `"number"`, `"email"`, `"password"`
+- [ ] `checkbox` element: `checkbox bind: agreed, label: "I agree"`
+- [ ] `radio` element: `radio bind: choice, value: "option-a", label: "Option A"`
+- [ ] `select` / `option` elements for dropdowns
+- [ ] `on change` event for form elements
+- [ ] Two-way binding: `bind: stateVar` reads and writes state
+- [ ] Runtime: text input rendering on canvas (cursor, selection, blinking caret)
+- [ ] Runtime: keyboard input handling (typing, backspace, arrow keys, clipboard)
+- [ ] Input validation: `validate: { required: true, min-length: 3, pattern: "..." }`
+- [ ] Validation states: `field.valid`, `field.error` for conditional rendering
+
+### M8c: Drag & Drop
+**Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`
+
+Depends on M2 (events).
+
+- [ ] `draggable: true` prop on any element
+- [ ] `drop-target: true` prop on containers
+- [ ] Events: `on drag-start`, `on drag-over`, `on drop`
+- [ ] Drag data: `drag-data: expression` to attach data to drag operations
+- [ ] Runtime: hit testing extension for drag regions
+- [ ] Runtime: visual feedback during drag (ghost element, drop zone highlighting)
+
+### M8d: Accessibility
+**Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`
+
+Depends on M2 (events). Required for production apps.
+
+- [ ] `role` prop: `button`, `link`, `navigation`, `main`, `heading`, `list`, `listitem`, etc.
+- [ ] `label` prop: accessible name (equivalent to `aria-label`)
+- [ ] `tab-index` prop for keyboard navigation order
+- [ ] Focus ring rendering on focused elements
+- [ ] Keyboard-only operation for all interactive elements (Enter to activate, Escape to dismiss)
+- [ ] Screen reader integration: hidden DOM overlay with ARIA attributes mirroring canvas content
+- [ ] Screen reader announcements on state change (live regions equivalent)
+- [ ] Compiler: warn when interactive elements lack `role` or `label`
+
+### M8e: Scroll & Overflow
+**Crates:** `naze-parser`, `naze-ir`, `naze-layout`, `naze-runtime`
+
+Depends on M1 (state), M2 (events), M7 (improved layout).
+
+- [ ] `scroll` container: `scroll height: 400px { ... }` for overflow scrolling
+- [ ] Scroll position as implicit state (per scroll container)
+- [ ] `on scroll` event
+- [ ] `scroll-to` action: `scroll-to element-id`
+- [ ] Runtime: scroll bar rendering, mouse wheel handling, touch scroll
+- [ ] Layout: clip children to container bounds
+- [ ] Virtual scrolling for large lists (stretch goal)
+
 ---
 
 ## Phase 2b: Tooling & Platforms
@@ -140,26 +196,29 @@ Can start in parallel with Phase 2a — only needs existing parser/compiler.
 ### M10: Dev Server & Hot Reload
 **Crate:** `nazec`
 
-Fast iteration loop.
+Fast iteration loop. Native hot reload is done; browser hot reload remaining.
 
+- [x] File watcher on `.naze` files (notify crate) — implemented in `nazec run`
+- [x] Native hot reload: file change → rebuild → re-render in native window
+- [x] Debounced file watching (300ms quiet period, coalesces editor events)
 - [ ] `nazec dev` command: embedded HTTP server (hyper or tiny-http)
-- [ ] File watcher on `.naze` files (notify crate)
 - [ ] On change: rebuild → notify browser via WebSocket
 - [ ] Browser client: WebSocket listener, auto-reload on message
 - [ ] Incremental compilation: only re-parse changed files, reuse cached results
 - [ ] Console output: "rebuilt in Xms" timing
 
 ### M11: Native Desktop Prototype (x86/ARM)
-**New crate:** `naze-native`
+**Crates:** `nazec` (integrated), `naze-native` (standalone)
 
-Proof of concept: same `.naze` source renders in a desktop window.
+Proof of concept: same `.naze` source renders in a desktop window. **Core functionality done.**
 
-- [ ] Desktop window via `winit`
-- [ ] Software renderer (or `wgpu` / `tiny-skia`) drawing same primitives as Canvas2D
-- [ ] Reuses `naze-ir` (deserialize `app_data.bin`) and `naze-layout` (compute positions)
+- [x] Desktop window via `winit`
+- [x] Software renderer via `tiny-skia` drawing same primitives as Canvas2D
+- [x] Reuses `naze-ir` (deserialize `app_data.bin`) and `naze-layout` (compute positions)
+- [x] `nazec run` previews in native window with live reload
+- [x] Renders rectangles, text, colors — same visual output as browser
 - [ ] `nazec build --target native` produces standalone binary
-- [ ] Renders rectangles, text, colors — same visual output as browser
-- [ ] Not production quality — proof that the architecture supports native targets
+- [ ] GPU renderer option (`wgpu`) for better performance (stretch)
 
 ### M12: Android Prototype
 **New dir:** `platforms/android/`
@@ -202,13 +261,15 @@ Depends on M1 (state) and M2 (events).
 ```
 Track A (language):   M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8
 Track B (tooling):    M9 → M10
-Track C (platforms):       M11 → M12
+Track C (platforms):       M11 (done) → M12
+Interactive:          M8b (after M1+M2), M8c (after M2), M8d (after M2), M8e (after M1+M2+M7)
 Late features:        M13 (after M1+M3), M14 (after M1+M2)
 ```
 
 - **M1** is the critical path — state/reactivity unlocks everything
 - **M9** (VS Code) can start immediately, no dependencies on Phase 2a
-- **M11** (native desktop) can start anytime — reuses existing `naze-ir` and `naze-layout`
+- **M11** (native desktop) core is **done** — `nazec run` with live reload works
+- **M8b-M8e** (forms, drag-drop, accessibility, scroll) depend on M1+M2 completing first
 - **M13/M14** depend on earlier milestones but can slot in whenever ready
 
 ## WASM Size Budget

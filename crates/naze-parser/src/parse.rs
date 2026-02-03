@@ -54,6 +54,9 @@ pub fn parse(source: &str, file: &str) -> Result<Vec<Node>, ParseError> {
             Rule::app_block => nodes.push(parse_app(pair, file)),
             Rule::component_def => nodes.push(parse_component(pair, file)),
             Rule::use_stmt => nodes.push(parse_use(pair, file)),
+            Rule::let_stmt => nodes.push(parse_let(pair, file)),
+            Rule::state_stmt => nodes.push(parse_state(pair, file)),
+            Rule::on_handler => {} // on_handler at file scope is meaningless; skip
             Rule::element => nodes.push(parse_element(pair, file)),
             Rule::comment => nodes.push(Node::Comment(
                 pair.as_str().trim_start_matches("--").trim().to_string(),
@@ -97,13 +100,27 @@ fn parse_app(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let mut inner = pair.into_inner();
 
-    let title = parse_string_lit(inner.next().unwrap());
+    let title = match parse_string_lit(inner.next().unwrap()) {
+        Value::Str(s) => s,
+        Value::InterpolatedStr(parts) => {
+            // App title doesn't support interpolation; flatten to literal text
+            parts
+                .into_iter()
+                .map(|p| match p {
+                    StringPart::Literal(s) => s,
+                    StringPart::Interpolation(segs) => format!("{{{}}}", segs.join(".")),
+                })
+                .collect()
+        }
+        _ => String::new(),
+    };
     let block = inner.next().unwrap();
-    let children = parse_block(block, file);
+    let contents = parse_block(block, file);
+    // App blocks ignore handlers (events only make sense on elements)
 
     Node::App {
         title,
-        children,
+        children: contents.nodes,
         span,
     }
 }
@@ -123,7 +140,9 @@ fn parse_component(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
                 params = parse_param_list(p);
             }
             Rule::block => {
-                children = parse_block(p, file);
+                let contents = parse_block(p, file);
+                children = contents.nodes;
+                // Component definitions ignore handlers
             }
             _ => {}
         }
@@ -162,6 +181,22 @@ fn parse_type(pair: pest::iterators::Pair<Rule>) -> Type {
     }
 }
 
+fn parse_let(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let value = parse_value(inner.next().unwrap());
+    Node::Let { name, value, span }
+}
+
+fn parse_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let value = parse_value(inner.next().unwrap());
+    Node::State { name, value, span }
+}
+
 fn parse_use(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let path_pair = pair.into_inner().next().unwrap();
@@ -177,31 +212,34 @@ fn parse_element(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
 
     let mut props = Vec::new();
     let mut children = Vec::new();
-    let mut text_content: Option<String> = None;
+    let mut handlers = Vec::new();
+    let mut text_value: Option<Value> = None;
 
     for p in inner {
         match p.as_rule() {
             Rule::string_lit => {
-                text_content = Some(parse_string_lit(p));
+                text_value = Some(parse_string_lit(p));
             }
             Rule::inline_props => {
                 props = parse_inline_props(p);
             }
             Rule::block => {
-                children = parse_block(p, file);
+                let contents = parse_block(p, file);
+                children = contents.nodes;
+                handlers = contents.handlers;
             }
             _ => {}
         }
     }
 
     // If the element has a string literal (e.g., heading "Hello"), add it as a
-    // __text prop so codegen can extract it.
-    if let Some(text) = text_content {
+    // __text prop so codegen can extract it. Supports both plain and interpolated strings.
+    if let Some(value) = text_value {
         props.insert(
             0,
             Prop {
                 key: "__text".to_string(),
-                value: Value::Str(text),
+                value,
             },
         );
     }
@@ -210,6 +248,7 @@ fn parse_element(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
         name,
         props,
         children,
+        handlers,
         span,
     }
 }
@@ -228,7 +267,7 @@ fn parse_prop(pair: pest::iterators::Pair<Rule>) -> Prop {
 fn parse_value(pair: pest::iterators::Pair<Rule>) -> Value {
     let inner = pair.into_inner().next().unwrap();
     match inner.as_rule() {
-        Rule::string_lit => Value::Str(parse_string_lit(inner)),
+        Rule::string_lit => parse_string_lit(inner),
         Rule::color_lit => {
             let hex = inner.as_str().trim_start_matches('#');
             let val = u32::from_str_radix(hex, 16).unwrap_or(0);
@@ -267,21 +306,61 @@ fn parse_value(pair: pest::iterators::Pair<Rule>) -> Value {
     }
 }
 
-fn parse_string_lit(pair: pest::iterators::Pair<Rule>) -> String {
-    let mut inner = pair.into_inner();
-    match inner.next() {
-        Some(s) => s.as_str().replace("\\\"", "\"").replace("\\\\", "\\"),
-        None => String::new(),
+fn parse_string_lit(pair: pest::iterators::Pair<Rule>) -> Value {
+    let mut parts: Vec<StringPart> = Vec::new();
+    let mut has_interpolation = false;
+
+    for p in pair.into_inner() {
+        match p.as_rule() {
+            Rule::string_chars => {
+                let text = p.as_str().replace("\\\"", "\"").replace("\\\\", "\\");
+                parts.push(StringPart::Literal(text));
+            }
+            Rule::interpolation => {
+                has_interpolation = true;
+                let inner = p.into_inner().next().unwrap();
+                let segments: Vec<String> = match inner.as_rule() {
+                    Rule::ref_path => inner.as_str().split('.').map(String::from).collect(),
+                    Rule::ident => vec![inner.as_str().to_string()],
+                    _ => vec![inner.as_str().to_string()],
+                };
+                parts.push(StringPart::Interpolation(segments));
+            }
+            _ => {}
+        }
+    }
+
+    if has_interpolation {
+        Value::InterpolatedStr(parts)
+    } else {
+        // Plain string — collapse literal parts into a single String
+        let s: String = parts
+            .into_iter()
+            .map(|p| match p {
+                StringPart::Literal(s) => s,
+                StringPart::Interpolation(_) => unreachable!(),
+            })
+            .collect();
+        Value::Str(s)
     }
 }
 
-fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> Vec<Node> {
+struct BlockContents {
+    nodes: Vec<Node>,
+    handlers: Vec<EventHandler>,
+}
+
+fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> BlockContents {
     let mut nodes = Vec::new();
+    let mut handlers = Vec::new();
     for p in pair.into_inner() {
         match p.as_rule() {
             Rule::app_block => nodes.push(parse_app(p, file)),
             Rule::component_def => nodes.push(parse_component(p, file)),
             Rule::use_stmt => nodes.push(parse_use(p, file)),
+            Rule::let_stmt => nodes.push(parse_let(p, file)),
+            Rule::state_stmt => nodes.push(parse_state(p, file)),
+            Rule::on_handler => handlers.push(parse_on_handler(p, file)),
             Rule::element => nodes.push(parse_element(p, file)),
             Rule::comment => nodes.push(Node::Comment(
                 p.as_str().trim_start_matches("--").trim().to_string(),
@@ -289,7 +368,138 @@ fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> Vec<Node> {
             _ => {}
         }
     }
-    nodes
+    BlockContents { nodes, handlers }
+}
+
+fn parse_on_handler(pair: pest::iterators::Pair<Rule>, file: &str) -> EventHandler {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let event = inner.next().unwrap().as_str().to_string();
+    let action_pair = inner.next().unwrap();
+    let action = parse_action(action_pair, file);
+    EventHandler { event, action, span }
+}
+
+fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
+    let span = span_from_pair(&pair, file);
+    match pair.as_rule() {
+        Rule::set_action => {
+            let mut inner = pair.into_inner();
+            let target = inner.next().unwrap().as_str().to_string();
+            let expr = parse_expression(inner.next().unwrap());
+            Action::Set { target, expr, span }
+        }
+        Rule::navigate_action => {
+            let mut inner = pair.into_inner();
+            let path = match parse_string_lit(inner.next().unwrap()) {
+                Value::Str(s) => s,
+                _ => String::new(),
+            };
+            Action::Navigate { path, span }
+        }
+        _ => panic!("unexpected action rule: {:?}", pair.as_rule()),
+    }
+}
+
+fn parse_expression(pair: pest::iterators::Pair<Rule>) -> Expression {
+    let items: Vec<_> = pair.into_inner().collect();
+    let mut atoms = Vec::new();
+    let mut ops = Vec::new();
+
+    for (i, item) in items.iter().enumerate() {
+        if i % 2 == 0 {
+            atoms.push(parse_expr_atom(item.clone()));
+        } else {
+            ops.push(parse_bin_op(item.as_str()));
+        }
+    }
+
+    build_expr_tree(&atoms, &ops)
+}
+
+fn parse_expr_atom(pair: pest::iterators::Pair<Rule>) -> Expression {
+    let inner = pair.into_inner().next().unwrap();
+    match inner.as_rule() {
+        Rule::number_lit => {
+            let mut num_inner = inner.into_inner();
+            let raw = num_inner.next().unwrap().as_str();
+            let num: f64 = raw.parse().unwrap_or(0.0);
+            let unit = num_inner.next().map(|u| match u.as_str() {
+                "px" => Unit::Px,
+                "%" => Unit::Percent,
+                "em" => Unit::Em,
+                _ => Unit::Px,
+            });
+            Expression::Literal(Value::Num(num, unit))
+        }
+        Rule::bool_lit => Expression::Literal(Value::Bool(inner.as_str() == "true")),
+        Rule::string_lit => Expression::Literal(parse_string_lit(inner)),
+        Rule::ref_path => {
+            let segments: Vec<String> = inner.as_str().split('.').map(String::from).collect();
+            Expression::StateRef(segments.join("."))
+        }
+        Rule::ident => Expression::StateRef(inner.as_str().to_string()),
+        Rule::expression => parse_expression(inner), // parenthesized
+        _ => panic!("unexpected expr_atom rule: {:?}", inner.as_rule()),
+    }
+}
+
+fn parse_bin_op(s: &str) -> BinOp {
+    match s {
+        "+" => BinOp::Add,
+        "-" => BinOp::Sub,
+        "*" => BinOp::Mul,
+        "/" => BinOp::Div,
+        "==" => BinOp::Eq,
+        "!=" => BinOp::Neq,
+        ">" => BinOp::Gt,
+        "<" => BinOp::Lt,
+        ">=" => BinOp::Gte,
+        "<=" => BinOp::Lte,
+        "&&" => BinOp::And,
+        "||" => BinOp::Or,
+        _ => panic!("unknown binary operator: {}", s),
+    }
+}
+
+fn op_precedence(op: BinOp) -> u8 {
+    match op {
+        BinOp::Or => 1,
+        BinOp::And => 2,
+        BinOp::Eq | BinOp::Neq => 3,
+        BinOp::Gt | BinOp::Lt | BinOp::Gte | BinOp::Lte => 4,
+        BinOp::Add | BinOp::Sub => 5,
+        BinOp::Mul | BinOp::Div => 6,
+    }
+}
+
+/// Build an expression tree from a flat list of atoms and operators,
+/// respecting operator precedence. Uses rightmost-lowest-precedence split
+/// for left associativity.
+fn build_expr_tree(atoms: &[Expression], ops: &[BinOp]) -> Expression {
+    assert!(!atoms.is_empty());
+    if atoms.len() == 1 {
+        return atoms[0].clone();
+    }
+
+    // Find rightmost operator with lowest precedence
+    let mut min_prec = u8::MAX;
+    let mut split_at = 0;
+    for (i, op) in ops.iter().enumerate() {
+        let prec = op_precedence(*op);
+        if prec <= min_prec {
+            min_prec = prec;
+            split_at = i;
+        }
+    }
+
+    let left = build_expr_tree(&atoms[..=split_at], &ops[..split_at]);
+    let right = build_expr_tree(&atoms[split_at + 1..], &ops[split_at + 1..]);
+    Expression::BinOp {
+        left: Box::new(left),
+        op: ops[split_at],
+        right: Box::new(right),
+    }
 }
 
 #[cfg(test)]
@@ -480,6 +690,241 @@ mod tests {
                 _ => panic!("expected Element"),
             },
             _ => panic!("expected Component"),
+        }
+    }
+
+    #[test]
+    fn parse_let_stmt() {
+        let source = "let label = \"Hello\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Let { name, value, .. } => {
+                assert_eq!(name, "label");
+                match value {
+                    Value::Str(s) => assert_eq!(s, "Hello"),
+                    _ => panic!("expected Str value"),
+                }
+            }
+            _ => panic!("expected Let node"),
+        }
+    }
+
+    #[test]
+    fn parse_state_stmt() {
+        let source = "state count = 0\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::State { name, value, .. } => {
+                assert_eq!(name, "count");
+                match value {
+                    Value::Num(n, _) => assert_eq!(*n, 0.0),
+                    _ => panic!("expected Num value"),
+                }
+            }
+            _ => panic!("expected State node"),
+        }
+    }
+
+    #[test]
+    fn parse_string_interpolation() {
+        let source = "text \"Count: {count}\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Element { props, .. } => {
+                assert_eq!(props[0].key, "__text");
+                match &props[0].value {
+                    Value::InterpolatedStr(parts) => {
+                        assert_eq!(parts.len(), 2);
+                        match &parts[0] {
+                            StringPart::Literal(s) => assert_eq!(s, "Count: "),
+                            _ => panic!("expected Literal"),
+                        }
+                        match &parts[1] {
+                            StringPart::Interpolation(segs) => assert_eq!(segs, &["count"]),
+                            _ => panic!("expected Interpolation"),
+                        }
+                    }
+                    _ => panic!("expected InterpolatedStr"),
+                }
+            }
+            _ => panic!("expected Element"),
+        }
+    }
+
+    #[test]
+    fn parse_plain_string_not_interpolated() {
+        let source = "text \"Hello world\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Element { props, .. } => match &props[0].value {
+                Value::Str(s) => assert_eq!(s, "Hello world"),
+                _ => panic!("plain string should be Value::Str, not InterpolatedStr"),
+            },
+            _ => panic!("expected Element"),
+        }
+    }
+
+    #[test]
+    fn parse_interpolation_with_ref_path() {
+        let source = "text \"Color: {theme.primary}\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Element { props, .. } => match &props[0].value {
+                Value::InterpolatedStr(parts) => {
+                    assert_eq!(parts.len(), 2);
+                    match &parts[1] {
+                        StringPart::Interpolation(segs) => {
+                            assert_eq!(segs, &["theme", "primary"]);
+                        }
+                        _ => panic!("expected Interpolation"),
+                    }
+                }
+                _ => panic!("expected InterpolatedStr"),
+            },
+            _ => panic!("expected Element"),
+        }
+    }
+
+    #[test]
+    fn parse_on_handler() {
+        let source = r#"app "Test" {
+  state count = 0
+  rect width: 100px, height: 50px, color: #ff0000 {
+    on click: set count = count + 1
+  }
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                assert_eq!(children.len(), 2); // state + rect
+                match &children[1] {
+                    Node::Element { name, handlers, .. } => {
+                        assert_eq!(name, "rect");
+                        assert_eq!(handlers.len(), 1);
+                        assert_eq!(handlers[0].event, "click");
+                        match &handlers[0].action {
+                            Action::Set { target, expr, .. } => {
+                                assert_eq!(target, "count");
+                                // expr should be count + 1
+                                match expr {
+                                    Expression::BinOp { left, op, right } => {
+                                        assert!(matches!(**left, Expression::StateRef(ref s) if s == "count"));
+                                        assert_eq!(*op, BinOp::Add);
+                                        assert!(matches!(**right, Expression::Literal(Value::Num(n, _)) if n == 1.0));
+                                    }
+                                    _ => panic!("expected BinOp expression"),
+                                }
+                            }
+                            _ => panic!("expected Set action"),
+                        }
+                    }
+                    _ => panic!("expected Element"),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_expression_precedence() {
+        // Test that * binds tighter than +: a + b * c => a + (b * c)
+        let source = r#"app "Test" {
+  state x = 0
+  rect width: 100px, height: 50px, color: #ff0000 {
+    on click: set x = x + 2 * 3
+  }
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => match &handlers[0].action {
+                    Action::Set { expr, .. } => match expr {
+                        Expression::BinOp { left, op, right } => {
+                            // Top-level should be Add: x + (2 * 3)
+                            assert_eq!(*op, BinOp::Add);
+                            assert!(matches!(**left, Expression::StateRef(ref s) if s == "x"));
+                            match &**right {
+                                Expression::BinOp { op: inner_op, .. } => {
+                                    assert_eq!(*inner_op, BinOp::Mul);
+                                }
+                                _ => panic!("expected nested BinOp for 2 * 3"),
+                            }
+                        }
+                        _ => panic!("expected BinOp"),
+                    },
+                    _ => panic!("expected Set"),
+                },
+                _ => panic!("expected Element"),
+            },
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_on_handler_literal() {
+        // on click: set count = 0 (literal value, no binop)
+        let source = r#"app "Test" {
+  state count = 0
+  rect width: 100px, height: 50px, color: #ff0000 {
+    on click: set count = 0
+  }
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    match &handlers[0].action {
+                        Action::Set { target, expr, .. } => {
+                            assert_eq!(target, "count");
+                            assert!(matches!(expr, Expression::Literal(Value::Num(n, _)) if *n == 0.0));
+                        }
+                        _ => panic!("expected Set action"),
+                    }
+                }
+                _ => panic!("expected Element"),
+            },
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_text_with_comma_props() {
+        // text "Hello", color: #ff0000 — comma between string and props
+        let source = "text \"Hello\", color: #ff0000\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Element { name, props, .. } => {
+                assert_eq!(name, "text");
+                assert_eq!(props.len(), 2);
+                assert_eq!(props[0].key, "__text");
+                assert_eq!(props[1].key, "color");
+            }
+            _ => panic!("expected Element"),
+        }
+    }
+
+    #[test]
+    fn parse_state_in_app_block() {
+        let source = r#"app "Counter" {
+  state count = 0
+  let label = "Count"
+  heading "{label}: {count}"
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                assert_eq!(children.len(), 3); // state, let, heading
+                assert!(matches!(&children[0], Node::State { name, .. } if name == "count"));
+                assert!(matches!(&children[1], Node::Let { name, .. } if name == "label"));
+            }
+            _ => panic!("expected App"),
         }
     }
 }

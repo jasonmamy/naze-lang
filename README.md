@@ -306,6 +306,8 @@ naze-lang/
     LANGUAGE.md       Language reference
     PROTOTYPE.md      Component architecture spec
     BRAINSTORM.md     Original design brainstorm
+    WISH_LIST.md      Speculative ideas (voice-driven dev, etc.)
+    LLM.md            Local LLM fine-tuning plan
 ```
 
 ## CLI
