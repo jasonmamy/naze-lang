@@ -1,0 +1,136 @@
+.properties-panel {
+  width: 280px;
+  border-left: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBarSectionHeader-background);
+}
+
+.panel-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.panel-close {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
+.panel-close:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 0;
+}
+
+.prop-group {
+  margin-bottom: 12px;
+}
+
+.prop-group-header {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-sideBarSectionHeader-background);
+}
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  gap: 8px;
+}
+
+.prop-label {
+  width: 80px;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  flex-shrink: 0;
+}
+
+.prop-input,
+.prop-select {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.color-input-wrapper {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.color-picker {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.color-text {
+  flex: 1;
+  font-family: var(--vscode-editor-font-family);
+}
+
+.add-event-btn {
+  margin: 4px 12px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px dashed var(--vscode-panel-border);
+  border-radius: 4px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  font-size: 12px;
+  width: calc(100% - 24px);
+}
+
+.add-event-btn:hover {
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-foreground);
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.event-icon {
+  font-size: 14px;
+}
+
+.event-name {
+  color: var(--vscode-symbolIcon-eventForeground, #ee9d28);
+}

@@ -5,7 +5,7 @@ use naze_compiler::error::Severity;
 use naze_compiler::resolve;
 use naze_compiler::typecheck;
 
-const WASM_SIZE_LIMIT: usize = 100 * 1024; // 100KB
+const WASM_SIZE_LIMIT: usize = 150 * 1024; // 150KB (Phase 2 budget)
 
 /// Embedded runtime WASM — same as what nazec embeds.
 const RUNTIME_WASM: &[u8] =
@@ -124,10 +124,30 @@ fn build_multi_component() { build_example("multi-component.naze"); }
 #[test]
 fn build_slots() { build_example("slots.naze"); }
 
+// --- Examples with images (Phase 2 M5) ---
+
+#[test]
+fn build_images() { build_example("images.naze"); }
+
+// --- Examples with theming (Phase 2 M6) ---
+
+#[test]
+fn build_theming() { build_example("theming.naze"); }
+
+// --- Examples with layout features (Phase 2 M7) ---
+
+#[test]
+fn build_layout_features() { build_example("layout-features.naze"); }
+
+// --- Examples with navigation (Phase 2 M8) ---
+
+#[test]
+fn build_navigation() { build_example("navigation.naze"); }
+
 // --- Runtime WASM size check ---
 
 #[test]
-fn runtime_wasm_under_100kb() {
+fn runtime_wasm_under_150kb() {
     assert!(
         RUNTIME_WASM.len() < WASM_SIZE_LIMIT,
         "runtime WASM is {}KB, exceeds {}KB limit",

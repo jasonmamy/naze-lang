@@ -5,6 +5,53 @@ use naze_parser::ast::{Node, Param, Span};
 
 use crate::error::{CompileError, Severity};
 
+/// Theme tokens for consistent styling.
+/// Tokens are resolved at compile time and inlined as values.
+#[derive(Debug, Clone)]
+pub struct Theme {
+    /// Color tokens: "primary" -> 0x2563eb
+    pub colors: HashMap<String, u32>,
+    /// Spacing tokens: "md" -> 16.0 (in pixels)
+    pub spacing: HashMap<String, f64>,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        default_theme()
+    }
+}
+
+/// Built-in default theme with common design tokens.
+pub fn default_theme() -> Theme {
+    Theme {
+        colors: [
+            ("primary", 0x2563eb),
+            ("secondary", 0x64748b),
+            ("success", 0x22c55e),
+            ("warning", 0xf59e0b),
+            ("danger", 0xdc2626),
+            ("background", 0xffffff),
+            ("foreground", 0x0f172a),
+            ("muted", 0x94a3b8),
+            ("border", 0xe2e8f0),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v))
+        .collect(),
+        spacing: [
+            ("xs", 4.0),
+            ("sm", 8.0),
+            ("md", 16.0),
+            ("lg", 24.0),
+            ("xl", 32.0),
+            ("xxl", 48.0),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v))
+        .collect(),
+    }
+}
+
 /// A parsed source file with its AST.
 #[derive(Debug, Clone)]
 pub struct SourceFile {
@@ -36,6 +83,8 @@ pub struct ResolvedProject {
     pub entry: SourceFile,
     /// All component definitions, keyed by import path.
     pub components: HashMap<String, ComponentDef>,
+    /// Theme tokens (from theme.naze or default).
+    pub theme: Theme,
     /// Errors encountered during resolution.
     pub errors: Vec<CompileError>,
 }
@@ -51,6 +100,13 @@ const BUILTIN_ELEMENTS: &[&str] = &[
     "text",
     "heading",
     "container",
+    "image",
+    "checkbox",
+    "radio",
+    "input",
+    "select",
+    "option",
+    "scroll",
 ];
 
 /// Resolve all imports for a project rooted at `project_dir` with entry file `entry`.
@@ -75,6 +131,7 @@ pub fn resolve(project_dir: &Path, entry: &str) -> ResolvedProject {
                     nodes: vec![],
                 },
                 components: HashMap::new(),
+                theme: default_theme(),
                 errors,
             };
         }
@@ -96,6 +153,7 @@ pub fn resolve(project_dir: &Path, entry: &str) -> ResolvedProject {
                     nodes: vec![],
                 },
                 components: HashMap::new(),
+                theme: default_theme(),
                 errors,
             };
         }
@@ -196,11 +254,77 @@ pub fn resolve(project_dir: &Path, entry: &str) -> ResolvedProject {
     // 6. Check for circular dependencies among component files
     check_circular_deps(&all_files, &mut errors);
 
+    // 7. Load theme (from theme.naze or use default)
+    let theme = load_theme(project_dir, &mut errors);
+
     ResolvedProject {
         entry: entry_file,
         components,
+        theme,
         errors,
     }
+}
+
+/// Load theme from theme.naze file, or return default theme if not present.
+fn load_theme(project_dir: &Path, errors: &mut Vec<CompileError>) -> Theme {
+    let theme_path = project_dir.join("theme.naze");
+    if !theme_path.exists() {
+        return default_theme();
+    }
+
+    let source = match std::fs::read_to_string(&theme_path) {
+        Ok(s) => s,
+        Err(e) => {
+            errors.push(CompileError {
+                message: format!("cannot read theme.naze: {}", e),
+                file: "theme.naze".to_string(),
+                line: 0,
+                column: 0,
+                severity: Severity::Warning,
+            });
+            return default_theme();
+        }
+    };
+
+    let nodes = match naze_parser::parse(&source, "theme.naze") {
+        Ok(n) => n,
+        Err(e) => {
+            errors.push(CompileError {
+                message: e.message,
+                file: e.file,
+                line: e.line,
+                column: e.column,
+                severity: Severity::Error,
+            });
+            return default_theme();
+        }
+    };
+
+    // Extract theme from parsed nodes
+    for node in nodes {
+        if let Node::Theme { colors, spacing, .. } = node {
+            let mut theme = default_theme();
+            // Merge custom colors (override defaults)
+            for (name, color) in colors {
+                theme.colors.insert(name, color);
+            }
+            // Merge custom spacing (override defaults)
+            for (name, value, _unit) in spacing {
+                theme.spacing.insert(name, value);
+            }
+            return theme;
+        }
+    }
+
+    // No theme block found in file
+    errors.push(CompileError {
+        message: "theme.naze must contain a theme block".to_string(),
+        file: "theme.naze".to_string(),
+        line: 0,
+        column: 0,
+        severity: Severity::Warning,
+    });
+    default_theme()
 }
 
 /// Recursively discover .naze files under `dir`, building import paths relative to `root`.

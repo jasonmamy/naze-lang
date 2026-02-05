@@ -52,15 +52,19 @@ pub fn parse(source: &str, file: &str) -> Result<Vec<Node>, ParseError> {
     for pair in file_pair.into_inner() {
         match pair.as_rule() {
             Rule::app_block => nodes.push(parse_app(pair, file)),
+            Rule::page_block => nodes.push(parse_page(pair, file)),
             Rule::component_def => nodes.push(parse_component(pair, file)),
+            Rule::theme_def => nodes.push(parse_theme(pair, file)),
             Rule::use_stmt => nodes.push(parse_use(pair, file)),
             Rule::let_stmt => nodes.push(parse_let(pair, file)),
             Rule::state_stmt => nodes.push(parse_state(pair, file)),
+            Rule::data_stmt => nodes.push(parse_data(pair, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(pair, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(pair, file)),
             Rule::on_handler => {} // on_handler at file scope is meaningless; skip
             Rule::slot_stmt => nodes.push(parse_slot_stmt(pair, file)),
             Rule::fill_stmt => nodes.push(parse_fill_stmt(pair, file)),
+            Rule::link_element => nodes.push(parse_link(pair, file)),
             Rule::element => nodes.push(parse_element(pair, file)),
             Rule::comment => nodes.push(Node::Comment(
                 pair.as_str().trim_start_matches("--").trim().to_string(),
@@ -129,6 +133,60 @@ fn parse_app(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     }
 }
 
+fn parse_page(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let path = match parse_string_lit(inner.next().unwrap()) {
+        Value::Str(s) => s,
+        Value::InterpolatedStr(parts) => {
+            // Page path doesn't support interpolation; flatten to literal text
+            parts
+                .into_iter()
+                .map(|p| match p {
+                    StringPart::Literal(s) => s,
+                    StringPart::Interpolation(segs) => format!("{{{}}}", segs.join(".")),
+                })
+                .collect()
+        }
+        _ => String::new(),
+    };
+    let block = inner.next().unwrap();
+    let contents = parse_block(block, file);
+
+    Node::Page {
+        path,
+        children: contents.nodes,
+        span,
+    }
+}
+
+fn parse_link(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let text = parse_string_lit(inner.next().unwrap());
+    let to = match parse_string_lit(inner.next().unwrap()) {
+        Value::Str(s) => s,
+        _ => String::new(),
+    };
+
+    let mut children = Vec::new();
+    if let Some(block) = inner.next() {
+        if block.as_rule() == Rule::block {
+            let contents = parse_block(block, file);
+            children = contents.nodes;
+        }
+    }
+
+    Node::Link {
+        text,
+        to,
+        children,
+        span,
+    }
+}
+
 fn parse_component(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let mut inner = pair.into_inner();
@@ -156,6 +214,54 @@ fn parse_component(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
         name,
         params,
         children,
+        span,
+    }
+}
+
+fn parse_theme(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut colors = Vec::new();
+    let mut spacing = Vec::new();
+
+    // theme_def contains a theme_block
+    let theme_block = pair.into_inner().next().unwrap();
+
+    for section in theme_block.into_inner() {
+        if section.as_rule() != Rule::theme_section {
+            continue;
+        }
+
+        let mut section_inner = section.into_inner();
+        let section_name = section_inner.next().unwrap().as_str();
+
+        for entry in section_inner {
+            if entry.as_rule() != Rule::theme_entry {
+                continue;
+            }
+
+            let mut entry_inner = entry.into_inner();
+            let name = entry_inner.next().unwrap().as_str().to_string();
+            let value = parse_value(entry_inner.next().unwrap());
+
+            match section_name {
+                "colors" => {
+                    if let Value::Color(c) = value {
+                        colors.push((name, c));
+                    }
+                }
+                "spacing" => {
+                    if let Value::Num(n, unit) = value {
+                        spacing.push((name, n, unit));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Node::Theme {
+        colors,
+        spacing,
         span,
     }
 }
@@ -199,6 +305,19 @@ fn parse_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let name = inner.next().unwrap().as_str().to_string();
     let value = parse_value(inner.next().unwrap());
     Node::State { name, value, span }
+}
+
+fn parse_data(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let url_pair = inner.next().unwrap();
+    // Extract string content (removing quotes)
+    let url = match parse_string_lit(url_pair) {
+        Value::Str(s) => s,
+        _ => String::new(), // Should not happen for data URLs
+    };
+    Node::Data { name, url, span }
 }
 
 fn parse_if_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -369,6 +488,19 @@ fn parse_prop(pair: pest::iterators::Pair<Rule>) -> Prop {
     let mut inner = pair.into_inner();
     let key = inner.next().unwrap().as_str().to_string();
     let value = parse_value(inner.next().unwrap());
+
+    // Convert bind: stateVar to Value::Bind for two-way binding
+    if key == "bind" {
+        if let Value::Ref(ref parts) = value {
+            if parts.len() == 1 {
+                return Prop {
+                    key,
+                    value: Value::Bind(parts[0].clone()),
+                };
+            }
+        }
+    }
+
     Prop { key, value }
 }
 
@@ -413,6 +545,17 @@ fn parse_value(pair: pest::iterators::Pair<Rule>) -> Value {
         Rule::list_lit => {
             let items: Vec<Value> = inner.into_inner().map(parse_value).collect();
             Value::List(items)
+        }
+        Rule::object_lit => {
+            let entries: Vec<(String, Value)> = inner.into_inner()
+                .map(|entry| {
+                    let mut entry_inner = entry.into_inner();
+                    let key = entry_inner.next().unwrap().as_str().to_string();
+                    let value = parse_value(entry_inner.next().unwrap());
+                    (key, value)
+                })
+                .collect();
+            Value::Object(entries)
         }
         _ => panic!("unexpected value rule: {:?}", inner.as_rule()),
     }
@@ -468,15 +611,18 @@ fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> BlockContents {
     for p in pair.into_inner() {
         match p.as_rule() {
             Rule::app_block => nodes.push(parse_app(p, file)),
+            Rule::page_block => nodes.push(parse_page(p, file)),
             Rule::component_def => nodes.push(parse_component(p, file)),
             Rule::use_stmt => nodes.push(parse_use(p, file)),
             Rule::let_stmt => nodes.push(parse_let(p, file)),
             Rule::state_stmt => nodes.push(parse_state(p, file)),
+            Rule::data_stmt => nodes.push(parse_data(p, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(p, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(p, file)),
             Rule::on_handler => handlers.push(parse_on_handler(p, file)),
             Rule::slot_stmt => nodes.push(parse_slot_stmt(p, file)),
             Rule::fill_stmt => nodes.push(parse_fill_stmt(p, file)),
+            Rule::link_element => nodes.push(parse_link(p, file)),
             Rule::element => nodes.push(parse_element(p, file)),
             Rule::comment => nodes.push(Node::Comment(
                 p.as_str().trim_start_matches("--").trim().to_string(),
@@ -512,6 +658,19 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
                 _ => String::new(),
             };
             Action::Navigate { path, span }
+        }
+        Rule::scroll_to_action => {
+            let mut inner = pair.into_inner();
+            let element_id = match parse_string_lit(inner.next().unwrap()) {
+                Value::Str(s) => s,
+                _ => String::new(),
+            };
+            Action::ScrollTo { element_id, span }
+        }
+        Rule::log_action => {
+            let mut inner = pair.into_inner();
+            let expr = parse_expression(inner.next().unwrap());
+            Action::Log { expr, span }
         }
         _ => panic!("unexpected action rule: {:?}", pair.as_rule()),
     }
@@ -1011,6 +1170,34 @@ mod tests {
     }
 
     #[test]
+    fn parse_log_action() {
+        let source = r#"app "Test" {
+  state count = 0
+  rect {
+    on click: log count
+  }
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    assert_eq!(handlers[0].event, "click");
+                    match &handlers[0].action {
+                        Action::Log { expr, .. } => {
+                            assert!(matches!(expr, Expression::StateRef(s) if s == "count"));
+                        }
+                        _ => panic!("expected Log action"),
+                    }
+                }
+                _ => panic!("expected Element"),
+            },
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
     fn parse_text_with_comma_props() {
         // text "Hello", color: #ff0000 — comma between string and props
         let source = "text \"Hello\", color: #ff0000\n";
@@ -1283,6 +1470,108 @@ mod tests {
                         }
                     }
                     other => panic!("expected State, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_theme_def() {
+        let source = r#"theme {
+  colors {
+    primary: #2563eb
+    danger: #dc2626
+  }
+  spacing {
+    sm: 8px
+    md: 16px
+  }
+}
+"#;
+        let nodes = parse(source, "theme.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Theme {
+                colors, spacing, ..
+            } => {
+                assert_eq!(colors.len(), 2);
+                assert_eq!(colors[0].0, "primary");
+                assert_eq!(colors[0].1, 0x2563eb);
+                assert_eq!(colors[1].0, "danger");
+                assert_eq!(colors[1].1, 0xdc2626);
+
+                assert_eq!(spacing.len(), 2);
+                assert_eq!(spacing[0].0, "sm");
+                assert_eq!(spacing[0].1, 8.0);
+                assert!(matches!(spacing[0].2, Some(Unit::Px)));
+                assert_eq!(spacing[1].0, "md");
+                assert_eq!(spacing[1].1, 16.0);
+            }
+            other => panic!("expected Theme, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_page_block() {
+        let source = r#"page "/about" {
+  heading "About Page"
+  text "This is the about page."
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Page { path, children, .. } => {
+                assert_eq!(path, "/about");
+                assert_eq!(children.len(), 2);
+            }
+            other => panic!("expected Page, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_link_element() {
+        let source = r#"link "Go to About", to: "/about"
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Link { text, to, children, .. } => {
+                match text {
+                    Value::Str(s) => assert_eq!(s, "Go to About"),
+                    _ => panic!("expected Str for link text"),
+                }
+                assert_eq!(to, "/about");
+                assert!(children.is_empty());
+            }
+            other => panic!("expected Link, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_multiple_pages() {
+        let source = r#"app "My App" {
+  page "/" {
+    heading "Home"
+  }
+  page "/about" {
+    heading "About"
+  }
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                assert_eq!(children.len(), 2);
+                match &children[0] {
+                    Node::Page { path, .. } => assert_eq!(path, "/"),
+                    other => panic!("expected Page, got {:?}", other),
+                }
+                match &children[1] {
+                    Node::Page { path, .. } => assert_eq!(path, "/about"),
+                    other => panic!("expected Page, got {:?}", other),
                 }
             }
             _ => panic!("expected App"),

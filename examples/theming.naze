@@ -1,0 +1,57 @@
+-- M6: Theming Example
+-- Demonstrates using theme tokens for consistent styling
+-- Tokens like theme.colors.primary are resolved at compile time
+
+app "Theming Demo" {
+  column padding: theme.spacing.lg, gap: theme.spacing.md, color: theme.colors.background {
+    heading "Design Tokens" color: theme.colors.foreground
+
+    -- Color tokens
+    text "Colors" color: theme.colors.muted
+    row gap: theme.spacing.sm {
+      rect width: 60px, height: 60px, color: theme.colors.primary, radius: 8px
+      rect width: 60px, height: 60px, color: theme.colors.secondary, radius: 8px
+      rect width: 60px, height: 60px, color: theme.colors.success, radius: 8px
+      rect width: 60px, height: 60px, color: theme.colors.warning, radius: 8px
+      rect width: 60px, height: 60px, color: theme.colors.danger, radius: 8px
+    }
+
+    -- Spacing tokens
+    text "Spacing Scale" color: theme.colors.muted
+    column gap: theme.spacing.xs {
+      row gap: theme.spacing.xs {
+        rect width: theme.spacing.xs, height: 24px, color: theme.colors.primary
+        text "xs (4px)" color: theme.colors.foreground
+      }
+      row gap: theme.spacing.xs {
+        rect width: theme.spacing.sm, height: 24px, color: theme.colors.primary
+        text "sm (8px)" color: theme.colors.foreground
+      }
+      row gap: theme.spacing.xs {
+        rect width: theme.spacing.md, height: 24px, color: theme.colors.primary
+        text "md (16px)" color: theme.colors.foreground
+      }
+      row gap: theme.spacing.xs {
+        rect width: theme.spacing.lg, height: 24px, color: theme.colors.primary
+        text "lg (24px)" color: theme.colors.foreground
+      }
+      row gap: theme.spacing.xs {
+        rect width: theme.spacing.xl, height: 24px, color: theme.colors.primary
+        text "xl (32px)" color: theme.colors.foreground
+      }
+    }
+
+    -- Card using theme tokens
+    text "Themed Card" color: theme.colors.muted
+    container padding: theme.spacing.md, color: #ffffff, border: 1px, border-color: theme.colors.border, radius: 8px {
+      column gap: theme.spacing.sm {
+        heading "Card Title" color: theme.colors.foreground
+        text "This card uses theme tokens for padding, colors, and border." color: theme.colors.muted
+        row gap: theme.spacing.sm {
+          rect width: 80px, height: 32px, color: theme.colors.primary, radius: 4px
+          rect width: 80px, height: 32px, color: theme.colors.secondary, radius: 4px
+        }
+      }
+    }
+  }
+}

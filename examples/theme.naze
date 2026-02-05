@@ -1,0 +1,25 @@
+-- M6: Theme Definition File
+-- Place this file in your project root to customize the design tokens
+-- All values override the defaults, so you only need to specify what you change
+
+theme {
+  colors {
+    primary: #6366f1
+    secondary: #ec4899
+    success: #10b981
+    warning: #f59e0b
+    danger: #ef4444
+    background: #f8fafc
+    foreground: #1e293b
+    muted: #94a3b8
+    border: #e2e8f0
+  }
+  spacing {
+    xs: 4px
+    sm: 8px
+    md: 16px
+    lg: 24px
+    xl: 32px
+    xxl: 48px
+  }
+}

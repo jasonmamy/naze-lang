@@ -1,0 +1,44 @@
+.toolbar {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--vscode-sideBar-background);
+}
+
+.toolbar-icon {
+  font-size: 18px;
+}
+
+.toolbar-title {
+  font-weight: 600;
+  flex: 1;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--vscode-button-border, transparent);
+  color: var(--vscode-foreground);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.toolbar-btn.active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}

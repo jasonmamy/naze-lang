@@ -1,0 +1,42 @@
+# Source files (compiled to out/)
+src/**
+webview/src/**
+webview/node_modules/**
+webview/package.json
+webview/package-lock.json
+webview/tsconfig.json
+webview/vite.config.ts
+
+# Development dependencies (keep production deps in node_modules)
+node_modules/@types/**
+node_modules/@typescript-eslint/**
+node_modules/@vscode/vsce/**
+node_modules/eslint/**
+node_modules/typescript/**
+
+# TypeScript config
+tsconfig.json
+
+# Build artifacts not needed in extension
+**/*.ts
+!**/*.d.ts
+
+# Test files
+**/*.test.js
+**/*.test.ts
+**/test/**
+
+# Development files
+.gitignore
+.eslintrc*
+.prettierrc*
+**/*.map
+
+# Editor files
+.vscode/**
+**/.vscode/**
+
+# Other
+*.md
+!README.md
+CHANGELOG.md

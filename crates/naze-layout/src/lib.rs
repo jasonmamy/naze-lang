@@ -5,6 +5,16 @@ use naze_ir::{IrEventHandler, RenderNode, RenderTree, RenderValue};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+/// Information about scroll container content bounds.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ScrollInfo {
+    pub content_width: f32,
+    pub content_height: f32,
+    pub overflow_x: bool,
+    pub overflow_y: bool,
+}
+
 /// A positioned node with absolute coordinates, ready for rendering.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -17,6 +27,7 @@ pub struct PositionedNode {
     pub width: f32,
     pub height: f32,
     pub children: Vec<PositionedNode>,
+    pub scroll_info: Option<ScrollInfo>,
 }
 
 /// The result of layout computation: positioned tree + app title.
@@ -130,6 +141,18 @@ fn layout_children_column<F: Fn(&str, f32) -> (f32, f32)>(
     out
 }
 
+/// Apply min/max constraints to a dimension.
+fn apply_constraints(value: f32, min: Option<f32>, max: Option<f32>) -> f32 {
+    let mut result = value;
+    if let Some(min_val) = min {
+        result = result.max(min_val);
+    }
+    if let Some(max_val) = max {
+        result = result.min(max_val);
+    }
+    result
+}
+
 /// Measure a node's intrinsic size (width, height) without positioning.
 fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
     node: &RenderNode,
@@ -137,12 +160,17 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
     available_h: f32,
     text_measure: &F,
 ) -> (f32, f32) {
-    let explicit_w = get_num_prop(node, "width").map(|v| v as f32);
-    let explicit_h = get_num_prop(node, "height").map(|v| v as f32);
+    // Resolve dimensions with percentage support
+    let explicit_w = resolve_dimension(node, "width", available_w);
+    let explicit_h = resolve_dimension(node, "height", available_h);
+    let min_w = resolve_dimension(node, "min-width", available_w);
+    let max_w = resolve_dimension(node, "max-width", available_w);
+    let min_h = resolve_dimension(node, "min-height", available_h);
+    let max_h = resolve_dimension(node, "max-height", available_h);
     let padding = get_num_prop(node, "padding").unwrap_or(0.0) as f32;
     let gap = get_num_prop(node, "gap").unwrap_or(0.0) as f32;
 
-    match node.kind.as_str() {
+    let (w, h) = match node.kind.as_str() {
         "text" | "heading" => {
             let text = get_text_content(node);
             let font_size = get_font_size(node);
@@ -152,25 +180,100 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
         "rect" => {
             (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0))
         }
+        "image" => {
+            // Images default to 100x100 if no explicit size
+            (explicit_w.unwrap_or(100.0), explicit_h.unwrap_or(100.0))
+        }
+        "checkbox" => {
+            // Checkbox: 20x20 box + 8px gap + label
+            let label = get_text_content(node);
+            let font_size = get_font_size(node);
+            let (label_w, label_h) = text_measure(&label, font_size);
+            let w = 20.0 + 8.0 + label_w;
+            let h = label_h.max(20.0);
+            (explicit_w.unwrap_or(w), explicit_h.unwrap_or(h))
+        }
+        "radio" => {
+            // Radio: 20x20 circle + 8px gap + label
+            let label = get_text_content(node);
+            let font_size = get_font_size(node);
+            let (label_w, label_h) = text_measure(&label, font_size);
+            let w = 20.0 + 8.0 + label_w;
+            let h = label_h.max(20.0);
+            (explicit_w.unwrap_or(w), explicit_h.unwrap_or(h))
+        }
+        "input" => {
+            // Text input: default width 200px, height based on font size + padding
+            let font_size = get_font_size(node);
+            let h = font_size + 16.0; // 8px padding top + bottom
+            (explicit_w.unwrap_or(200.0), explicit_h.unwrap_or(h))
+        }
+        "select" => {
+            // Dropdown select: default 200px wide, 32px tall
+            (explicit_w.unwrap_or(200.0), explicit_h.unwrap_or(32.0))
+        }
+        "option" => {
+            // Options are rendered in dropdown overlay, not laid out directly
+            (0.0, 0.0)
+        }
         "spacer" => {
             (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0))
         }
         "row" => {
+            let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
             let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
             let inner_h = explicit_h.map(|h| h - padding * 2.0).unwrap_or(available_h);
-            let mut total_w: f32 = 0.0;
-            let mut max_h: f32 = 0.0;
-            for (i, child) in node.children.iter().enumerate() {
-                let (cw, ch) = measure_node(child, inner_w, inner_h, text_measure);
-                total_w += cw;
-                if i > 0 {
-                    total_w += gap;
+
+            if wrap {
+                // Wrapping row: calculate height based on wrapped lines
+                let mut row_w: f32 = 0.0;
+                let mut row_h: f32 = 0.0;
+                let mut total_h: f32 = 0.0;
+                let mut row_count = 0;
+
+                for child in node.children.iter() {
+                    let (cw, ch) = measure_node(child, inner_w, inner_h, text_measure);
+                    let item_gap = if row_w > 0.0 { gap } else { 0.0 };
+
+                    if row_w > 0.0 && row_w + item_gap + cw > inner_w {
+                        // Wrap to next row
+                        if row_count > 0 {
+                            total_h += gap;
+                        }
+                        total_h += row_h;
+                        row_count += 1;
+                        row_w = cw;
+                        row_h = ch;
+                    } else {
+                        row_w += item_gap + cw;
+                        row_h = row_h.max(ch);
+                    }
                 }
-                max_h = max_h.max(ch);
+                // Add final row
+                if row_count > 0 {
+                    total_h += gap;
+                }
+                total_h += row_h;
+
+                let w = explicit_w.unwrap_or(inner_w + padding * 2.0);
+                let h = explicit_h.unwrap_or(total_h + padding * 2.0);
+                (w, h)
+            } else {
+                // Non-wrapping row
+                let mut total_w: f32 = 0.0;
+                let mut max_h: f32 = 0.0;
+                for (i, child) in node.children.iter().enumerate() {
+                    let (cw, ch) = measure_node(child, inner_w, inner_h, text_measure);
+                    total_w += cw;
+                    if i > 0 {
+                        total_w += gap;
+                    }
+                    max_h = max_h.max(ch);
+                }
+                let w = explicit_w.unwrap_or(total_w + padding * 2.0);
+                let h = explicit_h.unwrap_or(max_h + padding * 2.0);
+                (w, h)
             }
-            let w = explicit_w.unwrap_or(total_w + padding * 2.0);
-            let h = explicit_h.unwrap_or(max_h + padding * 2.0);
-            (w, h)
         }
         "column" | "container" | "stack" => {
             let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
@@ -216,6 +319,13 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             let h = explicit_h.unwrap_or(total_h + padding * 2.0);
             (w, h)
         }
+        "scroll" => {
+            // Scroll containers use explicit dimensions or available space
+            // Content is measured but doesn't affect container size
+            let w = explicit_w.unwrap_or(available_w);
+            let h = explicit_h.unwrap_or(available_h);
+            (w, h)
+        }
         _ => {
             // Unknown: treat like column
             let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
@@ -231,7 +341,10 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             let h = explicit_h.unwrap_or(total_h + padding * 2.0);
             (w, h)
         }
-    }
+    };
+
+    // Apply min/max constraints
+    (apply_constraints(w, min_w, max_w), apply_constraints(h, min_h, max_h))
 }
 
 /// Layout a single node at the given position with the given size.
@@ -247,15 +360,27 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
 ) -> PositionedNode {
     let padding = get_num_prop(node, "padding").unwrap_or(0.0) as f32;
     let gap = get_num_prop(node, "gap").unwrap_or(0.0) as f32;
+    let align = get_str_prop(node, "align").unwrap_or("stretch");
+    let justify = get_str_prop(node, "justify").unwrap_or("start");
+
+    // Handle scroll containers specially
+    if node.kind == "scroll" {
+        return layout_scroll_node(node, x, y, width, height, padding, gap, align, justify, text_measure);
+    }
 
     let children = match node.kind.as_str() {
-        "text" | "heading" | "rect" | "spacer" => Vec::new(),
+        "text" | "heading" | "rect" | "spacer" | "image" | "checkbox" | "radio" | "input" | "select" | "option" => Vec::new(),
         "row" => {
             let inner_x = x + padding;
             let inner_y = y + padding;
             let inner_w = width - padding * 2.0;
             let inner_h = height - padding * 2.0;
-            layout_row(&node.children, inner_x, inner_y, inner_w, inner_h, gap, text_measure)
+            let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
+            if wrap {
+                layout_row_wrap(&node.children, inner_x, inner_y, inner_w, inner_h, gap, align, text_measure)
+            } else {
+                layout_row(&node.children, inner_x, inner_y, inner_w, inner_h, gap, align, justify, text_measure)
+            }
         }
         "grid" => {
             let inner_x = x + padding;
@@ -270,7 +395,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
             let inner_y = y + padding;
             let inner_w = width - padding * 2.0;
             let inner_h = height - padding * 2.0;
-            layout_column(&node.children, inner_x, inner_y, inner_w, inner_h, gap, text_measure)
+            layout_column(&node.children, inner_x, inner_y, inner_w, inner_h, gap, align, justify, text_measure)
         }
     };
 
@@ -283,10 +408,80 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
         width,
         height,
         children,
+        scroll_info: None,
     }
 }
 
-/// Layout children in a column with gap.
+/// Layout a scroll container. Children are laid out with unbounded space in scroll direction,
+/// and scroll_info tracks the total content size.
+fn layout_scroll_node<F: Fn(&str, f32) -> (f32, f32)>(
+    node: &RenderNode,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    padding: f32,
+    gap: f32,
+    align: &str,
+    justify: &str,
+    text_measure: &F,
+) -> PositionedNode {
+    let inner_x = x + padding;
+    let inner_y = y + padding;
+    let inner_w = width - padding * 2.0;
+    let inner_h = height - padding * 2.0;
+
+    // Determine overflow direction from "overflow" prop (default: "y")
+    let overflow = get_str_prop(node, "overflow").unwrap_or("y");
+    let overflow_x = overflow == "x" || overflow == "both";
+    let overflow_y = overflow == "y" || overflow == "both" || (!overflow_x && overflow != "x");
+
+    // Layout children with unbounded space in scroll direction
+    let child_available_w = if overflow_x { f32::MAX } else { inner_w };
+    let child_available_h = if overflow_y { f32::MAX } else { inner_h };
+
+    // Use column layout for vertical scroll, row layout for horizontal
+    let children = if overflow_x && !overflow_y {
+        // Horizontal scroll - use row layout
+        layout_row(&node.children, inner_x, inner_y, child_available_w, inner_h, gap, align, justify, text_measure)
+    } else {
+        // Vertical scroll (default) or both - use column layout
+        layout_column(&node.children, inner_x, inner_y, inner_w, child_available_h, gap, align, justify, text_measure)
+    };
+
+    // Calculate content bounds from children
+    let (content_width, content_height) = calculate_content_bounds(&children, inner_x, inner_y);
+
+    PositionedNode {
+        kind: node.kind.clone(),
+        props: node.props.clone(),
+        handlers: node.handlers.clone(),
+        x,
+        y,
+        width,
+        height,
+        children,
+        scroll_info: Some(ScrollInfo {
+            content_width,
+            content_height,
+            overflow_x,
+            overflow_y,
+        }),
+    }
+}
+
+/// Calculate the total content bounds from positioned children.
+fn calculate_content_bounds(nodes: &[PositionedNode], origin_x: f32, origin_y: f32) -> (f32, f32) {
+    let mut max_x: f32 = 0.0;
+    let mut max_y: f32 = 0.0;
+    for node in nodes {
+        max_x = max_x.max(node.x + node.width - origin_x);
+        max_y = max_y.max(node.y + node.height - origin_y);
+    }
+    (max_x, max_y)
+}
+
+/// Layout children in a column with gap, align (cross-axis), and justify (main-axis).
 fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
     nodes: &[RenderNode],
     x: f32,
@@ -294,50 +489,111 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
     available_w: f32,
     available_h: f32,
     gap: f32,
+    align: &str,    // cross-axis: "start", "center", "end", "stretch" (default)
+    justify: &str,  // main-axis: "start" (default), "center", "end", "space-between", "space-around", "space-evenly"
     text_measure: &F,
 ) -> Vec<PositionedNode> {
-    let mut out = Vec::with_capacity(nodes.len());
-    let mut cursor_y = y;
+    if nodes.is_empty() {
+        return Vec::new();
+    }
 
-    // Count spacers and measure fixed children
+    let mut out = Vec::with_capacity(nodes.len());
+
+    // Count spacers/flex-grow/flex-shrink and measure fixed children
     let mut child_sizes: Vec<(f32, f32)> = Vec::with_capacity(nodes.len());
     let mut total_fixed_h: f32 = 0.0;
-    let mut spacer_count: u32 = 0;
+    let mut total_flex_grow: f32 = 0.0;
+    let mut total_flex_shrink: f32 = 0.0;
+    let mut flex_grows: Vec<f32> = Vec::with_capacity(nodes.len());
+    let mut flex_shrinks: Vec<f32> = Vec::with_capacity(nodes.len());
 
     for node in nodes {
-        if node.kind == "spacer" && get_num_prop(node, "height").is_none() {
-            spacer_count += 1;
+        let flex_grow = get_num_prop(node, "flex-grow").unwrap_or(0.0) as f32;
+        let flex_shrink = get_num_prop(node, "flex-shrink").unwrap_or(1.0) as f32; // Default 1
+        let is_auto_spacer = node.kind == "spacer" && get_num_prop(node, "height").is_none();
+
+        if is_auto_spacer {
+            // Auto spacers have implicit flex-grow: 1, flex-shrink: 0 (don't shrink to negative)
+            flex_grows.push(1.0);
+            flex_shrinks.push(0.0);
+            total_flex_grow += 1.0;
             child_sizes.push((0.0, 0.0));
         } else {
+            flex_grows.push(flex_grow);
+            flex_shrinks.push(flex_shrink);
+            if flex_grow > 0.0 {
+                total_flex_grow += flex_grow;
+            }
             let (w, h) = measure_node(node, available_w, available_h, text_measure);
             child_sizes.push((w, h));
             total_fixed_h += h;
+            // Track shrinkable size (flex-shrink * size)
+            total_flex_shrink += flex_shrink * h;
         }
     }
 
-    let total_gaps = if nodes.len() > 1 {
-        gap * (nodes.len() as f32 - 1.0)
+    let total_gaps = if nodes.len() > 1 { gap * (nodes.len() as f32 - 1.0) } else { 0.0 };
+    let space_diff = available_h - total_fixed_h - total_gaps;
+
+    // Determine if we're growing or shrinking
+    let (start_offset, between_gap, final_sizes) = if space_diff >= 0.0 {
+        // Positive space: distribute with flex-grow
+        let (start, gap) = calculate_justify_spacing(
+            justify, space_diff.max(0.0), nodes.len(), gap, total_flex_grow > 0.0
+        );
+
+        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, node)| {
+            let (_, measured_h) = child_sizes[i];
+            let flex = flex_grows[i];
+            if flex > 0.0 && total_flex_grow > 0.0 {
+                let flex_share = space_diff * (flex / total_flex_grow);
+                if node.kind == "spacer" { flex_share } else { measured_h + flex_share }
+            } else {
+                measured_h
+            }
+        }).collect();
+
+        (start, gap, sizes)
     } else {
-        0.0
+        // Negative space: shrink with flex-shrink
+        let overflow = -space_diff;
+
+        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, _node)| {
+            let (_, measured_h) = child_sizes[i];
+            let shrink = flex_shrinks[i];
+            if shrink > 0.0 && total_flex_shrink > 0.0 {
+                let shrink_amount = overflow * (shrink * measured_h) / total_flex_shrink;
+                (measured_h - shrink_amount).max(0.0)
+            } else {
+                measured_h
+            }
+        }).collect();
+
+        (0.0, gap, sizes)
     };
-    let remaining = (available_h - total_fixed_h - total_gaps).max(0.0);
-    let spacer_h = if spacer_count > 0 {
-        remaining / spacer_count as f32
-    } else {
-        0.0
-    };
+
+    let mut cursor_y = y + start_offset;
 
     for (i, node) in nodes.iter().enumerate() {
         if i > 0 {
-            cursor_y += gap;
+            cursor_y += between_gap;
         }
-        let (w, h) = if node.kind == "spacer" && get_num_prop(node, "height").is_none() {
-            (available_w, spacer_h)
-        } else {
-            child_sizes[i]
+
+        let (measured_w, _) = child_sizes[i];
+        let h = final_sizes[i];
+
+        // Calculate x position based on align (cross-axis)
+        let w = match align {
+            "stretch" => available_w,
+            _ => measured_w,
+        };
+        let child_x = match align {
+            "center" => x + (available_w - w) / 2.0,
+            "end" => x + available_w - w,
+            _ => x, // start, stretch
         };
 
-        let positioned = layout_node(node, x, cursor_y, w, h, available_w, available_h, text_measure);
+        let positioned = layout_node(node, child_x, cursor_y, w, h, available_w, available_h, text_measure);
         cursor_y += positioned.height;
         out.push(positioned);
     }
@@ -345,7 +601,40 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
     out
 }
 
-/// Layout children in a row with gap.
+/// Calculate justify spacing offsets.
+/// Returns (start_offset, gap_between_items).
+fn calculate_justify_spacing(
+    justify: &str,
+    remaining: f32,
+    item_count: usize,
+    gap: f32,
+    has_flex: bool,
+) -> (f32, f32) {
+    // If there's flex content, justify doesn't add extra space (flex takes it)
+    if has_flex {
+        return (0.0, gap);
+    }
+
+    match justify {
+        "center" => (remaining / 2.0, gap),
+        "end" => (remaining, gap),
+        "space-between" if item_count > 1 => {
+            let extra_gap = remaining / (item_count as f32 - 1.0);
+            (0.0, gap + extra_gap)
+        }
+        "space-around" if item_count > 0 => {
+            let space = remaining / item_count as f32;
+            (space / 2.0, gap + space)
+        }
+        "space-evenly" if item_count > 0 => {
+            let space = remaining / (item_count as f32 + 1.0);
+            (space, gap + space)
+        }
+        _ => (0.0, gap), // "start" or default
+    }
+}
+
+/// Layout children in a row with gap, align (cross-axis), and justify (main-axis).
 fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
     nodes: &[RenderNode],
     x: f32,
@@ -353,51 +642,193 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
     available_w: f32,
     available_h: f32,
     gap: f32,
+    align: &str,    // cross-axis: "start", "center", "end", "stretch" (default)
+    justify: &str,  // main-axis: "start" (default), "center", "end", "space-between", etc.
     text_measure: &F,
 ) -> Vec<PositionedNode> {
-    let mut out = Vec::with_capacity(nodes.len());
-    let mut cursor_x = x;
+    if nodes.is_empty() {
+        return Vec::new();
+    }
 
-    // Count spacers and measure fixed children
+    let mut out = Vec::with_capacity(nodes.len());
+
+    // Count spacers/flex-grow/flex-shrink and measure fixed children
     let mut child_sizes: Vec<(f32, f32)> = Vec::with_capacity(nodes.len());
     let mut total_fixed_w: f32 = 0.0;
-    let mut spacer_count: u32 = 0;
+    let mut total_flex_grow: f32 = 0.0;
+    let mut total_flex_shrink: f32 = 0.0;
+    let mut flex_grows: Vec<f32> = Vec::with_capacity(nodes.len());
+    let mut flex_shrinks: Vec<f32> = Vec::with_capacity(nodes.len());
 
     for node in nodes {
-        if node.kind == "spacer" && get_num_prop(node, "width").is_none() {
-            spacer_count += 1;
+        let flex_grow = get_num_prop(node, "flex-grow").unwrap_or(0.0) as f32;
+        let flex_shrink = get_num_prop(node, "flex-shrink").unwrap_or(1.0) as f32; // Default 1
+        let is_auto_spacer = node.kind == "spacer" && get_num_prop(node, "width").is_none();
+
+        if is_auto_spacer {
+            flex_grows.push(1.0);
+            flex_shrinks.push(0.0);
+            total_flex_grow += 1.0;
             child_sizes.push((0.0, 0.0));
         } else {
+            flex_grows.push(flex_grow);
+            flex_shrinks.push(flex_shrink);
+            if flex_grow > 0.0 {
+                total_flex_grow += flex_grow;
+            }
             let (w, h) = measure_node(node, available_w, available_h, text_measure);
             child_sizes.push((w, h));
             total_fixed_w += w;
+            total_flex_shrink += flex_shrink * w;
         }
     }
 
-    let total_gaps = if nodes.len() > 1 {
-        gap * (nodes.len() as f32 - 1.0)
+    let total_gaps = if nodes.len() > 1 { gap * (nodes.len() as f32 - 1.0) } else { 0.0 };
+    let space_diff = available_w - total_fixed_w - total_gaps;
+
+    // Determine if we're growing or shrinking
+    let (start_offset, between_gap, final_sizes) = if space_diff >= 0.0 {
+        // Positive space: distribute with flex-grow
+        let (start, gap) = calculate_justify_spacing(
+            justify, space_diff.max(0.0), nodes.len(), gap, total_flex_grow > 0.0
+        );
+
+        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, node)| {
+            let (measured_w, _) = child_sizes[i];
+            let flex = flex_grows[i];
+            if flex > 0.0 && total_flex_grow > 0.0 {
+                let flex_share = space_diff * (flex / total_flex_grow);
+                if node.kind == "spacer" { flex_share } else { measured_w + flex_share }
+            } else {
+                measured_w
+            }
+        }).collect();
+
+        (start, gap, sizes)
     } else {
-        0.0
+        // Negative space: shrink with flex-shrink
+        let overflow = -space_diff;
+
+        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, _node)| {
+            let (measured_w, _) = child_sizes[i];
+            let shrink = flex_shrinks[i];
+            if shrink > 0.0 && total_flex_shrink > 0.0 {
+                let shrink_amount = overflow * (shrink * measured_w) / total_flex_shrink;
+                (measured_w - shrink_amount).max(0.0)
+            } else {
+                measured_w
+            }
+        }).collect();
+
+        (0.0, gap, sizes)
     };
-    let remaining = (available_w - total_fixed_w - total_gaps).max(0.0);
-    let spacer_w = if spacer_count > 0 {
-        remaining / spacer_count as f32
-    } else {
-        0.0
-    };
+
+    let mut cursor_x = x + start_offset;
 
     for (i, node) in nodes.iter().enumerate() {
         if i > 0 {
-            cursor_x += gap;
+            cursor_x += between_gap;
         }
-        let (w, h) = if node.kind == "spacer" && get_num_prop(node, "width").is_none() {
-            (spacer_w, available_h)
-        } else {
-            child_sizes[i]
+
+        let (_, measured_h) = child_sizes[i];
+        let w = final_sizes[i];
+
+        // Calculate y position based on align (cross-axis)
+        let h = match align {
+            "stretch" => available_h,
+            _ => measured_h,
+        };
+        let child_y = match align {
+            "center" => y + (available_h - h) / 2.0,
+            "end" => y + available_h - h,
+            _ => y, // start, stretch
         };
 
-        let positioned = layout_node(node, cursor_x, y, w, h, available_w, available_h, text_measure);
+        let positioned = layout_node(node, cursor_x, child_y, w, h, available_w, available_h, text_measure);
         cursor_x += positioned.width;
+        out.push(positioned);
+    }
+
+    out
+}
+
+/// Layout children in a row with wrapping.
+fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
+    nodes: &[RenderNode],
+    x: f32,
+    y: f32,
+    available_w: f32,
+    available_h: f32,
+    gap: f32,
+    align: &str,
+    text_measure: &F,
+) -> Vec<PositionedNode> {
+    if nodes.is_empty() {
+        return Vec::new();
+    }
+
+    let mut out = Vec::with_capacity(nodes.len());
+
+    // First pass: measure all children
+    let child_sizes: Vec<(f32, f32)> = nodes
+        .iter()
+        .map(|node| measure_node(node, available_w, available_h, text_measure))
+        .collect();
+
+    // Second pass: arrange into rows
+    let mut cursor_x = x;
+    let mut cursor_y = y;
+    let mut row_height: f32 = 0.0;
+    let mut row_start_idx = 0;
+    let mut row_items: Vec<(usize, f32, f32)> = Vec::new(); // (index, width, height)
+
+    for (i, (w, h)) in child_sizes.iter().enumerate() {
+        let item_x = if row_items.is_empty() { 0.0 } else { gap };
+
+        // Check if item fits on current row
+        if !row_items.is_empty() && cursor_x + item_x + w > x + available_w {
+            // Emit current row
+            let final_row_height = row_height;
+            for (idx, _, item_h) in &row_items {
+                let (item_w, _) = child_sizes[*idx];
+                let child_y = match align {
+                    "center" => cursor_y + (final_row_height - item_h) / 2.0,
+                    "end" => cursor_y + final_row_height - item_h,
+                    _ => cursor_y, // start
+                };
+                // We need to position the actual node
+                let child_x = if *idx == row_start_idx {
+                    x
+                } else {
+                    out.last().map(|n: &PositionedNode| n.x + n.width + gap).unwrap_or(x)
+                };
+                let positioned = layout_node(&nodes[*idx], child_x, child_y, item_w, *item_h, available_w, available_h, text_measure);
+                out.push(positioned);
+            }
+
+            // Start new row
+            cursor_y += final_row_height + gap;
+            cursor_x = x;
+            row_height = 0.0;
+            row_start_idx = i;
+            row_items.clear();
+        }
+
+        row_items.push((i, *w, *h));
+        cursor_x += if row_items.len() == 1 { *w } else { gap + *w };
+        row_height = row_height.max(*h);
+    }
+
+    // Emit final row
+    let mut item_x = x;
+    for (idx, item_w, item_h) in &row_items {
+        let child_y = match align {
+            "center" => cursor_y + (row_height - item_h) / 2.0,
+            "end" => cursor_y + row_height - item_h,
+            _ => cursor_y,
+        };
+        let positioned = layout_node(&nodes[*idx], item_x, child_y, *item_w, *item_h, available_w, available_h, text_measure);
+        item_x += item_w + gap;
         out.push(positioned);
     }
 
@@ -454,6 +885,42 @@ fn layout_grid<F: Fn(&str, f32) -> (f32, f32)>(
 fn get_num_prop(node: &RenderNode, key: &str) -> Option<f64> {
     match node.props.get(key) {
         Some(RenderValue::Num(n, _)) => Some(*n),
+        _ => None,
+    }
+}
+
+/// Get a numeric prop, resolving percentage values relative to the available dimension.
+/// Returns (value, is_percentage) where is_percentage indicates if the value was a %.
+fn get_num_prop_with_percent(node: &RenderNode, key: &str) -> Option<(f64, bool)> {
+    match node.props.get(key) {
+        Some(RenderValue::Num(n, unit)) => {
+            let is_percent = unit.as_ref().map_or(false, |u| u == "%");
+            Some((*n, is_percent))
+        }
+        _ => None,
+    }
+}
+
+/// Resolve a numeric prop that may be a percentage.
+/// For percentages, calculates the actual value based on the available dimension.
+fn resolve_dimension(node: &RenderNode, key: &str, available: f32) -> Option<f32> {
+    match get_num_prop_with_percent(node, key) {
+        Some((value, true)) => Some((value / 100.0) as f32 * available),
+        Some((value, false)) => Some(value as f32),
+        None => None,
+    }
+}
+
+fn get_str_prop<'a>(node: &'a RenderNode, key: &str) -> Option<&'a str> {
+    match node.props.get(key) {
+        Some(RenderValue::Str(s)) => Some(s.as_str()),
+        _ => None,
+    }
+}
+
+fn get_bool_prop(node: &RenderNode, key: &str) -> Option<bool> {
+    match node.props.get(key) {
+        Some(RenderValue::Bool(b)) => Some(*b),
         _ => None,
     }
 }

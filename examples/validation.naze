@@ -1,0 +1,44 @@
+-- Input validation example
+app "Input Validation Demo" {
+  state username = ""
+  state email = ""
+  state age = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Input Validation Demo"
+
+    -- Username with min/max length
+    text "Username (3-20 characters)"
+    input bind: username, placeholder: "Enter username", validate: { required: true, min-length: 3, max-length: 20 }
+    if username_error {
+      text "{username_error}" color: #dc2626
+    }
+
+    -- Email with pattern validation
+    text "Email"
+    input bind: email, type: "email", placeholder: "Enter email", validate: { required: true }
+    if email_error {
+      text "{email_error}" color: #dc2626
+    }
+
+    -- Age with min/max number validation
+    text "Age (18-120)"
+    input bind: age, type: "number", placeholder: "Enter age", validate: { required: true, min: 18, max: 120 }
+    if age_error {
+      text "{age_error}" color: #dc2626
+    }
+
+    -- Show validation status
+    row gap: 8px {
+      if username_valid {
+        text "Username valid" color: #16a34a
+      }
+      if email_valid {
+        text "Email valid" color: #16a34a
+      }
+      if age_valid {
+        text "Age valid" color: #16a34a
+      }
+    }
+  }
+}

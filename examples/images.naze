@@ -1,0 +1,51 @@
+-- M5: Images & Richer Rendering
+-- Demonstrates images, opacity, borders, and visual effects
+
+app "Images Demo" {
+  column padding: 20px, gap: 20px {
+    heading "Images & Effects"
+
+    -- Images from URL
+    row gap: 16px {
+      column gap: 8px {
+        text "Default (contain)"
+        image src: "https://picsum.photos/seed/naze1/200/150", width: 200px, height: 150px
+      }
+      column gap: 8px {
+        text "Cover fit"
+        image src: "https://picsum.photos/seed/naze2/300/200", width: 150px, height: 150px, fit: "cover"
+      }
+      column gap: 8px {
+        text "Fill fit"
+        image src: "https://picsum.photos/seed/naze3/200/300", width: 150px, height: 100px, fit: "fill"
+      }
+    }
+
+    -- Opacity examples
+    heading "Opacity"
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #3b82f6, radius: 8px
+      rect width: 80px, height: 80px, color: #3b82f6, radius: 8px, opacity: 0.75
+      rect width: 80px, height: 80px, color: #3b82f6, radius: 8px, opacity: 0.5
+      rect width: 80px, height: 80px, color: #3b82f6, radius: 8px, opacity: 0.25
+    }
+
+    -- Border examples
+    heading "Borders"
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #ffffff, border: 2px, border-color: #000000
+      rect width: 80px, height: 80px, color: #fef3c7, border: 3px, border-color: #f59e0b, radius: 8px
+      rect width: 80px, height: 80px, color: #dcfce7, border: 4px, border-color: #22c55e, radius: 16px
+      rect width: 80px, height: 80px, color: #fee2e2, border: 2px, border-color: #ef4444, radius: 40px
+    }
+
+    -- Combined effects
+    heading "Combined Effects"
+    row gap: 16px {
+      image src: "https://picsum.photos/seed/naze4/100", width: 100px, height: 100px, opacity: 0.8
+      container color: #f0f9ff, border: 2px, border-color: #0ea5e9, radius: 8px, padding: 12px {
+        text "Card with border"
+      }
+    }
+  }
+}

@@ -7,7 +7,8 @@ use naze_ir::{IrAction, IrBinOp, IrExpression, RenderNode, RenderTree, RenderVal
 use naze_layout::{LayoutTree, PositionedNode};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
-use winit::event::{ElementState, MouseButton, WindowEvent};
+use winit::event::{ElementState, MouseButton, WindowEvent, KeyEvent};
+use winit::keyboard::{Key, NamedKey};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{CursorIcon, Window, WindowId};
 
@@ -21,6 +22,15 @@ enum AppEvent {
     SourceChanged,
 }
 
+/// Tracks which text input is currently focused in native mode.
+#[derive(Clone)]
+struct FocusedInput {
+    bind_var: String,
+    node_id: String,
+    input_type: String,
+    change_handlers: Vec<naze_ir::IrEventHandler>,
+}
+
 struct App {
     manifest: Manifest,
     render_tree: RenderTree,
@@ -30,6 +40,7 @@ struct App {
     surface: Option<softbuffer::Surface<Arc<Window>, Arc<Window>>>,
     layout: Option<LayoutTree>,
     cursor_pos: Option<(f32, f32)>,
+    focused_input: Option<FocusedInput>,
 }
 
 impl ApplicationHandler<AppEvent> for App {
@@ -88,6 +99,62 @@ impl ApplicationHandler<AppEvent> for App {
                     }
                 }
             }
+            WindowEvent::KeyboardInput {
+                event: KeyEvent { logical_key, text, state: ElementState::Pressed, .. },
+                ..
+            } => {
+                if self.focused_input.is_some() {
+                    let mut changed = false;
+
+                    match logical_key {
+                        Key::Named(NamedKey::Backspace) => {
+                            // Remove last character
+                            if let Some(ref focus) = self.focused_input {
+                                if let Some(RenderValue::Str(current)) = self.state_store.get(&focus.bind_var) {
+                                    let mut chars: Vec<char> = current.chars().collect();
+                                    if !chars.is_empty() {
+                                        chars.pop();
+                                        let new_value: String = chars.into_iter().collect();
+                                        self.state_store.insert(focus.bind_var.clone(), RenderValue::Str(new_value));
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                        Key::Named(NamedKey::Enter) | Key::Named(NamedKey::Escape) => {
+                            // Execute change handlers before unfocusing
+                            if let Some(ref focus) = self.focused_input {
+                                for handler in &focus.change_handlers {
+                                    execute_action(&handler.action, &mut self.state_store);
+                                }
+                            }
+                            self.focused_input = None;
+                            changed = true;
+                        }
+                        Key::Named(NamedKey::Tab) => {
+                            // TODO: Move to next/prev input
+                            self.focused_input = None;
+                            changed = true;
+                        }
+                        _ => {
+                            // Handle text input
+                            if let Some(ref text) = text {
+                                if let Some(ref focus) = self.focused_input {
+                                    if let Some(RenderValue::Str(current)) = self.state_store.get(&focus.bind_var) {
+                                        let new_value = format!("{}{}", current, text.as_str());
+                                        self.state_store.insert(focus.bind_var.clone(), RenderValue::Str(new_value));
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if changed {
+                        self.render();
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -142,6 +209,7 @@ impl App {
             return;
         }
 
+        let focused_input_id = self.focused_input.as_ref().map(|f| f.node_id.as_str());
         let resolved = resolve_tree(&self.render_tree, &self.state_store);
         let layout = naze_layout::compute_layout(&resolved, w as f32, h as f32);
         self.layout = Some(layout.clone());
@@ -151,7 +219,7 @@ impl App {
             None => return,
         };
         pixmap.fill(tiny_skia::Color::WHITE);
-        native_renderer::draw_tree(&mut pixmap, &layout, &self.font);
+        native_renderer::draw_tree(&mut pixmap, &layout, &self.font, focused_input_id);
 
         let surface = match &mut self.surface {
             Some(s) => s,
@@ -177,16 +245,50 @@ impl App {
             Some(l) => l,
             None => return false,
         };
-        let handlers = find_click_handlers(&layout.root, x, y);
-        if handlers.is_empty() {
-            return false;
-        }
+
         let mut changed = false;
+
+        // Check if clicking on an input element
+        if let Some((bind_var, node_id, input_type, change_handlers)) =
+            find_input_at_point(&layout.root, x, y)
+        {
+            // Execute change handlers for previously focused input before switching
+            if let Some(ref old_focus) = self.focused_input {
+                if old_focus.node_id != node_id {
+                    for handler in &old_focus.change_handlers {
+                        execute_action(&handler.action, &mut self.state_store);
+                    }
+                }
+            }
+
+            self.focused_input = Some(FocusedInput {
+                bind_var,
+                node_id,
+                input_type,
+                change_handlers,
+            });
+            return true; // Input focus counts as a change, needs re-render
+        }
+
+        // Clicked outside any input - unfocus if something was focused
+        if self.focused_input.is_some() {
+            if let Some(ref focus) = self.focused_input {
+                for handler in &focus.change_handlers {
+                    execute_action(&handler.action, &mut self.state_store);
+                }
+            }
+            self.focused_input = None;
+            changed = true;
+        }
+
+        // Handle click handlers (buttons, checkbox, radio, etc.)
+        let handlers = find_click_handlers(&layout.root, x, y, &self.state_store);
         for handler in &handlers {
             if execute_action(&handler.action, &mut self.state_store) {
                 changed = true;
             }
         }
+
         changed
     }
 }
@@ -276,6 +378,7 @@ pub fn run(manifest: &Manifest) -> Result<(), Box<dyn std::error::Error>> {
         surface: None,
         layout: None,
         cursor_pos: None,
+        focused_input: None,
     };
     event_loop.run_app(&mut app)?;
 
@@ -288,7 +391,9 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
     RenderTree {
         title: tree.title.clone(),
         state: tree.state.clone(),
+        data: tree.data.clone(),
         root: resolve_nodes(&tree.root, state),
+        pages: tree.pages.clone(),
     }
 }
 
@@ -322,13 +427,50 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                 }
             }
             _ => {
+                let mut props: HashMap<String, RenderValue> = node
+                    .props
+                    .iter()
+                    .map(|(k, v)| (k.clone(), resolve_value(v, state)))
+                    .collect();
+
+                // Resolve bind props for form elements
+                if node.kind == "checkbox" {
+                    if let Some(RenderValue::Bind(var)) = node.props.get("bind") {
+                        let checked = match state.get(var) {
+                            Some(RenderValue::Bool(b)) => *b,
+                            _ => false,
+                        };
+                        props.insert("checked".to_string(), RenderValue::Bool(checked));
+                    }
+                } else if node.kind == "radio" {
+                    if let Some(RenderValue::Bind(var)) = node.props.get("bind") {
+                        let selected = match (state.get(var), node.props.get("value")) {
+                            (Some(state_val), Some(prop_val)) => state_val == prop_val,
+                            _ => false,
+                        };
+                        props.insert("selected".to_string(), RenderValue::Bool(selected));
+                    }
+                } else if node.kind == "input" {
+                    if let Some(RenderValue::Bind(var)) = node.props.get("bind") {
+                        let value = match state.get(var) {
+                            Some(RenderValue::Str(s)) => s.clone(),
+                            _ => String::new(),
+                        };
+                        props.insert("value".to_string(), RenderValue::Str(value));
+                    }
+                } else if node.kind == "select" {
+                    if let Some(RenderValue::Bind(var)) = node.props.get("bind") {
+                        let value = match state.get(var) {
+                            Some(RenderValue::Str(s)) => s.clone(),
+                            _ => String::new(),
+                        };
+                        props.insert("selected".to_string(), RenderValue::Str(value));
+                    }
+                }
+
                 out.push(RenderNode {
                     kind: node.kind.clone(),
-                    props: node
-                        .props
-                        .iter()
-                        .map(|(k, v)| (k.clone(), resolve_value(v, state)))
-                        .collect(),
+                    props,
                     children: resolve_nodes(&node.children, state),
                     handlers: node.handlers.clone(),
                     condition: None,
@@ -398,15 +540,54 @@ fn find_click_handlers(
     nodes: &[PositionedNode],
     x: f32,
     y: f32,
+    state: &HashMap<String, RenderValue>,
 ) -> Vec<naze_ir::IrEventHandler> {
     for node in nodes.iter().rev() {
         if !point_in_node(node, x, y) {
             continue;
         }
-        let child_handlers = find_click_handlers(&node.children, x, y);
+        let child_handlers = find_click_handlers(&node.children, x, y, state);
         if !child_handlers.is_empty() {
             return child_handlers;
         }
+
+        // For checkbox/radio, generate toggle handlers
+        if node.kind == "checkbox" {
+            if let Some(RenderValue::Bind(var)) = node.props.get("bind") {
+                let current = match state.get(var) {
+                    Some(RenderValue::Bool(b)) => *b,
+                    _ => false,
+                };
+                let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
+                    event: "click".to_string(),
+                    action: IrAction::Set {
+                        target: var.clone(),
+                        expr: IrExpression::Bool(!current),
+                    },
+                }];
+                // Add change handlers
+                handlers.extend(node.handlers.iter().filter(|h| h.event == "change").cloned());
+                return handlers;
+            }
+        } else if node.kind == "radio" {
+            if let (Some(RenderValue::Bind(var)), Some(value)) = (node.props.get("bind"), node.props.get("value")) {
+                let value_str = match value {
+                    RenderValue::Str(s) => s.clone(),
+                    _ => continue,
+                };
+                let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
+                    event: "click".to_string(),
+                    action: IrAction::Set {
+                        target: var.clone(),
+                        expr: IrExpression::Str(value_str),
+                    },
+                }];
+                // Add change handlers
+                handlers.extend(node.handlers.iter().filter(|h| h.event == "change").cloned());
+                return handlers;
+            }
+        }
+
         let click_handlers: Vec<_> = node
             .handlers
             .iter()
@@ -418,6 +599,39 @@ fn find_click_handlers(
         }
     }
     Vec::new()
+}
+
+/// Find an input element at the given point. Returns (bind_var, node_id, input_type, change_handlers).
+fn find_input_at_point(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+) -> Option<(String, String, String, Vec<naze_ir::IrEventHandler>)> {
+    for node in nodes.iter().rev() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        // Check children first
+        if let Some(result) = find_input_at_point(&node.children, x, y) {
+            return Some(result);
+        }
+        // Check if this is an input
+        if node.kind == "input" {
+            if let Some(RenderValue::Bind(bind_var)) = node.props.get("bind") {
+                let node_id = format!("input_{}_{}", node.x as i32, node.y as i32);
+                let input_type = match node.props.get("type") {
+                    Some(RenderValue::Str(s)) => s.clone(),
+                    _ => "text".to_string(),
+                };
+                let change_handlers: Vec<_> = node.handlers.iter()
+                    .filter(|h| h.event == "change")
+                    .cloned()
+                    .collect();
+                return Some((bind_var.clone(), node_id, input_type, change_handlers));
+            }
+        }
+    }
+    None
 }
 
 fn point_in_node(node: &PositionedNode, x: f32, y: f32) -> bool {
@@ -437,6 +651,24 @@ fn execute_action(
             true
         }
         IrAction::Navigate { .. } => false,
+        IrAction::ScrollTo { .. } => {
+            // Scrolling not yet implemented in native runner
+            false
+        }
+        IrAction::Log { expr } => {
+            let value = evaluate_expr(expr, state);
+            let msg = match &value {
+                RenderValue::Str(s) => s.clone(),
+                RenderValue::Num(n, _) => {
+                    if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+                }
+                RenderValue::Bool(b) => (if *b { "true" } else { "false" }).to_string(),
+                RenderValue::Color(c) => format!("#{:06x}", c),
+                _ => format!("{:?}", value),
+            };
+            eprintln!("[log] {}", msg);
+            false
+        }
     }
 }
 

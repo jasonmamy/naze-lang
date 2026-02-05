@@ -1,0 +1,28 @@
+-- Data fetching example: loads posts from JSONPlaceholder API
+
+app "Data Fetch Demo"
+
+data posts: fetch "https://jsonplaceholder.typicode.com/posts?_limit=5"
+
+column gap: 16px, padding: 20px {
+    text "API Data Example", size: 24px, weight: bold
+
+    if posts.loading {
+        text "Loading posts...", color: #666666
+    }
+
+    if posts.error {
+        text "Error: {posts.error}", color: #dc2626
+    }
+
+    if !posts.loading {
+        column gap: 12px {
+            each post in posts.data {
+                column padding: 12px, background: #f3f4f6, radius: 8px {
+                    text "{post.title}", weight: bold
+                    text "{post.body}", color: #666666, size: 14px
+                }
+            }
+        }
+    }
+}

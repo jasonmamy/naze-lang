@@ -1,0 +1,140 @@
+{
+  "name": "naze-lang",
+  "displayName": "Naze Language",
+  "description": "Language support for Naze - declarative UI language",
+  "version": "0.1.0",
+  "publisher": "illuminaze",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anthropics/naze-lang"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "keywords": [
+    "naze",
+    "ui",
+    "declarative",
+    "wasm"
+  ],
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "naze",
+        "aliases": [
+          "Naze",
+          "naze"
+        ],
+        "extensions": [
+          ".naze"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "naze",
+        "scopeName": "source.naze",
+        "path": "./syntaxes/naze.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "naze.openVisualEditor",
+        "title": "Open Visual Editor",
+        "category": "Naze"
+      },
+      {
+        "command": "naze.restartServer",
+        "title": "Restart Language Server",
+        "category": "Naze"
+      },
+      {
+        "command": "naze.wrapInColumn",
+        "title": "Wrap in Column",
+        "category": "Naze"
+      },
+      {
+        "command": "naze.wrapInRow",
+        "title": "Wrap in Row",
+        "category": "Naze"
+      },
+      {
+        "command": "naze.extractComponent",
+        "title": "Extract to Component",
+        "category": "Naze"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "naze.openVisualEditor",
+          "when": "resourceLangId == naze",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Naze",
+      "properties": {
+        "naze.lsp.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to naze-lsp binary. If empty, uses bundled binary."
+        },
+        "naze.ai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable AI assistant features."
+        },
+        "naze.ai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key for AI features. Can also be set via ANTHROPIC_API_KEY environment variable."
+        }
+      }
+    },
+    "customEditors": [
+      {
+        "viewType": "naze.visualEditor",
+        "displayName": "Naze Visual Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.naze"
+          }
+        ],
+        "priority": "option"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "build:webview": "cd webview && npm run build",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

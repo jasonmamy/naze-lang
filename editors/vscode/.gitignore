@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# TypeScript build output
+out/
+*.tsbuildinfo
+
+# LSP binaries (platform-specific, built locally)
+bin/
+
+# VS Code extension package
+*.vsix
+
+# Logs
+*.log
+npm-debug.log*

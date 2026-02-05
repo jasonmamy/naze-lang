@@ -1,0 +1,66 @@
+-- M8: Navigation & Routing Example
+-- Demonstrates multi-page apps with routing and link elements
+
+app "Navigation Demo" {
+  state current-page = "home"
+
+  -- App header with navigation links
+  column color: #f8fafc {
+    row padding: 16px, gap: 24px, color: #1e293b {
+      heading "My App" color: #ffffff
+
+      link "Home", to: "/"
+      link "About", to: "/about"
+      link "Contact", to: "/contact"
+    }
+
+    -- Page definitions
+    page "/" {
+      column padding: 24px, gap: 16px {
+        heading "Welcome Home"
+        text "This is the home page of our multi-page app."
+        text "Click the links above to navigate between pages."
+
+        row gap: 8px {
+          rect width: 100px, height: 100px, color: #3b82f6, radius: 8px
+          rect width: 100px, height: 100px, color: #8b5cf6, radius: 8px
+          rect width: 100px, height: 100px, color: #ec4899, radius: 8px
+        }
+      }
+    }
+
+    page "/about" {
+      column padding: 24px, gap: 16px {
+        heading "About Us"
+        text "This is the about page."
+        text "Naze is a declarative UI language that compiles to WebAssembly."
+
+        column gap: 8px, padding: 16px, color: #f1f5f9, radius: 8px {
+          text "Features:" color: #1e293b
+          text "- Declarative syntax" color: #64748b
+          text "- Component system" color: #64748b
+          text "- State management" color: #64748b
+          text "- Cross-platform rendering" color: #64748b
+        }
+      }
+    }
+
+    page "/contact" {
+      column padding: 24px, gap: 16px {
+        heading "Contact"
+        text "Get in touch with us!"
+
+        column gap: 12px, padding: 16px, color: #f1f5f9, radius: 8px {
+          row gap: 8px {
+            text "Email:" color: #64748b
+            text "hello@naze.dev" color: #3b82f6
+          }
+          row gap: 8px {
+            text "GitHub:" color: #64748b
+            text "github.com/naze-lang" color: #3b82f6
+          }
+        }
+      }
+    }
+  }
+}

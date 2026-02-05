@@ -1,0 +1,17 @@
+app "Radio Button Test" {
+  state choice = "a"
+
+  column padding: 20px, gap: 16px {
+    heading "Radio Button Demo"
+
+    text "Select an option:"
+
+    column gap: 8px {
+      radio "Option A" bind: choice, value: "a"
+      radio "Option B" bind: choice, value: "b"
+      radio "Option C" bind: choice, value: "c"
+    }
+
+    text "You selected: {choice}" color: #2563eb
+  }
+}

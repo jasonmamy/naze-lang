@@ -42,5 +42,9 @@ pub enum Command {
         /// Only build, don't serve
         #[arg(long)]
         build: bool,
+
+        /// Show gallery in a native window instead of browser
+        #[arg(long)]
+        native: bool,
     },
 }

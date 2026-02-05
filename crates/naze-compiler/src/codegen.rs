@@ -5,7 +5,7 @@ use naze_parser::ast::{Node, Prop, StringPart, Unit, Value, EventHandler, Action
 use crate::resolve::{ComponentDef, ResolvedProject};
 
 // Re-export IR types so existing consumers can use `naze_compiler::codegen::*`
-pub use naze_ir::{IrAction, IrBinOp, IrEventHandler, IrExpression, RenderNode, RenderTree, RenderValue, StateDecl, TextPart};
+pub use naze_ir::{DataDecl, IrAction, IrBinOp, IrEventHandler, IrExpression, PageDef, RenderNode, RenderTree, RenderValue, StateDecl, TextPart};
 
 /// Lower a resolved project into a flattened RenderTree.
 /// All component invocations are inlined with prop substitution.
@@ -19,7 +19,19 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
     let mut title = String::new();
     let mut root = Vec::new();
     let mut state = Vec::new();
+    let mut data = Vec::new();
+    let mut pages = Vec::new();
     let mut let_scope: HashMap<String, RenderValue> = HashMap::new();
+
+    // Pre-populate scope with theme tokens
+    for (name, color) in &project.theme.colors {
+        let key = format!("theme.colors.{}", name);
+        let_scope.insert(key, RenderValue::Color(*color));
+    }
+    for (name, value) in &project.theme.spacing {
+        let key = format!("theme.spacing.{}", name);
+        let_scope.insert(key, RenderValue::Num(*value, Some("px".to_string())));
+    }
 
     for node in &project.entry.nodes {
         match node {
@@ -29,11 +41,14 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                 ..
             } => {
                 title = t.clone();
-                // Collect state and let declarations from inside the app block
-                collect_declarations(children, &mut state, &mut let_scope);
-                root = lower_nodes(children, &by_name, &let_scope);
+                // Collect state, data, and let declarations from inside the app block
+                collect_declarations(children, &mut state, &mut data, &mut let_scope);
+                // Check for page blocks within the app
+                let (app_root, app_pages) = lower_nodes_with_pages(children, &by_name, &let_scope);
+                root = app_root;
+                pages = app_pages;
             }
-            // Top-level let/state outside app block
+            // Top-level let/state/data outside app block
             Node::Let { name, value, .. } => {
                 let_scope.insert(name.clone(), lower_value(value, &let_scope));
             }
@@ -43,18 +58,25 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                     initial: lower_value(value, &let_scope),
                 });
             }
+            Node::Data { name, url, .. } => {
+                data.push(DataDecl {
+                    name: name.clone(),
+                    url: url.clone(),
+                });
+            }
             // Skip use statements, comments, component defs at top level
             _ => {}
         }
     }
 
-    RenderTree { title, root, state }
+    RenderTree { title, root, state, data, pages }
 }
 
-/// Walk children to collect state/let declarations (does not recurse into elements).
+/// Walk children to collect state/let/data declarations (does not recurse into elements).
 fn collect_declarations(
     nodes: &[Node],
     state: &mut Vec<StateDecl>,
+    data: &mut Vec<DataDecl>,
     let_scope: &mut HashMap<String, RenderValue>,
 ) {
     for node in nodes {
@@ -68,6 +90,78 @@ fn collect_declarations(
                     initial: lower_value(value, let_scope),
                 });
             }
+            Node::Data { name, url, .. } => {
+                data.push(DataDecl {
+                    name: name.clone(),
+                    url: url.clone(),
+                });
+            }
+            _ => {}
+        }
+    }
+
+    // Also collect derived state for validated inputs
+    collect_validation_state(nodes, state);
+}
+
+/// Walk tree recursively to find inputs with validate props and create derived state.
+fn collect_validation_state(nodes: &[Node], state: &mut Vec<StateDecl>) {
+    for node in nodes {
+        match node {
+            Node::Element { name, props, children, .. } => {
+                // Check if this is an input with both bind and validate props
+                if name == "input" {
+                    let has_validate = props.iter().any(|p| p.key == "validate");
+                    if has_validate {
+                        // Find the bind variable
+                        if let Some(bind_prop) = props.iter().find(|p| p.key == "bind") {
+                            if let Value::Bind(bind_var) = &bind_prop.value {
+                                // Create derived state variables for validation
+                                let valid_key = format!("{}_valid", bind_var);
+                                let error_key = format!("{}_error", bind_var);
+
+                                // Add them if they don't already exist
+                                if !state.iter().any(|s| s.name == valid_key) {
+                                    state.push(StateDecl {
+                                        name: valid_key,
+                                        initial: RenderValue::Bool(true), // Initially valid
+                                    });
+                                }
+                                if !state.iter().any(|s| s.name == error_key) {
+                                    state.push(StateDecl {
+                                        name: error_key,
+                                        initial: RenderValue::Str(String::new()), // No error initially
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                // Recurse into children
+                collect_validation_state(children, state);
+            }
+            Node::If { then_children, else_children, .. } => {
+                collect_validation_state(then_children, state);
+                collect_validation_state(else_children, state);
+            }
+            Node::Each { children, .. } => {
+                collect_validation_state(children, state);
+            }
+            Node::Page { children, .. } => {
+                collect_validation_state(children, state);
+            }
+            Node::App { children, .. } => {
+                collect_validation_state(children, state);
+            }
+            Node::Component { children, .. } => {
+                collect_validation_state(children, state);
+            }
+            Node::Slot { default_children, .. } => {
+                collect_validation_state(default_children, state);
+            }
+            Node::Fill { children, .. } => {
+                collect_validation_state(children, state);
+            }
             _ => {}
         }
     }
@@ -75,6 +169,171 @@ fn collect_declarations(
 
 // Re-export serialize/deserialize from naze-ir
 pub use naze_ir::{deserialize, serialize};
+
+/// Lower nodes, separating page blocks from regular content.
+/// Returns (root nodes, page definitions).
+fn lower_nodes_with_pages(
+    nodes: &[Node],
+    components: &HashMap<&str, &ComponentDef>,
+    scope: &HashMap<String, RenderValue>,
+) -> (Vec<RenderNode>, Vec<PageDef>) {
+    let mut root = Vec::new();
+    let mut pages = Vec::new();
+
+    for node in nodes {
+        match node {
+            Node::Page { path, children, .. } => {
+                pages.push(PageDef {
+                    path: path.clone(),
+                    root: lower_nodes(children, components, scope),
+                });
+            }
+            _ => {
+                // Lower regular nodes
+                let lowered = lower_node(node, components, scope);
+                root.extend(lowered);
+            }
+        }
+    }
+
+    (root, pages)
+}
+
+/// Lower a single node, returning zero or more RenderNodes.
+fn lower_node(
+    node: &Node,
+    components: &HashMap<&str, &ComponentDef>,
+    scope: &HashMap<String, RenderValue>,
+) -> Vec<RenderNode> {
+    match node {
+        Node::Element {
+            name,
+            props,
+            children,
+            handlers,
+            ..
+        } => {
+            if let Some(comp) = components.get(name.as_str()) {
+                inline_component(comp, props, children, components, scope)
+            } else {
+                let resolved_props = resolve_props(props, scope);
+                let child_nodes = lower_nodes(children, components, scope);
+                let mut ir_handlers = lower_handlers(handlers);
+
+                // Auto-generate click handler for checkbox with bind
+                if name == "checkbox" {
+                    if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
+                        ir_handlers.push(IrEventHandler {
+                            event: "click".to_string(),
+                            action: IrAction::Set {
+                                target: bind_var.clone(),
+                                // Toggle: set var = var == false
+                                expr: IrExpression::BinOp {
+                                    left: Box::new(IrExpression::StateRef(bind_var.clone())),
+                                    op: IrBinOp::Eq,
+                                    right: Box::new(IrExpression::Bool(false)),
+                                },
+                            },
+                        });
+                    }
+                }
+
+                // Auto-generate click handler for radio with bind and value
+                if name == "radio" {
+                    if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
+                        if let Some(value) = resolved_props.get("value") {
+                            let expr = render_value_to_expr(value);
+                            ir_handlers.push(IrEventHandler {
+                                event: "click".to_string(),
+                                action: IrAction::Set {
+                                    target: bind_var.clone(),
+                                    expr,
+                                },
+                            });
+                        }
+                    }
+                }
+
+                vec![RenderNode {
+                    kind: name.clone(),
+                    props: resolved_props,
+                    children: child_nodes,
+                    handlers: ir_handlers,
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                }]
+            }
+        }
+        Node::Link { text, to, children, .. } => {
+            let mut props = HashMap::new();
+            props.insert("__text".to_string(), lower_value(text, scope));
+            props.insert("to".to_string(), RenderValue::Str(to.clone()));
+            let child_nodes = lower_nodes(children, components, scope);
+            // Link is a special element that triggers navigation
+            let navigate_handler = IrEventHandler {
+                event: "click".to_string(),
+                action: IrAction::Navigate { path: to.clone() },
+            };
+            vec![RenderNode {
+                kind: "link".to_string(),
+                props,
+                children: child_nodes,
+                handlers: vec![navigate_handler],
+                condition: None,
+                else_children: None,
+                each_binding: None,
+            }]
+        }
+        Node::If {
+            condition,
+            then_children,
+            else_children,
+            ..
+        } => {
+            let then_nodes = lower_nodes(then_children, components, scope);
+            let else_nodes = if else_children.is_empty() {
+                None
+            } else {
+                Some(lower_nodes(else_children, components, scope))
+            };
+            vec![RenderNode {
+                kind: "__if".to_string(),
+                props: HashMap::new(),
+                children: then_nodes,
+                handlers: vec![],
+                condition: Some(lower_expression(condition)),
+                else_children: else_nodes,
+                each_binding: None,
+            }]
+        }
+        Node::Each {
+            variable,
+            iterable,
+            children,
+            ..
+        } => {
+            let child_nodes = lower_nodes(children, components, scope);
+            vec![RenderNode {
+                kind: "__each".to_string(),
+                props: HashMap::new(),
+                children: child_nodes,
+                handlers: vec![],
+                condition: None,
+                else_children: None,
+                each_binding: Some((variable.clone(), lower_expression(iterable))),
+            }]
+        }
+        Node::Page { .. } => {
+            // Pages should be handled separately in lower_nodes_with_pages
+            vec![]
+        }
+        _ => {
+            // Skip non-renderable nodes
+            vec![]
+        }
+    }
+}
 
 /// Lower a list of AST nodes into RenderNodes, inlining components.
 fn lower_nodes(
@@ -99,7 +358,41 @@ fn lower_nodes(
                     // Built-in element
                     let resolved_props = resolve_props(props, scope);
                     let child_nodes = lower_nodes(children, components, scope);
-                    let ir_handlers = lower_handlers(handlers);
+                    let mut ir_handlers = lower_handlers(handlers);
+
+                    // Auto-generate click handler for checkbox with bind
+                    if name == "checkbox" {
+                        if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
+                            ir_handlers.push(IrEventHandler {
+                                event: "click".to_string(),
+                                action: IrAction::Set {
+                                    target: bind_var.clone(),
+                                    expr: IrExpression::BinOp {
+                                        left: Box::new(IrExpression::StateRef(bind_var.clone())),
+                                        op: IrBinOp::Eq,
+                                        right: Box::new(IrExpression::Bool(false)),
+                                    },
+                                },
+                            });
+                        }
+                    }
+
+                    // Auto-generate click handler for radio with bind and value
+                    if name == "radio" {
+                        if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
+                            if let Some(value) = resolved_props.get("value") {
+                                let expr = render_value_to_expr(value);
+                                ir_handlers.push(IrEventHandler {
+                                    event: "click".to_string(),
+                                    action: IrAction::Set {
+                                        target: bind_var.clone(),
+                                        expr,
+                                    },
+                                });
+                            }
+                        }
+                    }
+
                     out.push(RenderNode {
                         kind: name.clone(),
                         props: resolved_props,
@@ -110,6 +403,26 @@ fn lower_nodes(
                         each_binding: None,
                     });
                 }
+            }
+            Node::Link { text, to, children, .. } => {
+                let mut props = HashMap::new();
+                props.insert("__text".to_string(), lower_value(text, scope));
+                props.insert("to".to_string(), RenderValue::Str(to.clone()));
+                let child_nodes = lower_nodes(children, components, scope);
+                // Link is a special element that triggers navigation
+                let navigate_handler = IrEventHandler {
+                    event: "click".to_string(),
+                    action: IrAction::Navigate { path: to.clone() },
+                };
+                out.push(RenderNode {
+                    kind: "link".to_string(),
+                    props,
+                    children: child_nodes,
+                    handlers: vec![navigate_handler],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                });
             }
             Node::If {
                 condition,
@@ -150,6 +463,10 @@ fn lower_nodes(
                     each_binding: Some((variable.clone(), lower_expression(iterable))),
                 });
             }
+            Node::Page { children, .. } => {
+                // Page blocks inside non-app contexts: just lower their children
+                out.extend(lower_nodes(children, components, scope));
+            }
             Node::Slot { .. } | Node::Fill { .. } => {
                 // Slots/fills outside component inlining context are no-ops
             }
@@ -157,7 +474,9 @@ fn lower_nodes(
             | Node::UseStmt { .. }
             | Node::Component { .. }
             | Node::Let { .. }
-            | Node::State { .. } => {
+            | Node::State { .. }
+            | Node::Data { .. }
+            | Node::Theme { .. } => {
                 // Skip non-renderable nodes (declarations processed separately)
             }
             Node::App { children, .. } => {
@@ -298,7 +617,41 @@ fn lower_nodes_with_slots(
                         children, components, comp_scope, caller_scope,
                         default_slot_nodes, fills,
                     );
-                    let ir_handlers = lower_handlers(handlers);
+                    let mut ir_handlers = lower_handlers(handlers);
+
+                    // Auto-generate click handler for checkbox with bind
+                    if name == "checkbox" {
+                        if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
+                            ir_handlers.push(IrEventHandler {
+                                event: "click".to_string(),
+                                action: IrAction::Set {
+                                    target: bind_var.clone(),
+                                    expr: IrExpression::BinOp {
+                                        left: Box::new(IrExpression::StateRef(bind_var.clone())),
+                                        op: IrBinOp::Eq,
+                                        right: Box::new(IrExpression::Bool(false)),
+                                    },
+                                },
+                            });
+                        }
+                    }
+
+                    // Auto-generate click handler for radio with bind and value
+                    if name == "radio" {
+                        if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
+                            if let Some(value) = resolved_props.get("value") {
+                                let expr = render_value_to_expr(value);
+                                ir_handlers.push(IrEventHandler {
+                                    event: "click".to_string(),
+                                    action: IrAction::Set {
+                                        target: bind_var.clone(),
+                                        expr,
+                                    },
+                                });
+                            }
+                        }
+                    }
+
                     out.push(RenderNode {
                         kind: name.clone(),
                         props: resolved_props,
@@ -358,6 +711,35 @@ fn lower_nodes_with_slots(
                     each_binding: Some((variable.clone(), lower_expression(iterable))),
                 });
             }
+            Node::Link { text, to, children, .. } => {
+                let mut props = HashMap::new();
+                props.insert("__text".to_string(), lower_value(text, comp_scope));
+                props.insert("to".to_string(), RenderValue::Str(to.clone()));
+                let child_nodes = lower_nodes_with_slots(
+                    children, components, comp_scope, caller_scope,
+                    default_slot_nodes, fills,
+                );
+                let navigate_handler = IrEventHandler {
+                    event: "click".to_string(),
+                    action: IrAction::Navigate { path: to.clone() },
+                };
+                out.push(RenderNode {
+                    kind: "link".to_string(),
+                    props,
+                    children: child_nodes,
+                    handlers: vec![navigate_handler],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                });
+            }
+            Node::Page { children, .. } => {
+                // Page blocks inside components: just lower their children
+                out.extend(lower_nodes_with_slots(
+                    children, components, comp_scope, caller_scope,
+                    default_slot_nodes, fills,
+                ));
+            }
             Node::Fill { .. } => {
                 // Fill nodes inside a component body are meaningless — skip
             }
@@ -405,8 +787,14 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
             RenderValue::List(items.iter().map(|v| lower_value(v, scope)).collect())
         }
         Value::Ref(parts) => {
+            // Try joining all segments for multi-segment refs like theme.colors.primary
+            let full_key = parts.join(".");
+            if let Some(val) = scope.get(&full_key) {
+                return val.clone();
+            }
+
+            // Single-segment fallback
             if parts.len() == 1 {
-                // Single-segment ref: look up in scope
                 if let Some(val) = scope.get(&parts[0]) {
                     val.clone()
                 } else {
@@ -414,10 +802,32 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
                     RenderValue::Str(format!("<unresolved:{}>", parts[0]))
                 }
             } else {
-                // Multi-segment ref (e.g., theme.primary) — not supported in Phase 1
-                RenderValue::Str(format!("<unresolved:{}>", parts.join(".")))
+                // Multi-segment ref not found in scope
+                RenderValue::Str(format!("<unresolved:{}>", full_key))
             }
         }
+        Value::Bind(name) => RenderValue::Bind(name.clone()),
+        Value::Object(entries) => {
+            RenderValue::Object(
+                entries
+                    .iter()
+                    .map(|(k, v)| (k.clone(), lower_value(v, scope)))
+                    .collect(),
+            )
+        }
+    }
+}
+
+/// Convert a RenderValue to an IrExpression for use in auto-generated handlers.
+fn render_value_to_expr(value: &RenderValue) -> IrExpression {
+    match value {
+        RenderValue::Str(s) => IrExpression::Str(s.clone()),
+        RenderValue::Num(n, _) => IrExpression::Num(*n),
+        RenderValue::Bool(b) => IrExpression::Bool(*b),
+        // For other types, convert to string representation
+        RenderValue::Color(c) => IrExpression::Str(format!("#{:06x}", c)),
+        RenderValue::Bind(name) => IrExpression::StateRef(name.clone()),
+        _ => IrExpression::Str(String::new()),
     }
 }
 
@@ -439,6 +849,10 @@ fn lower_action(a: &Action) -> IrAction {
             expr: lower_expression(expr),
         },
         Action::Navigate { path, .. } => IrAction::Navigate { path: path.clone() },
+        Action::ScrollTo { element_id, .. } => IrAction::ScrollTo { element_id: element_id.clone() },
+        Action::Log { expr, .. } => IrAction::Log {
+            expr: lower_expression(expr),
+        },
     }
 }
 
@@ -996,6 +1410,32 @@ app "Test" {
         assert_eq!(
             rect.children[1].props.get("__text"),
             Some(&RenderValue::Str("Custom content".to_string()))
+        );
+    }
+
+    #[test]
+    fn lower_theme_refs() {
+        // Theme refs should resolve to actual values from the default theme
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            r#"app "Theme Test" {
+  rect width: 100px, height: 100px, color: theme.colors.primary
+  column padding: theme.spacing.md {
+    text "themed"
+  }
+}
+"#,
+        )]);
+        assert_eq!(tree.root.len(), 2); // rect + column
+        // theme.colors.primary is #2563eb (default)
+        assert_eq!(
+            tree.root[0].props.get("color"),
+            Some(&RenderValue::Color(0x2563eb))
+        );
+        // theme.spacing.md is 16px (default)
+        assert_eq!(
+            tree.root[1].props.get("padding"),
+            Some(&RenderValue::Num(16.0, Some("px".to_string())))
         );
     }
 }

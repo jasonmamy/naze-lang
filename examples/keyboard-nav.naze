@@ -1,0 +1,55 @@
+-- Keyboard navigation and hover example
+-- Tab cycles through focusable elements
+-- Enter activates buttons
+-- Hover changes colors
+
+state hoverCount = 0
+state clickCount = 0
+state lastKey = "none"
+
+column gap: 24px, padding: 32px {
+    heading "Keyboard Navigation Demo"
+
+    text "Tab to cycle focus, Enter to activate buttons"
+    text "Hover over buttons to trigger hover events"
+
+    row gap: 16px {
+        rect width: 120px, height: 48px, color: #3b82f6, radius: 8px {
+            text "Button 1", color: #ffffff, padding: 12px
+            on click: set clickCount = clickCount + 1
+            on hover: set hoverCount = hoverCount + 1
+        }
+
+        rect width: 120px, height: 48px, color: #10b981, radius: 8px {
+            text "Button 2", color: #ffffff, padding: 12px
+            on click: set clickCount = clickCount + 1
+            on hover: set hoverCount = hoverCount + 1
+        }
+
+        rect width: 120px, height: 48px, color: #f59e0b, radius: 8px {
+            text "Button 3", color: #ffffff, padding: 12px
+            on click: set clickCount = clickCount + 1
+            on hover: set hoverCount = hoverCount + 1
+        }
+    }
+
+    text "Click count: {clickCount}"
+    text "Hover count: {hoverCount}"
+
+    -- Form inputs are also focusable
+    column gap: 12px {
+        text "Form inputs (also focusable):"
+
+        state username = ""
+        input bind: username, placeholder: "Username"
+
+        state email = ""
+        input bind: email, placeholder: "Email", type: "email"
+    }
+
+    -- Links are focusable too
+    row gap: 16px {
+        link "Home" to: "/"
+        link "About" to: "/about"
+    }
+}

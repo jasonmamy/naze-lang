@@ -18,6 +18,11 @@ enum Expected {
 
 /// Built-in element property schemas: (element, prop_name) -> expected type.
 fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
+    // Accessibility props accepted by all elements
+    if matches!(prop, "role" | "label" | "id") {
+        return Some(Expected::Text);
+    }
+
     // Common layout props accepted by all layout containers
     let layout_prop = match prop {
         "padding" | "gap" | "width" | "height" => Some(Expected::Number),
@@ -28,35 +33,54 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
 
     match element {
         "row" | "column" | "stack" | "grid" => match prop {
-            "padding" | "gap" | "width" | "height" => Some(Expected::Number),
+            "padding" | "gap" | "width" | "height" | "opacity" => Some(Expected::Number),
+            "min-width" | "max-width" | "min-height" | "max-height" => Some(Expected::Number),
+            "flex-grow" | "flex-shrink" => Some(Expected::Number),
             "color" => Some(Expected::Color),
             "columns" => Some(Expected::Number),
-            "align" | "justify" => Some(Expected::Any), // TODO: enum type
+            "align" | "justify" => Some(Expected::Text), // "start", "center", "end", "stretch", etc.
+            "wrap" => Some(Expected::Bool),
             _ => None,
         },
         "spacer" => match prop {
-            "width" | "height" => Some(Expected::Number),
+            "width" | "height" | "flex-grow" | "flex-shrink" => Some(Expected::Number),
             _ => None,
         },
         "rect" => match prop {
-            "width" | "height" | "radius" => Some(Expected::Number),
-            "color" => Some(Expected::Color),
+            "width" | "height" | "radius" | "border" | "opacity" | "tab-index" => Some(Expected::Number),
+            "color" | "border-color" => Some(Expected::Color),
             _ => None,
         },
         "text" => match prop {
             "color" => Some(Expected::Color),
-            "font-size" => Some(Expected::Number),
+            "font-size" | "opacity" | "tab-index" => Some(Expected::Number),
             "__text" => Some(Expected::Text),
             _ => None,
         },
         "heading" => match prop {
             "color" => Some(Expected::Color),
-            "font-size" => Some(Expected::Number),
+            "font-size" | "opacity" | "tab-index" => Some(Expected::Number),
             "__text" => Some(Expected::Text),
             _ => None,
         },
         "container" => match prop {
-            "padding" | "width" | "height" | "radius" => Some(Expected::Number),
+            "padding" | "width" | "height" | "radius" | "border" | "opacity" => Some(Expected::Number),
+            "color" | "border-color" => Some(Expected::Color),
+            _ => None,
+        },
+        "scroll" => match prop {
+            "padding" | "width" | "height" | "radius" | "border" | "opacity" => Some(Expected::Number),
+            "color" | "border-color" => Some(Expected::Color),
+            "overflow" => Some(Expected::Text), // "x", "y", or "both"
+            _ => None,
+        },
+        "image" => match prop {
+            "src" | "alt" | "fit" => Some(Expected::Text),
+            "width" | "height" | "opacity" => Some(Expected::Number),
+            _ => None,
+        },
+        "link" => match prop {
+            "__text" | "to" => Some(Expected::Text),
             "color" => Some(Expected::Color),
             _ => None,
         },
@@ -94,6 +118,8 @@ fn value_type_name(value: &Value) -> &'static str {
         Value::Bool(_) => "bool",
         Value::Ref(_) => "reference",
         Value::List(_) => "list",
+        Value::Object(_) => "object",
+        Value::Bind(_) => "bind", // Two-way state binding
     }
 }
 
@@ -123,6 +149,7 @@ pub fn typecheck(project: &ResolvedProject) -> Vec<CompileError> {
 }
 
 /// Collect all state variable names declared in the node tree.
+/// Also collects derived state names for inputs with validation (e.g., {bind}_valid, {bind}_error).
 fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
     let mut names = HashSet::new();
     for node in nodes {
@@ -130,10 +157,30 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
             Node::State { name, .. } => {
                 names.insert(name.clone());
             }
+            Node::Data { name, .. } => {
+                // Data declarations create three derived state variables
+                names.insert(format!("{}.loading", name));
+                names.insert(format!("{}.error", name));
+                names.insert(format!("{}.data", name));
+            }
             Node::App { children, .. } | Node::Component { children, .. } => {
                 names.extend(collect_state_names(children));
             }
-            Node::Element { children, .. } => {
+            Node::Element { name, props, children, .. } => {
+                // Check if this is an input with both bind and validate props
+                if name == "input" {
+                    let has_validate = props.iter().any(|p| p.key == "validate");
+                    if has_validate {
+                        // Find the bind variable
+                        if let Some(bind_prop) = props.iter().find(|p| p.key == "bind") {
+                            if let Value::Bind(bind_var) = &bind_prop.value {
+                                // Add derived state variable names
+                                names.insert(format!("{}_valid", bind_var));
+                                names.insert(format!("{}_error", bind_var));
+                            }
+                        }
+                    }
+                }
                 names.extend(collect_state_names(children));
             }
             Node::If {
@@ -153,6 +200,12 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
                 names.extend(collect_state_names(default_children));
             }
             Node::Fill { children, .. } => {
+                names.extend(collect_state_names(children));
+            }
+            Node::Page { children, .. } => {
+                names.extend(collect_state_names(children));
+            }
+            Node::Link { children, .. } => {
                 names.extend(collect_state_names(children));
             }
             _ => {}
@@ -186,6 +239,8 @@ fn check_nodes(
                 } else {
                     // Built-in element — check prop types
                     check_builtin_props(name, props, span, in_scope_params, errors);
+                    // Check accessibility for elements with click handlers
+                    check_handler_accessibility(name, props, handlers, span, errors);
                 }
                 // Validate event handlers
                 for handler in handlers {
@@ -229,12 +284,66 @@ fn check_nodes(
             Node::Fill { children, .. } => {
                 check_nodes(children, components, in_scope_params, state_names, errors);
             }
+            Node::Page { children, .. } => {
+                check_nodes(children, components, in_scope_params, state_names, errors);
+            }
+            Node::Link { children, .. } => {
+                // Link element — children are optional nested content
+                check_nodes(children, components, in_scope_params, state_names, errors);
+            }
             Node::Let { .. } | Node::State { .. } => {
                 // Declarations — no type-checking needed in Phase 2 M1
                 // (Future: validate names don't shadow builtins)
             }
             _ => {}
         }
+    }
+}
+
+/// Check accessibility warnings for elements with event handlers.
+fn check_handler_accessibility(
+    element: &str,
+    props: &[Prop],
+    handlers: &[EventHandler],
+    span: &Span,
+    errors: &mut Vec<CompileError>,
+) {
+    // Skip if no click handlers (hover-only elements don't need full a11y)
+    let has_click = handlers.iter().any(|h| h.event == "click");
+    if !has_click {
+        return;
+    }
+
+    let has_role = props.iter().any(|p| p.key == "role");
+    let has_label = props.iter().any(|p| p.key == "label");
+    let has_text = props.iter().any(|p| p.key == "__text");
+
+    // Elements that act as buttons should have role: "button"
+    if matches!(element, "rect" | "row" | "column" | "stack") && !has_role {
+        errors.push(CompileError {
+            message: format!(
+                "clickable {} should have 'role' prop (e.g., role: \"button\") for screen readers",
+                element
+            ),
+            file: span.file.clone(),
+            line: span.line,
+            column: span.col,
+            severity: Severity::Warning,
+        });
+    }
+
+    // Clickable elements without visible text need a label
+    if !has_text && !has_label && !matches!(element, "text" | "heading" | "link") {
+        errors.push(CompileError {
+            message: format!(
+                "clickable {} without text should have 'label' prop for screen readers",
+                element
+            ),
+            file: span.file.clone(),
+            line: span.line,
+            column: span.col,
+            severity: Severity::Warning,
+        });
     }
 }
 
@@ -262,6 +371,10 @@ fn check_handler(
             check_expression(expr, state_names, &handler.span, errors);
         }
         Action::Navigate { .. } => {}
+        Action::ScrollTo { .. } => {}
+        Action::Log { expr, .. } => {
+            check_expression(expr, state_names, &handler.span, errors);
+        }
     }
 }
 
@@ -421,6 +534,80 @@ fn check_component_call(
     }
 }
 
+/// Check that interactive elements have required accessibility props.
+/// Emits warnings (not errors) to encourage accessible apps without blocking builds.
+fn check_accessibility_props(
+    element: &str,
+    props: &[Prop],
+    span: &Span,
+    errors: &mut Vec<CompileError>,
+) {
+    // Elements that should have explicit roles or labels for screen readers
+    let needs_label = matches!(element, "rect" | "image" | "input" | "checkbox" | "radio" | "select");
+    let is_interactive = matches!(element, "rect" | "input" | "checkbox" | "radio" | "select")
+        || props.iter().any(|p| p.key == "on");
+
+    let has_label = props.iter().any(|p| p.key == "label");
+    let has_role = props.iter().any(|p| p.key == "role");
+    let has_text = props.iter().any(|p| p.key == "__text");
+    let has_handlers = !props.is_empty() && props.iter().any(|p|
+        matches!(p.key.as_str(), "draggable" | "drop-target")
+    );
+
+    // Image elements should always have alt text (mapped to label)
+    if element == "image" && !has_label {
+        let has_alt = props.iter().any(|p| p.key == "alt");
+        if !has_alt {
+            errors.push(CompileError {
+                message: "image element should have 'alt' or 'label' prop for accessibility".to_string(),
+                file: span.file.clone(),
+                line: span.line,
+                column: span.col,
+                severity: Severity::Warning,
+            });
+        }
+    }
+
+    // Interactive rect elements (with click handlers) should have a role
+    if element == "rect" && is_interactive && !has_role {
+        errors.push(CompileError {
+            message: "interactive rect element should have 'role' prop (e.g., role: \"button\") for accessibility".to_string(),
+            file: span.file.clone(),
+            line: span.line,
+            column: span.col,
+            severity: Severity::Warning,
+        });
+    }
+
+    // Interactive elements without visible text should have a label
+    if needs_label && is_interactive && !has_label && !has_text {
+        // Form inputs often have placeholder or visible context, so only warn for truly unlabeled elements
+        if !matches!(element, "input" | "select") || !props.iter().any(|p| p.key == "placeholder") {
+            errors.push(CompileError {
+                message: format!(
+                    "{} element should have 'label' prop for accessibility (screen reader support)",
+                    element
+                ),
+                file: span.file.clone(),
+                line: span.line,
+                column: span.col,
+                severity: Severity::Warning,
+            });
+        }
+    }
+
+    // Draggable elements should have a role
+    if has_handlers && !has_role {
+        errors.push(CompileError {
+            message: "draggable element should have 'role' prop for accessibility".to_string(),
+            file: span.file.clone(),
+            line: span.line,
+            column: span.col,
+            severity: Severity::Warning,
+        });
+    }
+}
+
 /// Type-check props on a built-in element.
 fn check_builtin_props(
     element: &str,
@@ -429,6 +616,9 @@ fn check_builtin_props(
     in_scope_params: &[Param],
     errors: &mut Vec<CompileError>,
 ) {
+    // Check for missing accessibility props on interactive elements
+    check_accessibility_props(element, props, span, errors);
+
     for prop in props {
         // Skip interpolated strings — they contain state refs resolved at runtime
         if matches!(&prop.value, Value::InterpolatedStr(_)) {

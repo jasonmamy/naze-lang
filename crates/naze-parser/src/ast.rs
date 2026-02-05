@@ -45,6 +45,11 @@ pub enum Node {
         value: Value,
         span: Span,
     },
+    Data {
+        name: String,
+        url: String,
+        span: Span,
+    },
     If {
         condition: Expression,
         then_children: Vec<Node>,
@@ -65,6 +70,22 @@ pub enum Node {
     Fill {
         name: String,      // slot name to fill
         children: Vec<Node>,
+        span: Span,
+    },
+    Theme {
+        colors: Vec<(String, u32)>,            // "primary" -> 0x2563eb
+        spacing: Vec<(String, f64, Option<Unit>)>, // "md" -> (16.0, Some(Px))
+        span: Span,
+    },
+    Page {
+        path: String,           // URL path like "/" or "/about"
+        children: Vec<Node>,
+        span: Span,
+    },
+    Link {
+        text: Value,            // Link text (may be interpolated)
+        to: String,             // Target path
+        children: Vec<Node>,    // Optional nested elements
         span: Span,
     },
     Comment(String),
@@ -88,6 +109,14 @@ pub enum Action {
     },
     Navigate {
         path: String,
+        span: Span,
+    },
+    ScrollTo {
+        element_id: String,
+        span: Span,
+    },
+    Log {
+        expr: Expression,
         span: Span,
     },
 }
@@ -153,6 +182,8 @@ pub enum Value {
     Bool(bool),
     Ref(Vec<String>),
     List(Vec<Value>),
+    Object(Vec<(String, Value)>), // Object literal: { key: value, ... }
+    Bind(String), // Two-way state binding for form elements
 }
 
 /// Dimension units.

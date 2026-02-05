@@ -1,0 +1,103 @@
+-- M7: Improved Layout Features
+-- Demonstrates align, justify, flex-grow, min/max constraints, and wrap
+
+app "Layout Features" {
+  column padding: 20px, gap: 24px {
+    heading "Improved Layout (M7)"
+
+    -- Justify: distribute items along main axis
+    text "justify: space-between" color: #64748b
+    row height: 40px, gap: 8px, justify: "space-between", color: #f1f5f9 {
+      rect width: 60px, height: 30px, color: #3b82f6, radius: 4px
+      rect width: 60px, height: 30px, color: #3b82f6, radius: 4px
+      rect width: 60px, height: 30px, color: #3b82f6, radius: 4px
+    }
+
+    text "justify: center" color: #64748b
+    row height: 40px, gap: 8px, justify: "center", color: #f1f5f9 {
+      rect width: 60px, height: 30px, color: #8b5cf6, radius: 4px
+      rect width: 60px, height: 30px, color: #8b5cf6, radius: 4px
+      rect width: 60px, height: 30px, color: #8b5cf6, radius: 4px
+    }
+
+    text "justify: space-evenly" color: #64748b
+    row height: 40px, gap: 8px, justify: "space-evenly", color: #f1f5f9 {
+      rect width: 60px, height: 30px, color: #ec4899, radius: 4px
+      rect width: 60px, height: 30px, color: #ec4899, radius: 4px
+      rect width: 60px, height: 30px, color: #ec4899, radius: 4px
+    }
+
+    -- Align: position items on cross axis
+    text "align: center (items centered vertically)" color: #64748b
+    row height: 80px, gap: 8px, align: "center", color: #f1f5f9 {
+      rect width: 60px, height: 30px, color: #10b981, radius: 4px
+      rect width: 60px, height: 50px, color: #10b981, radius: 4px
+      rect width: 60px, height: 20px, color: #10b981, radius: 4px
+    }
+
+    text "align: end (items at bottom)" color: #64748b
+    row height: 80px, gap: 8px, align: "end", color: #f1f5f9 {
+      rect width: 60px, height: 30px, color: #f59e0b, radius: 4px
+      rect width: 60px, height: 50px, color: #f59e0b, radius: 4px
+      rect width: 60px, height: 20px, color: #f59e0b, radius: 4px
+    }
+
+    -- Flex-grow: items expand to fill space
+    text "flex-grow: 1 (equal distribution)" color: #64748b
+    row height: 40px, gap: 8px, color: #f1f5f9 {
+      rect height: 30px, color: #ef4444, radius: 4px, flex-grow: 1
+      rect height: 30px, color: #ef4444, radius: 4px, flex-grow: 1
+      rect height: 30px, color: #ef4444, radius: 4px, flex-grow: 1
+    }
+
+    text "flex-grow: 1, 2, 1 (middle takes 2x)" color: #64748b
+    row height: 40px, gap: 8px, color: #f1f5f9 {
+      rect height: 30px, color: #06b6d4, radius: 4px, flex-grow: 1
+      rect height: 30px, color: #06b6d4, radius: 4px, flex-grow: 2
+      rect height: 30px, color: #06b6d4, radius: 4px, flex-grow: 1
+    }
+
+    -- Wrap: items wrap to next line
+    text "wrap: true (items wrap when overflow)" color: #64748b
+    row gap: 8px, wrap: true, color: #f1f5f9, padding: 8px {
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+      rect width: 80px, height: 40px, color: #a855f7, radius: 4px
+    }
+
+    -- Min/max constraints
+    text "min-width: 100px, max-width: 200px" color: #64748b
+    column gap: 4px, color: #f1f5f9, padding: 8px, min-width: 100px, max-width: 200px {
+      text "This container has" color: #1e293b
+      text "min and max width" color: #1e293b
+    }
+
+    -- Percentage widths (new M7 feature)
+    text "Percentage widths: 50%, 30%, 20%" color: #64748b
+    row height: 40px, gap: 4px, color: #f1f5f9 {
+      rect width: 50%, height: 30px, color: #3b82f6, radius: 4px
+      rect width: 30%, height: 30px, color: #10b981, radius: 4px
+      rect width: 20%, height: 30px, color: #f59e0b, radius: 4px
+    }
+
+    -- Flex-shrink (new M7 feature)
+    text "flex-shrink: items shrink when overflow" color: #64748b
+    row width: 300px, gap: 4px, color: #f1f5f9, padding: 4px {
+      -- Total width 400px but container is 300px - items shrink
+      rect width: 150px, height: 30px, color: #ef4444, radius: 4px, flex-shrink: 1
+      rect width: 150px, height: 30px, color: #8b5cf6, radius: 4px, flex-shrink: 1
+      rect width: 100px, height: 30px, color: #06b6d4, radius: 4px, flex-shrink: 1
+    }
+
+    text "flex-shrink: 0 (orange won't shrink)" color: #64748b
+    row width: 250px, gap: 4px, color: #f1f5f9, padding: 4px {
+      rect width: 120px, height: 30px, color: #f59e0b, radius: 4px, flex-shrink: 0
+      rect width: 150px, height: 30px, color: #3b82f6, radius: 4px, flex-shrink: 1
+    }
+  }
+}

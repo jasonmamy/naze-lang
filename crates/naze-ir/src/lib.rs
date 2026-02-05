@@ -24,6 +24,8 @@ pub enum RenderValue {
     Bool(bool),
     InterpolatedStr(Vec<TextPart>), // string with embedded state references
     List(Vec<RenderValue>),
+    Object(Vec<(String, RenderValue)>), // Object literal: { key: value, ... }
+    Bind(String), // Two-way state binding for form elements
 }
 
 /// A state variable declaration with its initial value.
@@ -32,6 +34,15 @@ pub enum RenderValue {
 pub struct StateDecl {
     pub name: String,
     pub initial: RenderValue,
+}
+
+/// An async data fetch declaration.
+/// Creates three derived state variables: {name}.loading, {name}.error, {name}.data
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct DataDecl {
+    pub name: String,
+    pub url: String,
 }
 
 /// Binary operators for expressions.
@@ -73,6 +84,8 @@ pub enum IrExpression {
 pub enum IrAction {
     Set { target: String, expr: IrExpression },
     Navigate { path: String },
+    ScrollTo { element_id: String },
+    Log { expr: IrExpression },
 }
 
 /// An event handler on a render node.
@@ -97,13 +110,23 @@ pub struct RenderNode {
     pub each_binding: Option<(String, IrExpression)>,
 }
 
+/// A page definition with path and content.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct PageDef {
+    pub path: String,
+    pub root: Vec<RenderNode>,
+}
+
 /// The serializable render tree for the entire app.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RenderTree {
     pub title: String,
-    pub root: Vec<RenderNode>,
+    pub root: Vec<RenderNode>,     // Default page content (for single-page apps)
     pub state: Vec<StateDecl>,
+    pub data: Vec<DataDecl>,       // Async data fetch declarations
+    pub pages: Vec<PageDef>,       // Named pages for routing
 }
 
 // ─── Simple binary encoding ─────────────────────────────────────────────────
@@ -119,6 +142,7 @@ pub struct RenderTree {
 //     3 = Bool(bool)
 //     4 = InterpolatedStr(u32 part_count + TextParts)
 //     5 = List(u32 count + RenderValues)
+//     6 = Bind(String) - two-way state binding
 //   StateDecl: String name + RenderValue initial
 //   RenderNode: String kind + u32 prop_count + props + u32 child_count + children
 //              + u32 handler_count + handlers + u8 flags + optional fields
@@ -136,9 +160,24 @@ pub fn serialize(tree: &RenderTree) -> Vec<u8> {
         write_string(&mut buf, &decl.name);
         write_value(&mut buf, &decl.initial);
     }
+    // Data fetch declarations
+    write_u32(&mut buf, tree.data.len() as u32);
+    for decl in &tree.data {
+        write_string(&mut buf, &decl.name);
+        write_string(&mut buf, &decl.url);
+    }
     write_u32(&mut buf, tree.root.len() as u32);
     for node in &tree.root {
         write_node(&mut buf, node);
+    }
+    // Pages (for multi-page routing)
+    write_u32(&mut buf, tree.pages.len() as u32);
+    for page in &tree.pages {
+        write_string(&mut buf, &page.path);
+        write_u32(&mut buf, page.root.len() as u32);
+        for node in &page.root {
+            write_node(&mut buf, node);
+        }
     }
     buf
 }
@@ -154,12 +193,37 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         let initial = cursor.read_value()?;
         state.push(StateDecl { name, initial });
     }
+    // Data fetch declarations
+    let data_count = cursor.read_u32()? as usize;
+    let mut data_decls = Vec::with_capacity(data_count);
+    for _ in 0..data_count {
+        let name = cursor.read_string()?;
+        let url = cursor.read_string()?;
+        data_decls.push(DataDecl { name, url });
+    }
     let count = cursor.read_u32()? as usize;
     let mut root = Vec::with_capacity(count);
     for _ in 0..count {
         root.push(cursor.read_node()?);
     }
-    Ok(RenderTree { title, root, state })
+    // Pages (for multi-page routing) - optional for backward compatibility
+    let pages = if cursor.pos < cursor.data.len() {
+        let page_count = cursor.read_u32()? as usize;
+        let mut pages = Vec::with_capacity(page_count);
+        for _ in 0..page_count {
+            let path = cursor.read_string()?;
+            let node_count = cursor.read_u32()? as usize;
+            let mut page_root = Vec::with_capacity(node_count);
+            for _ in 0..node_count {
+                page_root.push(cursor.read_node()?);
+            }
+            pages.push(PageDef { path, root: page_root });
+        }
+        pages
+    } else {
+        vec![]
+    };
+    Ok(RenderTree { title, root, state, data: data_decls, pages })
 }
 
 // ─── Writer ─────────────────────────────────────────────────────────────────
@@ -225,6 +289,18 @@ fn write_value(buf: &mut Vec<u8>, val: &RenderValue) {
                 write_value(buf, item);
             }
         }
+        RenderValue::Bind(name) => {
+            buf.push(6);
+            write_string(buf, name);
+        }
+        RenderValue::Object(entries) => {
+            buf.push(7);
+            write_u32(buf, entries.len() as u32);
+            for (key, value) in entries {
+                write_string(buf, key);
+                write_value(buf, value);
+            }
+        }
     }
 }
 
@@ -285,6 +361,14 @@ fn write_action(buf: &mut Vec<u8>, action: &IrAction) {
         IrAction::Navigate { path } => {
             buf.push(1);
             write_string(buf, path);
+        }
+        IrAction::ScrollTo { element_id } => {
+            buf.push(2);
+            write_string(buf, element_id);
+        }
+        IrAction::Log { expr } => {
+            buf.push(3);
+            write_expression(buf, expr);
         }
     }
 }
@@ -413,6 +497,17 @@ impl<'a> Cursor<'a> {
                 }
                 Ok(RenderValue::List(items))
             }
+            6 => Ok(RenderValue::Bind(self.read_string()?)),
+            7 => {
+                let count = self.read_u32()? as usize;
+                let mut entries = Vec::with_capacity(count);
+                for _ in 0..count {
+                    let key = self.read_string()?;
+                    let value = self.read_value()?;
+                    entries.push((key, value));
+                }
+                Ok(RenderValue::Object(entries))
+            }
             _ => Err(format!("unknown value tag: {}", tag)),
         }
     }
@@ -489,6 +584,14 @@ impl<'a> Cursor<'a> {
                 let path = self.read_string()?;
                 Ok(IrAction::Navigate { path })
             }
+            2 => {
+                let element_id = self.read_string()?;
+                Ok(IrAction::ScrollTo { element_id })
+            }
+            3 => {
+                let expr = self.read_expression()?;
+                Ok(IrAction::Log { expr })
+            }
             _ => Err(format!("unknown action tag: {}", tag)),
         }
     }
@@ -543,6 +646,7 @@ mod tests {
         let tree = RenderTree {
             title: "Hello".to_string(),
             state: vec![],
+            data: vec![],
             root: vec![RenderNode {
                 kind: "text".to_string(),
                 props: {
@@ -556,6 +660,7 @@ mod tests {
                 else_children: None,
                 each_binding: None,
             }],
+            pages: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -567,6 +672,7 @@ mod tests {
         let tree = RenderTree {
             title: "Test".to_string(),
             state: vec![],
+            data: vec![],
             root: vec![RenderNode {
                 kind: "rect".to_string(),
                 props: {
@@ -576,6 +682,7 @@ mod tests {
                     m.insert("color".to_string(), RenderValue::Color(0xff0000));
                     m.insert("visible".to_string(), RenderValue::Bool(true));
                     m.insert("label".to_string(), RenderValue::Str("box".to_string()));
+                    m.insert("bind".to_string(), RenderValue::Bind("someVar".to_string()));
                     m
                 },
                 children: vec![],
@@ -584,6 +691,48 @@ mod tests {
                 else_children: None,
                 each_binding: None,
             }],
+            pages: vec![],
+        };
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn roundtrip_checkbox_with_handler() {
+        // Test checkbox-like scenario with bind prop and click handler
+        let tree = RenderTree {
+            title: "Checkbox Test".to_string(),
+            state: vec![StateDecl {
+                name: "agreed".to_string(),
+                initial: RenderValue::Bool(false),
+            }],
+            data: vec![],
+            root: vec![RenderNode {
+                kind: "checkbox".to_string(),
+                props: {
+                    let mut m = HashMap::new();
+                    m.insert("__text".to_string(), RenderValue::Str("I agree".to_string()));
+                    m.insert("bind".to_string(), RenderValue::Bind("agreed".to_string()));
+                    m
+                },
+                children: vec![],
+                handlers: vec![IrEventHandler {
+                    event: "click".to_string(),
+                    action: IrAction::Set {
+                        target: "agreed".to_string(),
+                        expr: IrExpression::BinOp {
+                            left: Box::new(IrExpression::StateRef("agreed".to_string())),
+                            op: IrBinOp::Eq,
+                            right: Box::new(IrExpression::Bool(false)),
+                        },
+                    },
+                }],
+                condition: None,
+                else_children: None,
+                each_binding: None,
+            }],
+            pages: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -595,6 +744,7 @@ mod tests {
         let tree = RenderTree {
             title: "Nested".to_string(),
             state: vec![],
+            data: vec![],
             root: vec![RenderNode {
                 kind: "column".to_string(),
                 props: HashMap::new(),
@@ -631,6 +781,54 @@ mod tests {
                 else_children: None,
                 each_binding: None,
             }],
+            pages: vec![],
+        };
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn roundtrip_with_pages() {
+        let tree = RenderTree {
+            title: "Multi-Page App".to_string(),
+            state: vec![],
+            data: vec![],
+            root: vec![],
+            pages: vec![
+                PageDef {
+                    path: "/".to_string(),
+                    root: vec![RenderNode {
+                        kind: "text".to_string(),
+                        props: {
+                            let mut m = HashMap::new();
+                            m.insert("__text".to_string(), RenderValue::Str("Home".to_string()));
+                            m
+                        },
+                        children: vec![],
+                        handlers: vec![],
+                        condition: None,
+                        else_children: None,
+                        each_binding: None,
+                    }],
+                },
+                PageDef {
+                    path: "/about".to_string(),
+                    root: vec![RenderNode {
+                        kind: "text".to_string(),
+                        props: {
+                            let mut m = HashMap::new();
+                            m.insert("__text".to_string(), RenderValue::Str("About".to_string()));
+                            m
+                        },
+                        children: vec![],
+                        handlers: vec![],
+                        condition: None,
+                        else_children: None,
+                        each_binding: None,
+                    }],
+                },
+            ],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();

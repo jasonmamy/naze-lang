@@ -1,0 +1,181 @@
+.block {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  margin: 2px 0;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.block:hover {
+  border-color: var(--vscode-focusBorder);
+}
+
+.block.selected {
+  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-list-activeSelectionBackground);
+}
+
+.block-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  gap: 6px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.block-header:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.collapse-btn {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.collapse-btn:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.block-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.block-type {
+  font-weight: 600;
+  color: var(--vscode-symbolIcon-keywordForeground, #569cd6);
+}
+
+.block-name {
+  color: var(--vscode-symbolIcon-stringForeground, #ce9178);
+  font-style: italic;
+}
+
+.block-props {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  overflow: hidden;
+}
+
+.prop-inline {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prop-key {
+  color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+}
+
+.prop-color {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 4px;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.props-more {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.block-menu-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.block-header:hover .block-menu-btn {
+  opacity: 0.7;
+}
+
+.block-menu-btn:hover {
+  opacity: 1 !important;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.block-menu-container {
+  position: relative;
+}
+
+.block-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--vscode-dropdown-background);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  min-width: 120px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+
+.menu-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.menu-item:first-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.menu-item:last-child {
+  border-radius: 0 0 4px 4px;
+}
+
+.block-children {
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 1px solid var(--vscode-panel-border);
+}
+
+/* Depth-based coloring */
+.block.depth-0 { --block-accent: #4fc3f7; }
+.block.depth-1 { --block-accent: #81c784; }
+.block.depth-2 { --block-accent: #ffb74d; }
+.block.depth-3 { --block-accent: #ba68c8; }
+.block.depth-4 { --block-accent: #f06292; }
+.block.depth-5 { --block-accent: #4dd0e1; }
+
+.block.selected .block-header {
+  border-left: 3px solid var(--block-accent);
+  padding-left: 5px;
+}

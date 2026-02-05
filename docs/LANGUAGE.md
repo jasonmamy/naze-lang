@@ -320,3 +320,37 @@ name        = (letter | "_") (alphanumeric | "_" | "-")*
 ```
 
 Whitespace (spaces, tabs) is ignored between tokens. Newlines are significant as statement terminators for elements without blocks.
+
+## Debug Logging
+
+The `log` action outputs values to the browser console (or stderr in native mode). Useful for debugging state and event handlers.
+
+```naze
+on click: log "button clicked"
+on click: log count              -- log state variable value
+on click: log "count is: {count}" -- interpolated string
+```
+
+## Future Ideas
+
+This section documents potential future language features under consideration.
+
+### JavaScript Interop
+
+**Status:** Under consideration, not yet implemented.
+
+The ability to call JavaScript functions from .naze code would enable:
+- Integration with existing JS libraries (validation, parsing, utilities)
+- Accessing browser APIs not directly exposed through naze
+- Custom application logic alongside naze UI
+
+#### Proposed Syntax
+```naze
+on click: js "functionName"(arg1, arg2)
+on click: js "compute"(x, y) -> result   -- store return value
+```
+
+#### Technical Considerations
+- Type marshalling: Num ↔ f64, Str ↔ string, Bool ↔ boolean
+- JS functions must be exposed on `globalThis`
+- Initial sync-only; async support could be added later

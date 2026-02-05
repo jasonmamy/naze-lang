@@ -1,0 +1,44 @@
+app "On Change Event Test" {
+  state name = ""
+  state country = "us"
+  state agreed = false
+  state choice = "a"
+  state change_count = 0
+
+  column padding: 20px, gap: 16px {
+    heading "On Change Event Demo"
+
+    text "Type your name:"
+    input bind: name, placeholder: "Enter name" {
+      on change: set change_count = change_count + 1
+    }
+
+    text "Select country:"
+    select bind: country {
+      on change: set change_count = change_count + 1
+      option "USA" value: "us"
+      option "Canada" value: "ca"
+      option "Mexico" value: "mx"
+    }
+
+    checkbox "I agree to the terms" bind: agreed {
+      on change: set change_count = change_count + 1
+    }
+
+    text "Choose option:"
+    radio "Option A" bind: choice, value: "a" {
+      on change: set change_count = change_count + 1
+    }
+    radio "Option B" bind: choice, value: "b" {
+      on change: set change_count = change_count + 1
+    }
+
+    rect height: 1px, color: #e5e5e5
+
+    text "Change count: {change_count}" color: #2563eb
+    text "Name: {name}"
+    text "Country: {country}"
+    text "Agreed: {agreed}"
+    text "Choice: {choice}"
+  }
+}

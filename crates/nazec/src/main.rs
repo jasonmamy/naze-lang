@@ -25,7 +25,7 @@ fn main() {
         Command::Check => do_check(format),
         Command::Run => do_run(),
         Command::Parse { file } => parse_file(&file),
-        Command::Gallery { build } => gallery::run(build),
+        Command::Gallery { build, native } => gallery::run(build, native),
     };
 
     if let Err(e) = result {

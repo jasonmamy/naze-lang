@@ -1,0 +1,151 @@
+{
+  "name": "Naze",
+  "scopeName": "source.naze",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#keyword" },
+    { "include": "#element" },
+    { "include": "#property" },
+    { "include": "#number" },
+    { "include": "#color" },
+    { "include": "#boolean" },
+    { "include": "#operator" }
+  ],
+  "repository": {
+    "comment": {
+      "patterns": [
+        {
+          "name": "comment.line.double-dash.naze",
+          "match": "--.*$"
+        }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.naze",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.naze",
+              "match": "\\\\."
+            },
+            {
+              "name": "variable.other.interpolation.naze",
+              "begin": "\\{",
+              "end": "\\}",
+              "patterns": [
+                { "include": "#expression" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "keyword": {
+      "patterns": [
+        {
+          "name": "keyword.control.naze",
+          "match": "\\b(if|else|each|in|on)\\b"
+        },
+        {
+          "name": "keyword.declaration.naze",
+          "match": "\\b(app|component|page|theme|use)\\b"
+        },
+        {
+          "name": "keyword.storage.naze",
+          "match": "\\b(state|let|data)\\b"
+        },
+        {
+          "name": "keyword.other.naze",
+          "match": "\\b(slot|fill|link)\\b"
+        },
+        {
+          "name": "keyword.operator.action.naze",
+          "match": "\\b(set|navigate|scroll-to|log|fetch)\\b"
+        }
+      ]
+    },
+    "element": {
+      "patterns": [
+        {
+          "name": "entity.name.tag.layout.naze",
+          "match": "\\b(column|row|stack|grid|container|spacer|scroll)\\b"
+        },
+        {
+          "name": "entity.name.tag.content.naze",
+          "match": "\\b(rect|text|heading|image)\\b"
+        },
+        {
+          "name": "entity.name.tag.form.naze",
+          "match": "\\b(input|checkbox|radio|select|option)\\b"
+        }
+      ]
+    },
+    "property": {
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name.naze",
+          "match": "\\b(width|height|padding|gap|color|radius|opacity|border|font-size|align|justify|wrap|src|alt|fit|bind|placeholder|type|validate|to|role|label|id|tab-index|draggable|drop-target|drag-data|transition|flex-grow|flex-shrink|min-width|max-width|min-height|max-height|columns|overflow)\\b(?=\\s*:)"
+        }
+      ]
+    },
+    "number": {
+      "patterns": [
+        {
+          "name": "constant.numeric.naze",
+          "match": "-?\\d+(\\.\\d+)?(px|%|em|ms|s)?\\b"
+        }
+      ]
+    },
+    "color": {
+      "patterns": [
+        {
+          "name": "constant.other.color.naze",
+          "match": "#[0-9a-fA-F]{3,8}\\b"
+        }
+      ]
+    },
+    "boolean": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.naze",
+          "match": "\\b(true|false)\\b"
+        }
+      ]
+    },
+    "operator": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.naze",
+          "match": "(==|!=|>=|<=|>|<)"
+        },
+        {
+          "name": "keyword.operator.logical.naze",
+          "match": "(&&|\\|\\||!)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.naze",
+          "match": "(\\+|-|\\*|/|%)"
+        },
+        {
+          "name": "keyword.operator.assignment.naze",
+          "match": "="
+        }
+      ]
+    },
+    "expression": {
+      "patterns": [
+        { "include": "#number" },
+        { "include": "#boolean" },
+        { "include": "#operator" },
+        {
+          "name": "variable.other.naze",
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+        }
+      ]
+    }
+  }
+}

@@ -1,16 +1,17 @@
-// Naze Grammar (Phase 1 + M1 state/let)
-// Supports: app blocks, component definitions, use statements,
+// Naze Grammar (Phase 2 M8)
+// Supports: app blocks, page blocks (routing), component definitions, use statements,
 // spatial primitives (row/column/stack/grid/spacer), rect, text, heading,
 // comments, properties with literals (string/number/color/bool/ref),
 // let bindings (immutable), state declarations (mutable, reactive),
-// string interpolation ({expr} in string literals)
+// string interpolation ({expr} in string literals),
+// theme definitions (colors, spacing tokens), link elements
 
 WHITESPACE = _{ " " | "\t" | "\r" }
 NEWLINE_CHAR = _{ "\n" }
 
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
-statement = _{ comment | use_stmt | component_def | app_block | let_stmt | state_stmt | if_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | element }
+statement = _{ comment | use_stmt | component_def | app_block | page_block | theme_def | let_stmt | state_stmt | data_stmt | if_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
 
 // -- Comments
 comment = @{ "--" ~ (!NEWLINE_CHAR ~ ANY)* }
@@ -22,11 +23,24 @@ use_path = @{ ident_raw ~ ("/" ~ ident_raw)* }
 // -- App block: app "Title" { ... }
 app_block = { "app" ~ string_lit ~ block }
 
+// -- Page block: page "/path" { ... }
+page_block = { "page" ~ string_lit ~ block }
+
+// -- Link element: link "text" to: "/path"
+link_element = { "link" ~ string_lit ~ "," ~ "to" ~ ":" ~ string_lit ~ (block | NEWLINE_CHAR) }
+
 // -- Component definition: component name(param: type = default) { ... }
 component_def = { "component" ~ ident ~ param_list? ~ block }
 param_list = { "(" ~ param ~ ("," ~ param)* ~ ")" }
 param = { ident ~ ":" ~ type_name ~ ("=" ~ value)? }
 type_name = { "text" | "number" | "bool" | "color" }
+
+// -- Theme definition: theme { colors { ... } spacing { ... } }
+theme_def = { "theme" ~ theme_block }
+theme_block = { "{" ~ (NEWLINE_CHAR | theme_section)* ~ "}" }
+theme_section = { theme_section_name ~ "{" ~ (NEWLINE_CHAR | theme_entry)* ~ "}" }
+theme_section_name = { "colors" | "spacing" }
+theme_entry = { ident ~ ":" ~ value ~ NEWLINE_CHAR? }
 
 // -- Let binding (immutable, compile-time): let label = "Hello"
 let_stmt = { "let" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
@@ -34,12 +48,17 @@ let_stmt = { "let" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 // -- State declaration (mutable, reactive): state count = 0
 state_stmt = { "state" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 
+// -- Data declaration (async fetch): data users: fetch "url"
+data_stmt = { "data" ~ ident ~ ":" ~ "fetch" ~ string_lit ~ NEWLINE_CHAR }
+
 // -- Event handler: on click: set count = count + 1
 on_handler = { "on" ~ event_name ~ ":" ~ action ~ NEWLINE_CHAR }
-event_name = { "click" | "hover" | "keypress" }
-action = _{ set_action | navigate_action }
+event_name = { "click" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" }
+action = _{ set_action | navigate_action | scroll_to_action | log_action }
 set_action = { "set" ~ ident ~ "=" ~ expression }
 navigate_action = { "navigate" ~ string_lit }
+scroll_to_action = { "scroll-to" ~ string_lit }
+log_action = { "log" ~ expression }
 
 // -- Conditional: if expr { ... } else { ... }
 if_stmt = { "if" ~ expression ~ block ~ else_clause? }
@@ -74,7 +93,11 @@ prop = { ident ~ ":" ~ value }
 block = { "{" ~ (NEWLINE_CHAR | statement)* ~ "}" }
 
 // -- Values
-value = { list_lit | string_lit | color_lit | number_lit | bool_lit | ref_path | ident }
+value = { object_lit | list_lit | string_lit | color_lit | number_lit | bool_lit | ref_path | ident }
+
+// Object literal: { key: value, key: value }
+object_lit = { "{" ~ (object_entry ~ ("," ~ object_entry)*)? ~ "}" }
+object_entry = { ident ~ ":" ~ value }
 
 list_lit = { "[" ~ (value ~ ("," ~ value)*)? ~ "]" }
 

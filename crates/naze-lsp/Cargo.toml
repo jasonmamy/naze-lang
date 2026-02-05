@@ -1,0 +1,18 @@
+[package]
+name = "naze-lsp"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "naze-lsp"
+path = "src/main.rs"
+
+[dependencies]
+naze-parser = { path = "../naze-parser" }
+naze-compiler = { path = "../naze-compiler" }
+
+tower-lsp = "0.20"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dashmap = "5"

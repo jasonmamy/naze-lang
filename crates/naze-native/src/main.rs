@@ -202,7 +202,9 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
     RenderTree {
         title: tree.title.clone(),
         state: tree.state.clone(),
+        data: tree.data.clone(),
         root: resolve_nodes(&tree.root, state),
+        pages: tree.pages.clone(),
     }
 }
 
@@ -351,6 +353,15 @@ fn execute_action(
             true
         }
         IrAction::Navigate { .. } => false,
+        IrAction::ScrollTo { .. } => {
+            // Native scrolling not yet implemented
+            false
+        }
+        IrAction::Log { expr } => {
+            let value = evaluate_expr(expr, state);
+            println!("[log] {:?}", value);
+            false
+        }
     }
 }
 

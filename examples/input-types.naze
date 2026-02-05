@@ -1,0 +1,30 @@
+app "Input Types Test" {
+  state username = ""
+  state password = ""
+  state email = ""
+  state age = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Input Types Demo"
+
+    text "Username (text):"
+    input bind: username, type: "text", placeholder: "Enter username"
+
+    text "Password:"
+    input bind: password, type: "password", placeholder: "Enter password"
+
+    text "Email:"
+    input bind: email, type: "email", placeholder: "Enter email"
+
+    text "Age (number):"
+    input bind: age, type: "number", placeholder: "Enter age"
+
+    rect height: 1px, color: #e5e5e5
+
+    text "Values:" color: #6b7280
+    text "Username: {username}"
+    text "Password: {password}"
+    text "Email: {email}"
+    text "Age: {age}"
+  }
+}

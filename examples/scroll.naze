@@ -1,0 +1,76 @@
+-- M8e: Scroll Container Demo
+app "Scroll Demo" {
+  state items = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew", "Kiwi", "Lemon", "Mango", "Nectarine", "Orange", "Papaya", "Quince"]
+
+  column padding: 20px, gap: 16px {
+    heading "Scroll Container Demo"
+
+    text "Vertical Scroll (height: 200px)"
+    scroll height: 200px, color: #f8fafc, radius: 8px {
+      column padding: 12px, gap: 8px {
+        each item in items {
+          rect color: #ffffff, padding: 12px, radius: 4px, border: 1px, border-color: #e2e8f0 {
+            text "{item}"
+          }
+        }
+      }
+    }
+
+    text "Horizontal Scroll (width: 300px)"
+    scroll width: 300px, height: 100px, overflow: "x", color: #f8fafc, radius: 8px {
+      row padding: 12px, gap: 8px {
+        rect width: 100px, height: 80px, color: #ef4444, radius: 8px {
+          column align: center, justify: center {
+            text "Red", color: #ffffff
+          }
+        }
+        rect width: 100px, height: 80px, color: #22c55e, radius: 8px {
+          column align: center, justify: center {
+            text "Green", color: #ffffff
+          }
+        }
+        rect width: 100px, height: 80px, color: #3b82f6, radius: 8px {
+          column align: center, justify: center {
+            text "Blue", color: #ffffff
+          }
+        }
+        rect width: 100px, height: 80px, color: #8b5cf6, radius: 8px {
+          column align: center, justify: center {
+            text "Purple", color: #ffffff
+          }
+        }
+        rect width: 100px, height: 80px, color: #f59e0b, radius: 8px {
+          column align: center, justify: center {
+            text "Orange", color: #ffffff
+          }
+        }
+      }
+    }
+
+    text "Both Scroll (300x150)"
+    scroll width: 300px, height: 150px, overflow: "both", color: #f1f5f9, radius: 8px {
+      column padding: 12px, gap: 8px {
+        rect width: 400px, height: 50px, color: #dc2626, radius: 4px {
+          column align: center, justify: center {
+            text "Wide Row 1", color: #ffffff
+          }
+        }
+        rect width: 400px, height: 50px, color: #059669, radius: 4px {
+          column align: center, justify: center {
+            text "Wide Row 2", color: #ffffff
+          }
+        }
+        rect width: 400px, height: 50px, color: #2563eb, radius: 4px {
+          column align: center, justify: center {
+            text "Wide Row 3", color: #ffffff
+          }
+        }
+        rect width: 400px, height: 50px, color: #7c3aed, radius: 4px {
+          column align: center, justify: center {
+            text "Wide Row 4", color: #ffffff
+          }
+        }
+      }
+    }
+  }
+}

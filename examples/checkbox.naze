@@ -1,0 +1,17 @@
+app "Checkbox Test" {
+  state agreed = false
+
+  column padding: 20px, gap: 16px {
+    heading "Checkbox Demo"
+
+    checkbox "I agree to the terms and conditions" bind: agreed
+
+    if agreed {
+      text "Thank you for agreeing!" color: #22c55e
+    }
+
+    if agreed == false {
+      text "Please check the box above to continue." color: #94a3b8
+    }
+  }
+}

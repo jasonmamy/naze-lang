@@ -1,0 +1,17 @@
+app "Select Test" {
+  state country = "us"
+
+  column padding: 20px, gap: 16px {
+    heading "Select Demo"
+
+    text "Choose a country:"
+
+    select bind: country {
+      option "USA" value: "us"
+      option "Canada" value: "ca"
+      option "Mexico" value: "mx"
+    }
+
+    text "You selected: {country}" color: #2563eb
+  }
+}

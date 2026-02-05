@@ -1,0 +1,65 @@
+-- M8c: Drag & Drop Example
+app "Drag and Drop Demo" {
+  state dropped-item = ""
+  state drag-active = false
+
+  column padding: 20px, gap: 16px {
+    heading "Drag & Drop Demo"
+
+    text "Drag the colored boxes to the drop zone below"
+
+    -- Draggable items
+    row gap: 12px {
+      rect draggable: true, drag-data: "Red", width: 80px, height: 80px, color: #ef4444, radius: 8px {
+        on drag-start: set drag-active = true
+        column align: center, justify: center {
+          text "Red", color: #ffffff
+        }
+      }
+      rect draggable: true, drag-data: "Green", width: 80px, height: 80px, color: #22c55e, radius: 8px {
+        on drag-start: set drag-active = true
+        column align: center, justify: center {
+          text "Green", color: #ffffff
+        }
+      }
+      rect draggable: true, drag-data: "Blue", width: 80px, height: 80px, color: #3b82f6, radius: 8px {
+        on drag-start: set drag-active = true
+        column align: center, justify: center {
+          text "Blue", color: #ffffff
+        }
+      }
+    }
+
+    -- Drop zone
+    rect drop-target: true, width: 300px, height: 120px, color: #f1f5f9, radius: 8px, border: 2px, border-color: #cbd5e1 {
+      on drop: set dropped-item = "Item dropped!"
+      on drop: set drag-active = false
+      on drag-over: set dropped-item = "Release to drop..."
+
+      column padding: 16px, align: center, justify: center {
+        if dropped-item {
+          text "{dropped-item}", color: #16a34a
+        }
+        if drag-active {
+          if dropped-item == "" {
+            text "Drag an item here!", color: #64748b
+          }
+        }
+        if drag-active == false {
+          if dropped-item == "" {
+            text "Drop zone", color: #94a3b8
+          }
+        }
+      }
+    }
+
+    -- Reset button
+    rect width: 100px, height: 36px, color: #6366f1, radius: 6px {
+      on click: set dropped-item = ""
+      on click: set drag-active = false
+      column align: center, justify: center {
+        text "Reset", color: #ffffff
+      }
+    }
+  }
+}
