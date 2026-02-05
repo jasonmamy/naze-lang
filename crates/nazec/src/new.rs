@@ -22,11 +22,11 @@ app "{{name}}" {
     text "Count: {count}"
 
     row gap: 12px {
-      rect width: 120px, height: 50px, color: #2563eb, radius: 8px {
+      rect width: 120px, height: 50px, color: #2563eb, radius: 8px, role: "button", label: "Increment counter" {
         text "Increment"
         on click: set count = count + 1
       }
-      rect width: 120px, height: 50px, color: #dc2626, radius: 8px {
+      rect width: 120px, height: 50px, color: #dc2626, radius: 8px, role: "button", label: "Reset counter" {
         text "Reset"
         on click: set count = 0
       }

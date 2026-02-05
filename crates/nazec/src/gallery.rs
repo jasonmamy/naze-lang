@@ -244,7 +244,10 @@ fn generate_gallery_html(
 fn serve_and_open(output_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("\nGallery built to: {}", output_dir.display());
     eprintln!("\nTo view the gallery, run:");
-    eprintln!("  cd {} && python3 -m http.server 8000", output_dir.display());
+    eprintln!(
+        "  cd {} && python3 -m http.server 8000",
+        output_dir.display()
+    );
     eprintln!("Then open: http://localhost:8000\n");
 
     // Try to start python server automatically
@@ -360,11 +363,15 @@ impl NativeGallery {
             // Reset state for new example
             self.state_store.clear();
             for decl in &self.examples[self.selected].1.state {
-                self.state_store.insert(decl.name.clone(), decl.initial.clone());
+                self.state_store
+                    .insert(decl.name.clone(), decl.initial.clone());
             }
             self.layout = None;
             if let Some(window) = &self.window {
-                window.set_title(&format!("Naze Gallery - {}", self.examples[self.selected].0));
+                window.set_title(&format!(
+                    "Naze Gallery - {}",
+                    self.examples[self.selected].0
+                ));
                 window.request_redraw();
             }
         }
@@ -508,7 +515,10 @@ impl NativeGallery {
                     height: 28.0,
                     props: {
                         let mut p = HashMap::new();
-                        p.insert("__text".to_string(), RenderValue::Str("Naze Gallery".to_string()));
+                        p.insert(
+                            "__text".to_string(),
+                            RenderValue::Str("Naze Gallery".to_string()),
+                        );
                         p.insert("font-size".to_string(), RenderValue::Num(18.0, None));
                         p.insert("color".to_string(), RenderValue::Color(0xFFFFFF));
                         p
@@ -750,11 +760,7 @@ fn hit_test_any_handler(nodes: &[PositionedNode], x: f32, y: f32, event: &str) -
     false
 }
 
-fn find_click_handlers(
-    nodes: &[PositionedNode],
-    x: f32,
-    y: f32,
-) -> Vec<naze_ir::IrEventHandler> {
+fn find_click_handlers(nodes: &[PositionedNode], x: f32, y: f32) -> Vec<naze_ir::IrEventHandler> {
     for node in nodes.iter().rev() {
         if !point_in_node(node, x, y) {
             continue;
@@ -799,7 +805,11 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             let msg = match &value {
                 RenderValue::Str(s) => s.clone(),
                 RenderValue::Num(n, _) => {
-                    if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+                    if n.fract() == 0.0 {
+                        format!("{}", *n as i64)
+                    } else {
+                        format!("{}", n)
+                    }
                 }
                 RenderValue::Bool(b) => (if *b { "true" } else { "false" }).to_string(),
                 RenderValue::Color(c) => format!("#{:06x}", c),
@@ -816,9 +826,10 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
         IrExpression::Num(n) => RenderValue::Num(*n, None),
         IrExpression::Str(s) => RenderValue::Str(s.clone()),
         IrExpression::Bool(b) => RenderValue::Bool(*b),
-        IrExpression::StateRef(name) => {
-            state.get(name).cloned().unwrap_or(RenderValue::Num(0.0, None))
-        }
+        IrExpression::StateRef(name) => state
+            .get(name)
+            .cloned()
+            .unwrap_or(RenderValue::Num(0.0, None)),
         IrExpression::BinOp { left, op, right } => {
             let lval = evaluate_expr(left, state);
             let rval = evaluate_expr(right, state);
@@ -851,14 +862,8 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
                 ))
             }
         }
-        IrBinOp::Sub => RenderValue::Num(
-            left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0),
-            None,
-        ),
-        IrBinOp::Mul => RenderValue::Num(
-            left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0),
-            None,
-        ),
+        IrBinOp::Sub => RenderValue::Num(left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0), None),
+        IrBinOp::Mul => RenderValue::Num(left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0), None),
         IrBinOp::Div => {
             let r = right_num.unwrap_or(1.0);
             let r = if r == 0.0 { 1.0 } else { r };
@@ -871,13 +876,25 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
         IrBinOp::Gte => RenderValue::Bool(left_num.unwrap_or(0.0) >= right_num.unwrap_or(0.0)),
         IrBinOp::Lte => RenderValue::Bool(left_num.unwrap_or(0.0) <= right_num.unwrap_or(0.0)),
         IrBinOp::And => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l && r)
         }
         IrBinOp::Or => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l || r)
         }
     }
@@ -887,7 +904,11 @@ fn render_value_to_string(v: &RenderValue) -> String {
     match v {
         RenderValue::Str(s) => s.clone(),
         RenderValue::Num(n, _) => {
-            if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+            if n.fract() == 0.0 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{}", n)
+            }
         }
         RenderValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
         RenderValue::Color(c) => format!("#{:06x}", c),

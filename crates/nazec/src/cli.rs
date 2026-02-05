@@ -19,6 +19,16 @@ pub enum OutputFormat {
     Json,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq)]
+pub enum BuildTarget {
+    /// Build for web (WASM + HTML)
+    Web,
+    /// Build standalone native binary
+    Native,
+    /// Build Android project with WebView
+    Android,
+}
+
 #[derive(Subcommand)]
 pub enum Command {
     /// Create a new Naze project
@@ -26,12 +36,26 @@ pub enum Command {
         /// Project name
         name: String,
     },
-    /// Compile the project to WASM
-    Build,
+    /// Compile the project
+    Build {
+        /// Target platform
+        #[arg(short, long, default_value = "web")]
+        target: BuildTarget,
+    },
     /// Type-check without building
     Check,
     /// Preview the built app in a native desktop window
     Run,
+    /// Start dev server with hot reload for browser development
+    Dev {
+        /// Port to run the server on
+        #[arg(short, long, default_value = "3000")]
+        port: u16,
+
+        /// Automatically open browser
+        #[arg(short, long)]
+        open: bool,
+    },
     /// Parse a .naze file and dump the AST as JSON
     Parse {
         /// Path to the .naze file

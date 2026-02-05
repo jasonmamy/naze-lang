@@ -364,6 +364,8 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
             app.caret_interval_id = None;
             app.drag_state = None; // Clear drag state
             app.scroll_states.clear(); // Clear scroll positions
+            app.animations.clear(); // Clear running animations
+            app.prev_props.clear(); // Clear previous prop values for animations
         }
     });
 

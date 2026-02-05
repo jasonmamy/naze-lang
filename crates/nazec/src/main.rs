@@ -1,14 +1,17 @@
+mod android_build;
 mod build;
 mod cli;
+mod dev;
 mod diagnostic;
 mod gallery;
 mod manifest;
+mod native_build;
 mod native_renderer;
 mod new;
 mod run;
 
 use clap::Parser;
-use cli::{Cli, Command, OutputFormat};
+use cli::{BuildTarget, Cli, Command, OutputFormat};
 use diagnostic::Format;
 
 fn main() {
@@ -21,9 +24,10 @@ fn main() {
 
     let result = match cli.command {
         Command::New { name } => new::run(&name),
-        Command::Build => do_build(format),
+        Command::Build { target } => do_build(target, format),
         Command::Check => do_check(format),
         Command::Run => do_run(),
+        Command::Dev { port, open } => do_dev(port, open),
         Command::Parse { file } => parse_file(&file),
         Command::Gallery { build, native } => gallery::run(build, native),
     };
@@ -36,12 +40,24 @@ fn main() {
     }
 }
 
-fn do_build(format: Format) -> Result<(), Box<dyn std::error::Error>> {
+fn do_build(target: BuildTarget, format: Format) -> Result<(), Box<dyn std::error::Error>> {
     let manifest = manifest::load("naze.toml")?;
     if format == Format::Text {
-        eprintln!("building {} v{}", manifest.app.name, manifest.app.version);
+        let target_str = match target {
+            BuildTarget::Web => "web",
+            BuildTarget::Native => "native",
+            BuildTarget::Android => "android",
+        };
+        eprintln!(
+            "building {} v{} ({})",
+            manifest.app.name, manifest.app.version, target_str
+        );
     }
-    build::run(&manifest, format)
+    match target {
+        BuildTarget::Web => build::run(&manifest, format),
+        BuildTarget::Native => native_build::run(&manifest, format),
+        BuildTarget::Android => android_build::run(&manifest, format),
+    }
 }
 
 fn do_check(format: Format) -> Result<(), Box<dyn std::error::Error>> {
@@ -55,6 +71,11 @@ fn do_check(format: Format) -> Result<(), Box<dyn std::error::Error>> {
 fn do_run() -> Result<(), Box<dyn std::error::Error>> {
     let manifest = manifest::load("naze.toml")?;
     run::run(&manifest)
+}
+
+fn do_dev(port: u16, open: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let manifest = manifest::load("naze.toml")?;
+    dev::run(&manifest, port, open)
 }
 
 fn parse_file(path: &str) -> Result<(), Box<dyn std::error::Error>> {

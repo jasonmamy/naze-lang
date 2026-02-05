@@ -1,9 +1,4 @@
 -- A reusable colored box component
-component {
-  text align: "start", color: #d82c2c
-  scroll height: 400px {
-  input placeholder: "Enter text"
-}
-} color-box(color: color, size: number = 80px) {
+component color-box(color: color, size: number = 80px) {
   rect width: size, height: size, color: color, radius: 4px
 }

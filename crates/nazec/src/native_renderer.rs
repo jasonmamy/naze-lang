@@ -115,7 +115,16 @@ fn rounded_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia
     pb.finish()
 }
 
-fn stroke_rounded_rect(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, r: f32, color: u32, stroke_width: f32) {
+fn stroke_rounded_rect(
+    pixmap: &mut Pixmap,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    r: f32,
+    color: u32,
+    stroke_width: f32,
+) {
     if let Some(path) = rounded_rect_path(x, y, w, h, r) {
         let paint = make_paint(color);
         let stroke = tiny_skia::Stroke {
@@ -126,7 +135,14 @@ fn stroke_rounded_rect(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, r: f
     }
 }
 
-fn draw_checkbox(pixmap: &mut Pixmap, x: f32, y: f32, checked: bool, label: &str, font: &fontdue::Font) {
+fn draw_checkbox(
+    pixmap: &mut Pixmap,
+    x: f32,
+    y: f32,
+    checked: bool,
+    label: &str,
+    font: &fontdue::Font,
+) {
     let box_size = 20.0_f32;
     let box_x = x;
     let box_y = y;
@@ -161,7 +177,14 @@ fn draw_checkbox(pixmap: &mut Pixmap, x: f32, y: f32, checked: bool, label: &str
     }
 }
 
-fn draw_radio(pixmap: &mut Pixmap, x: f32, y: f32, selected: bool, label: &str, font: &fontdue::Font) {
+fn draw_radio(
+    pixmap: &mut Pixmap,
+    x: f32,
+    y: f32,
+    selected: bool,
+    label: &str,
+    font: &fontdue::Font,
+) {
     let radius = 10.0_f32;
     let center_x = x + radius;
     let center_y = y + radius;
@@ -171,7 +194,13 @@ fn draw_radio(pixmap: &mut Pixmap, x: f32, y: f32, selected: bool, label: &str, 
     pb.push_circle(center_x, center_y, radius);
     if let Some(path) = pb.finish() {
         let paint = make_paint(0xffffff);
-        pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+        pixmap.fill_path(
+            &path,
+            &paint,
+            tiny_skia::FillRule::Winding,
+            Transform::identity(),
+            None,
+        );
     }
 
     // Draw outer circle border (gray)
@@ -192,7 +221,13 @@ fn draw_radio(pixmap: &mut Pixmap, x: f32, y: f32, selected: bool, label: &str, 
         pb.push_circle(center_x, center_y, 5.0);
         if let Some(path) = pb.finish() {
             let paint = make_paint(0x2563eb); // Blue
-            pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+            pixmap.fill_path(
+                &path,
+                &paint,
+                tiny_skia::FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
         }
     }
 
@@ -202,7 +237,19 @@ fn draw_radio(pixmap: &mut Pixmap, x: f32, y: f32, selected: bool, label: &str, 
     }
 }
 
-fn draw_input(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, value: &str, placeholder: &str, focused: bool, input_type: &str, show_caret: bool, font: &fontdue::Font) {
+fn draw_input(
+    pixmap: &mut Pixmap,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    value: &str,
+    placeholder: &str,
+    focused: bool,
+    input_type: &str,
+    show_caret: bool,
+    font: &fontdue::Font,
+) {
     // Background
     fill_rect(pixmap, x, y, w, h, 0xffffff, 4.0);
 
@@ -230,7 +277,8 @@ fn draw_input(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, value: &str, 
     // Draw cursor when show_caret is true (handles blinking)
     if show_caret {
         // Measure text width to position cursor
-        let text_width: f32 = display_value.chars()
+        let text_width: f32 = display_value
+            .chars()
             .map(|ch| font.metrics(ch, 16.0).advance_width)
             .sum();
         let cursor_x = text_x + text_width;
@@ -270,7 +318,15 @@ fn draw_select(
 
     // Display text
     if !display_text.is_empty() {
-        draw_text(pixmap, display_text, x + 12.0, y + 8.0, 16.0, font, 0x111827);
+        draw_text(
+            pixmap,
+            display_text,
+            x + 12.0,
+            y + 8.0,
+            16.0,
+            font,
+            0x111827,
+        );
     }
 
     // Dropdown arrow (simple triangle using lines)
@@ -349,13 +405,23 @@ fn draw_text(
 
 // --- Tree drawing (mirrors naze-runtime draw_node logic) ---
 
-pub fn draw_tree(pixmap: &mut Pixmap, layout: &LayoutTree, font: &fontdue::Font, focused_input_id: Option<&str>) {
+pub fn draw_tree(
+    pixmap: &mut Pixmap,
+    layout: &LayoutTree,
+    font: &fontdue::Font,
+    focused_input_id: Option<&str>,
+) {
     for node in &layout.root {
         draw_node(pixmap, node, font, focused_input_id);
     }
 }
 
-fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font, focused_input_id: Option<&str>) {
+fn draw_node(
+    pixmap: &mut Pixmap,
+    node: &PositionedNode,
+    font: &fontdue::Font,
+    focused_input_id: Option<&str>,
+) {
     let x = node.x;
     let y = node.y;
     let w = node.width;
@@ -437,7 +503,19 @@ fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font, f
             };
             // Show caret when focused (native mode doesn't have blinking yet)
             let show_caret = focused;
-            draw_input(pixmap, x, y, w, h, &value, &placeholder, focused, input_type, show_caret, font);
+            draw_input(
+                pixmap,
+                x,
+                y,
+                w,
+                h,
+                &value,
+                &placeholder,
+                focused,
+                input_type,
+                show_caret,
+                font,
+            );
         }
         "select" => {
             // Get current value from selected prop (resolved in run.rs/gallery.rs)

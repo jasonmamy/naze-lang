@@ -11,10 +11,8 @@ use crate::manifest::Manifest;
 
 // Embed the pre-built runtime files from wasm-pack output.
 // These must be built first via `wasm-pack build crates/naze-runtime --target web`.
-const RUNTIME_WASM: &[u8] =
-    include_bytes!("../../naze-runtime/pkg/naze_runtime_bg.wasm");
-const RUNTIME_JS: &str =
-    include_str!("../../naze-runtime/pkg/naze_runtime.js");
+const RUNTIME_WASM: &[u8] = include_bytes!("../../naze-runtime/pkg/naze_runtime_bg.wasm");
+const RUNTIME_JS: &str = include_str!("../../naze-runtime/pkg/naze_runtime.js");
 
 const INDEX_HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 <html lang="en">
@@ -112,10 +110,7 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
     if format == Format::Text {
         let wasm_kb = RUNTIME_WASM.len() / 1024;
         let data_bytes = app_data.len();
-        eprintln!(
-            "  done: runtime {}KB + app data {}B",
-            wasm_kb, data_bytes
-        );
+        eprintln!("  done: runtime {}KB + app data {}B", wasm_kb, data_bytes);
     }
 
     Ok(())

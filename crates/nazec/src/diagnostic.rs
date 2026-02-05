@@ -138,8 +138,7 @@ impl DiagnosticPrinter {
                     // The source line
                     eprintln!(
                         "  \x1b[1;34m{}\x1b[0m \x1b[1;34m|\x1b[0m {}",
-                        error.line,
-                        lines[line_idx]
+                        error.line, lines[line_idx]
                     );
 
                     // The underline
@@ -150,9 +149,7 @@ impl DiagnosticPrinter {
                             Severity::Error => "\x1b[1;31m^\x1b[0m",
                             Severity::Warning => "\x1b[1;33m^\x1b[0m",
                         };
-                        eprintln!(
-                            "  {pad} \x1b[1;34m|\x1b[0m {underline_pad}{indicator}"
-                        );
+                        eprintln!("  {pad} \x1b[1;34m|\x1b[0m {underline_pad}{indicator}");
                     }
                 }
             }

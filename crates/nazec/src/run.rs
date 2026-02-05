@@ -7,9 +7,9 @@ use naze_ir::{IrAction, IrBinOp, IrExpression, RenderNode, RenderTree, RenderVal
 use naze_layout::{LayoutTree, PositionedNode};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
-use winit::event::{ElementState, MouseButton, WindowEvent, KeyEvent};
-use winit::keyboard::{Key, NamedKey};
+use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::keyboard::{Key, NamedKey};
 use winit::window::{CursorIcon, Window, WindowId};
 
 use crate::build;
@@ -27,6 +27,7 @@ enum AppEvent {
 struct FocusedInput {
     bind_var: String,
     node_id: String,
+    #[allow(dead_code)]
     input_type: String,
     change_handlers: Vec<naze_ir::IrEventHandler>,
 }
@@ -100,7 +101,13 @@ impl ApplicationHandler<AppEvent> for App {
                 }
             }
             WindowEvent::KeyboardInput {
-                event: KeyEvent { logical_key, text, state: ElementState::Pressed, .. },
+                event:
+                    KeyEvent {
+                        logical_key,
+                        text,
+                        state: ElementState::Pressed,
+                        ..
+                    },
                 ..
             } => {
                 if self.focused_input.is_some() {
@@ -110,12 +117,17 @@ impl ApplicationHandler<AppEvent> for App {
                         Key::Named(NamedKey::Backspace) => {
                             // Remove last character
                             if let Some(ref focus) = self.focused_input {
-                                if let Some(RenderValue::Str(current)) = self.state_store.get(&focus.bind_var) {
+                                if let Some(RenderValue::Str(current)) =
+                                    self.state_store.get(&focus.bind_var)
+                                {
                                     let mut chars: Vec<char> = current.chars().collect();
                                     if !chars.is_empty() {
                                         chars.pop();
                                         let new_value: String = chars.into_iter().collect();
-                                        self.state_store.insert(focus.bind_var.clone(), RenderValue::Str(new_value));
+                                        self.state_store.insert(
+                                            focus.bind_var.clone(),
+                                            RenderValue::Str(new_value),
+                                        );
                                         changed = true;
                                     }
                                 }
@@ -140,9 +152,14 @@ impl ApplicationHandler<AppEvent> for App {
                             // Handle text input
                             if let Some(ref text) = text {
                                 if let Some(ref focus) = self.focused_input {
-                                    if let Some(RenderValue::Str(current)) = self.state_store.get(&focus.bind_var) {
+                                    if let Some(RenderValue::Str(current)) =
+                                        self.state_store.get(&focus.bind_var)
+                                    {
                                         let new_value = format!("{}{}", current, text.as_str());
-                                        self.state_store.insert(focus.bind_var.clone(), RenderValue::Str(new_value));
+                                        self.state_store.insert(
+                                            focus.bind_var.clone(),
+                                            RenderValue::Str(new_value),
+                                        );
                                         changed = true;
                                     }
                                 }
@@ -173,17 +190,14 @@ impl App {
         eprintln!("change detected, rebuilding...");
         match build::run(&self.manifest, Format::Text) {
             Ok(()) => {
-                let bin_path =
-                    Path::new(&self.manifest.build.output).join("app_data.bin");
-                match std::fs::read(&bin_path).and_then(|bytes| {
-                    naze_ir::deserialize(&bytes)
-                        .map_err(std::io::Error::other)
-                }) {
+                let bin_path = Path::new(&self.manifest.build.output).join("app_data.bin");
+                match std::fs::read(&bin_path)
+                    .and_then(|bytes| naze_ir::deserialize(&bytes).map_err(std::io::Error::other))
+                {
                     Ok(tree) => {
                         let mut state_store = HashMap::new();
                         for decl in &tree.state {
-                            state_store
-                                .insert(decl.name.clone(), decl.initial.clone());
+                            state_store.insert(decl.name.clone(), decl.initial.clone());
                         }
                         self.render_tree = tree;
                         self.state_store = state_store;
@@ -566,11 +580,18 @@ fn find_click_handlers(
                     },
                 }];
                 // Add change handlers
-                handlers.extend(node.handlers.iter().filter(|h| h.event == "change").cloned());
+                handlers.extend(
+                    node.handlers
+                        .iter()
+                        .filter(|h| h.event == "change")
+                        .cloned(),
+                );
                 return handlers;
             }
         } else if node.kind == "radio" {
-            if let (Some(RenderValue::Bind(var)), Some(value)) = (node.props.get("bind"), node.props.get("value")) {
+            if let (Some(RenderValue::Bind(var)), Some(value)) =
+                (node.props.get("bind"), node.props.get("value"))
+            {
                 let value_str = match value {
                     RenderValue::Str(s) => s.clone(),
                     _ => continue,
@@ -583,7 +604,12 @@ fn find_click_handlers(
                     },
                 }];
                 // Add change handlers
-                handlers.extend(node.handlers.iter().filter(|h| h.event == "change").cloned());
+                handlers.extend(
+                    node.handlers
+                        .iter()
+                        .filter(|h| h.event == "change")
+                        .cloned(),
+                );
                 return handlers;
             }
         }
@@ -623,7 +649,9 @@ fn find_input_at_point(
                     Some(RenderValue::Str(s)) => s.clone(),
                     _ => "text".to_string(),
                 };
-                let change_handlers: Vec<_> = node.handlers.iter()
+                let change_handlers: Vec<_> = node
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "change")
                     .cloned()
                     .collect();
@@ -640,10 +668,7 @@ fn point_in_node(node: &PositionedNode, x: f32, y: f32) -> bool {
 
 // ─── Action execution ────────────────────────────────────────────────────────
 
-fn execute_action(
-    action: &IrAction,
-    state: &mut HashMap<String, RenderValue>,
-) -> bool {
+fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -> bool {
     match action {
         IrAction::Set { target, expr } => {
             let value = evaluate_expr(expr, state);
@@ -660,7 +685,11 @@ fn execute_action(
             let msg = match &value {
                 RenderValue::Str(s) => s.clone(),
                 RenderValue::Num(n, _) => {
-                    if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+                    if n.fract() == 0.0 {
+                        format!("{}", *n as i64)
+                    } else {
+                        format!("{}", n)
+                    }
                 }
                 RenderValue::Bool(b) => (if *b { "true" } else { "false" }).to_string(),
                 RenderValue::Color(c) => format!("#{:06x}", c),
@@ -672,17 +701,15 @@ fn execute_action(
     }
 }
 
-fn evaluate_expr(
-    expr: &IrExpression,
-    state: &HashMap<String, RenderValue>,
-) -> RenderValue {
+fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> RenderValue {
     match expr {
         IrExpression::Num(n) => RenderValue::Num(*n, None),
         IrExpression::Str(s) => RenderValue::Str(s.clone()),
         IrExpression::Bool(b) => RenderValue::Bool(*b),
-        IrExpression::StateRef(name) => {
-            state.get(name).cloned().unwrap_or(RenderValue::Num(0.0, None))
-        }
+        IrExpression::StateRef(name) => state
+            .get(name)
+            .cloned()
+            .unwrap_or(RenderValue::Num(0.0, None)),
         IrExpression::BinOp { left, op, right } => {
             let lval = evaluate_expr(left, state);
             let rval = evaluate_expr(right, state);
@@ -715,14 +742,8 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
                 ))
             }
         }
-        IrBinOp::Sub => RenderValue::Num(
-            left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0),
-            None,
-        ),
-        IrBinOp::Mul => RenderValue::Num(
-            left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0),
-            None,
-        ),
+        IrBinOp::Sub => RenderValue::Num(left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0), None),
+        IrBinOp::Mul => RenderValue::Num(left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0), None),
         IrBinOp::Div => {
             let r = right_num.unwrap_or(1.0);
             let r = if r == 0.0 { 1.0 } else { r };
@@ -735,13 +756,25 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
         IrBinOp::Gte => RenderValue::Bool(left_num.unwrap_or(0.0) >= right_num.unwrap_or(0.0)),
         IrBinOp::Lte => RenderValue::Bool(left_num.unwrap_or(0.0) <= right_num.unwrap_or(0.0)),
         IrBinOp::And => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l && r)
         }
         IrBinOp::Or => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l || r)
         }
     }
@@ -751,7 +784,11 @@ fn render_value_to_string(v: &RenderValue) -> String {
     match v {
         RenderValue::Str(s) => s.clone(),
         RenderValue::Num(n, _) => {
-            if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+            if n.fract() == 0.0 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{}", n)
+            }
         }
         RenderValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
         RenderValue::Color(c) => format!("#{:06x}", c),
