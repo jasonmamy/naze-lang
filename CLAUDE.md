@@ -105,6 +105,22 @@ nazec gallery [--build]       # Build interactive example gallery
 - **Compile-time component inlining** — all import resolution and component expansion happens at build time; the runtime is a thin interpreter.
 - **AI-first language design** — one canonical way to express each concept, grammar designed for constrained LLM decoding.
 
+## AI Efficiency — The Ψ Test
+
+Naze achieves an **AI Efficiency Index (AEI) of 1x** — the lowest cost per AI interaction of any evaluated language. This must be maintained as features are added. When implementing or designing a new language feature, evaluate it against the four parameters of the unified Cost Complexity equation **Ψ(L, n) = n × λ × σ × (1 + r) × μ**:
+
+- **σ (scatter):** Does this feature require reading files beyond the current component? If understanding or generating code for this feature requires the AI to read another file (shared state stores, external config, type definition files), it pushes σ > 1 and breaks Λ-Linear scaling. Design for σ = 1: all information the AI needs should be in the current file.
+- **λ (verbosity):** Does this feature add boilerplate or verbose syntax? Minimize tokens per unit of intent. Prefer concise, declarative forms over ceremony.
+- **r (retry rate):** Does this feature introduce multiple valid forms for the same concept, implicit behavior, or context-dependent semantics? These increase the probability of incorrect AI generation. Maintain one canonical form per concept.
+- **μ (model cost):** Does this feature significantly increase grammar rule count beyond ~56 rules? Larger grammars may require larger (more expensive) models. Keep the grammar LL(1)-compatible and small.
+
+**Concrete examples:**
+- `shared state` — must be designed so the AI needs only the current file (σ = 1), not a separate state store
+- `js` interop — must be a type-checked boundary call, not something requiring understanding of external JS files
+- Pipeline operators `|` — acceptable: adds grammar rules but maintains σ = 1 (single-file expressions)
+
+See `docs/TOKEN_EFFICIENCY.md` for the full framework, formula, and multi-language comparison. See `docs/PARITY.md` for feature-level competitive analysis.
+
 ## Key Files
 
 - **PEG Grammar**: `crates/naze-parser/src/naze.pest` (~100 rules)

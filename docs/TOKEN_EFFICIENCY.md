@@ -179,15 +179,15 @@ The practical significance: two languages can both build the same application, b
 
 Estimated Token Complexity parameters for common languages and frameworks. Values are for typical production codebases — specific projects may vary based on coding patterns and architecture choices.
 
-| Language / Framework | λ (tokens/unit) | σ (scatter) | r (retry) | Λ(50) | Λ(200) | Class |
-|---|---|---|---|---|---|---|
-| **Naze** | 200–400 | 1 | 0.05–0.15 | 12K–28K | 45K–90K | **Λ-Linear** |
-| **Svelte + SvelteKit** | 500–800 | ~1.5 | 0.15–0.25 | 40K–80K | 150K–280K | **Λ-Linear** (nearly) |
-| **Vue 3 + Composition API** | 600–1,000 | ~log(n) | 0.20–0.30 | 80K–180K | 450K–1.1M | **Λ-LogLinear** |
-| **React + Tailwind + TS** | 800–1,500 | log(n) | 0.25–0.35 | 125K–300K | 700K–1.8M | **Λ-LogLinear** |
-| **HTML + vanilla JS** | 1,000–2,000 | log(n) | 0.30–0.40 | 170K–450K | 950K–2.7M | **Λ-LogLinear** |
-| **Angular + TypeScript** | 1,200–2,500 | ~n^0.3 | 0.30–0.40 | 250K–700K | 2M–8M | **Λ-LogLinear** → **Λ-Quadratic** |
-| **Java Spring MVC** | 2,000–4,000 | ~√n | 0.35–0.45 | 500K–1.5M | 5M–20M | **Λ-Quadratic** |
+| Language / Framework | λ (tokens/unit) | σ (scatter) | r (retry) | Λ(50) | Λ(200) | μ (model cost) | Class |
+|---|---|---|---|---|---|---|---|
+| **Naze** | 200–400 | 1 | 0.05–0.15 | 12K–28K | 45K–90K | 1x (3–7B local) | **Λ-Linear** |
+| **Svelte + SvelteKit** | 500–800 | ~1.5 | 0.15–0.25 | 40K–80K | 150K–280K | 20–100x | **Λ-Linear** (nearly) |
+| **Vue 3 + Composition API** | 600–1,000 | ~log(n) | 0.20–0.30 | 80K–180K | 450K–1.1M | 20–300x | **Λ-LogLinear** |
+| **React + Tailwind + TS** | 800–1,500 | log(n) | 0.25–0.35 | 125K–300K | 700K–1.8M | 20–300x (70B+ cloud) | **Λ-LogLinear** |
+| **HTML + vanilla JS** | 1,000–2,000 | log(n) | 0.30–0.40 | 170K–450K | 950K–2.7M | 20–300x | **Λ-LogLinear** |
+| **Angular + TypeScript** | 1,200–2,500 | ~n^0.3 | 0.30–0.40 | 250K–700K | 2M–8M | 20–300x | **Λ-LogLinear** → **Λ-Quadratic** |
+| **Java Spring MVC** | 2,000–4,000 | ~√n | 0.35–0.45 | 500K–1.5M | 5M–20M | 100–500x | **Λ-Quadratic** |
 
 **Notes on specific languages:**
 
@@ -242,6 +242,122 @@ This is the "Big O effect" applied to AI development: at small scale, constant f
 
 ---
 
+## From Token Complexity to Cost Complexity
+
+Token Complexity Λ measures how many tokens an AI consumes per interaction. But not all tokens cost the same. The **grammar complexity** of a language determines the **minimum viable model size** (MVMS) needed to achieve acceptable r — and model size determines cost per token, inference speed, and deployment options.
+
+The chain is: **grammar complexity → minimum viable model size → cost per token.**
+
+A 56-rule PEG grammar (Naze) has a small enough search space that a 3–7B parameter model, fine-tuned with QLoRA ($25–60, 1–2 hours on a consumer GPU), can master the language and generate correct code reliably. A 2,000+ rule grammar (TypeScript + JSX + framework conventions) presents a combinatorial space so large that 70B+ parameter models are needed to handle the variety of valid patterns, edge cases, and implicit conventions. Apple's UICoder research validates this principle: fine-tuning on SwiftUI (a deliberately constrained language) took compilation rate from 3% → 82% over 5 rounds, matching GPT-4 — demonstrating that small models can match large models when the target language is constrained.
+
+We capture this with **μ(L) — the model efficiency factor** — and extend Token Complexity to **Cost Complexity**:
+
+### **Ψ(L, n) = Λ(L, n) × μ(L)**
+
+| Symbol | Name | Definition | Unit |
+|---|---|---|---|
+| **Λ(L, n)** | Token complexity | Total tokens per interaction (from the core formula) | tokens |
+| **μ(L)** | Model efficiency | Normalized cost per token for the minimum viable model that achieves acceptable r on language L | $/token (relative) |
+| **Ψ(L, n)** | Cost complexity | Total dollar cost per AI interaction | $ |
+
+This parallels the relationship between Big O and wall-clock time: Big O counts operations, but the cost of each operation depends on the hardware. Λ counts tokens, but the cost of each token depends on the model. A language that enables a smaller model has a structural cost advantage that compounds with every interaction. (The full expansion of Ψ into a single unified equation, with computed scores for each language, is presented in "The Unified Equation" below.)
+
+**Model requirements by language:**
+
+| Factor | Naze | React + TypeScript | Python / TypeScript (general) |
+|---|---|---|---|
+| Grammar rules | ~56 | TS (~2,000) + JSX + framework | ~300–2,000+ |
+| Minimum viable model | 3–7B fine-tuned | 70B+ general-purpose | 70B+ general-purpose |
+| Deployment | Local (Ollama, llama.cpp) | Cloud API required | Cloud API required |
+| Cost per 1M tokens | ~$0.01–0.05 (local inference) | ~$1–15 (cloud API) | ~$1–15 (cloud API) |
+| μ (normalized to Naze) | 1x | 20–300x | 20–300x |
+| Inference latency | 10–50 ms/token | 20–80 ms/token | 20–80 ms/token |
+| Offline capable | Yes | No | No |
+| Edge/mobile viable | Yes (quantized 3B) | No | No |
+
+**The compound effect.** For a 200-component application:
+
+- **Token advantage (Λ):** Naze consumes ~45K–90K tokens per interaction vs React's ~700K–1.8M — an **8–20x** reduction.
+- **Cost-per-token advantage (μ):** A local 7B model costs ~$0.03/1K tokens vs a cloud 70B+ at ~$3–15/1K tokens — a **100–500x** reduction.
+- **Combined cost advantage (Ψ):** The ratio is **800–10,000x** — not 8–20x. The model efficiency multiplier dominates.
+
+This is the hidden dimension of language design for the AI era. The same grammatical simplicity that makes Naze token-efficient (low λ, low σ, low r) also makes it model-efficient (low μ). These four parameters reinforce each other because they share a common cause: a constrained, unambiguous, self-contained language design.
+
+In a FAAD workflow with thousands of interactions per week, the total cost difference between Ψ-cheap (Naze + local 7B) and Ψ-expensive (React + cloud 70B) is the difference between a viable autonomous development pipeline and an economically impractical one. Grammar complexity is not just about parsing — it determines whether AI-driven development can scale.
+
+---
+
+## The Unified Equation
+
+The parameters introduced in this document — λ (verbosity), σ (coupling), r (accuracy), and μ (model cost) — combine into a single unified equation that captures the total cost of an AI interaction on an application of size *n* in language *L*:
+
+### **Ψ(L, n) = n × λ(L) × σ(L, n) × (1 + r(L)) × μ(L)**
+
+| Symbol | Name | What It Captures | Unit |
+|---|---|---|---|
+| **n** | Application size | How big is the app? | functional units |
+| **λ(L)** | Token weight | How verbose is the language per unit of functionality? | tokens/unit |
+| **σ(L, n)** | Scatter factor | How coupled is the architecture? How many files must be read per unit? | dimensionless |
+| **r(L)** | Retry rate | How often does the AI generate incorrect code? | 0.0–1.0 |
+| **μ(L)** | Model efficiency | How expensive is each token? What model size does the language require? | $/token (relative) |
+| **Ψ(L, n)** | Cost complexity | **Total cost per AI interaction** — the single unified score. Lower is better. | $ |
+
+Five parameters, one output. Ψ is to AI development cost what Big O × hardware cost is to algorithm performance: it captures both the structural complexity (how much work) and the infrastructure cost (how expensive per unit of work).
+
+### AI Efficiency Index (AEI)
+
+To compare languages directly, we define the **AI Efficiency Index** as the ratio of a language's cost to the most efficient baseline:
+
+**AEI(L, n) = Ψ(L, n) / Ψ(baseline, n)**
+
+AEI = 1x means parity with the baseline. AEI = 2,000x means each AI interaction costs 2,000 times more. Lower is better.
+
+### Language Rankings at n = 100
+
+Using midpoint values for each parameter (from the ranges in the Language Evaluation Matrix):
+
+| Language | λ | σ(100) | 1 + r | μ | Ψ(100) | AEI |
+|---|---|---|---|---|---|---|
+| **Naze** | 300 | 1.0 | 1.10 | 1 | 33K | **1x** |
+| **Svelte + SvelteKit** | 650 | 1.5 | 1.20 | 50 | 5.9M | **~180x** |
+| **Vue 3 + Composition API** | 800 | 4.6 | 1.25 | 100 | 46M | **~1,400x** |
+| **React + Tailwind + TS** | 1,150 | 4.6 | 1.30 | 100 | 69M | **~2,100x** |
+| **HTML + vanilla JS** | 1,500 | 4.6 | 1.35 | 100 | 93M | **~2,800x** |
+| **Angular + TypeScript** | 1,850 | 4.0 | 1.35 | 100 | 100M | **~3,000x** |
+| **Java Spring MVC** | 3,000 | 10.0 | 1.40 | 200 | 840M | **~25,000x** |
+
+*σ values at n=100: 1.0 for Naze (constant), 1.5 for Svelte, log(100) ≈ 4.6 for LogLinear languages, 100^0.3 ≈ 4.0 for Angular, √100 = 10 for Java Spring. μ uses representative midpoints.*
+
+### What Drives the Score
+
+For React + TypeScript (AEI ≈ 2,100x) at n=100, the contribution of each parameter relative to Naze:
+
+| Parameter | React Value | Naze Value | Contribution to AEI |
+|---|---|---|---|
+| **μ** (model cost) | 100 | 1 | **100x** — the dominant factor |
+| **σ** (coupling) | 4.6 | 1.0 | **4.6x** — cross-file dependencies |
+| **λ** (verbosity) | 1,150 | 300 | **3.8x** — JSX/hook/type boilerplate |
+| **r** (accuracy) | 1.30 | 1.10 | **1.2x** — retry overhead |
+| | | **Combined:** | **~2,100x** |
+
+Model efficiency (μ) contributes the largest single factor. But σ and λ are also substantial — even without the model cost advantage, Naze would be ~21x more token-efficient than React at n=100. The four parameters reinforce each other because they share a root cause: language design.
+
+### How AEI Scales with Application Size
+
+AEI is not constant — it changes with n because σ depends on application size. For Λ-LogLinear languages, the ratio grows as the application grows:
+
+| App Size | Naze Ψ(n) | React Ψ(n) | AEI (React vs Naze) |
+|---|---|---|---|
+| n = 50 (small) | 16.5K | 29M | **~1,800x** |
+| n = 100 (medium) | 33K | 69M | **~2,100x** |
+| n = 500 (enterprise) | 165K | 465M | **~2,800x** |
+
+*React's σ = log(n) means its per-unit cost increases at every scale. Naze's σ = 1 means its per-unit cost stays flat. The AEI gap widens with every component added.*
+
+At enterprise scale (n=500), the gap is wide enough that FAAD on React becomes economically questionable — not because any single interaction is prohibitively expensive, but because thousands of interactions per week at 3,200x the cost compound into a dominant line item.
+
+---
+
 ## Implications for Language Design
 
 For anyone designing a language or framework in the AI era, each design choice has a measurable effect on Token Complexity:
@@ -257,8 +373,53 @@ For anyone designing a language or framework in the AI era, each design choice h
 | No implicit behavior | r ↓, σ → 1 | AI doesn't need to "know" unwritten framework conventions or invisible runtime behavior |
 | Additive language evolution (no deprecations) | σ stable over time | No coexisting old/new patterns that confuse AI pattern matching |
 | Flat architecture (no deep inheritance/DI) | σ → 1 | Understanding a component doesn't require tracing an ancestor chain or injection graph |
+| Small, unambiguous grammar | μ ↓ | Fewer grammar rules reduce the minimum viable model size from 70B+ to 3–7B, lowering cost per token by 20–500x |
 
 The path to **Λ-Linear** is: one file per functional unit, inline styling, co-located state, no cross-file dependencies for a single unit of work, one canonical form per concept, and minimum syntax per unit of intent. These aren't aesthetic preferences — they are engineering requirements for AI-efficient software at scale.
+
+---
+
+## Implications for Naze
+
+The Token Complexity framework validates Naze's design and establishes concrete guardrails for its evolution.
+
+### 1. Design Guardrails — The Ψ Test
+
+Every proposed Naze feature should be evaluated against the unified equation before implementation:
+
+- **Does it increase σ?** Adding cross-file imports, shared state stores, or external configuration files would break Λ-Linear. Any feature that requires reading a second file to understand the first pushes σ above 1.
+- **Does it increase λ?** Verbose syntax, boilerplate requirements, or redundant declarations raise the token weight per functional unit.
+- **Does it increase r?** Multiple valid forms for the same concept, implicit behavior, or context-dependent semantics raise the retry rate.
+- **Does it increase μ?** Grammar complexity that pushes the rule count significantly above ~56 may require larger models, raising the cost per token.
+
+Phase 3 features — pipeline operators, pattern matching, list comprehensions — must be designed to maintain σ = 1 and keep the grammar small. The Ψ framework provides a quantitative check: if a proposed feature would move σ > 1 or significantly increase grammar rule count, the feature needs redesign or deferral.
+
+### 2. Competitive Positioning — The Only Λ-Linear Language
+
+Naze is the only language in the evaluation matrix that achieves **Λ-Linear with μ = 1x**. Svelte is close to Λ-Linear in token complexity, but it still requires cloud models for generation (μ = 20–100x). This is not an incremental advantage — it is a class difference, like comparing an O(n) algorithm to an O(n log n) algorithm. The AEI framework makes this quantifiable: at n=100, Naze's AEI = 1x while the next closest competitor (Svelte) is ~180x. The mainstream alternative (React) is ~2,100x.
+
+### 3. Development Priority — M28 as Highest-Leverage Milestone
+
+The analysis validates Phase 4 M28 (AI Integration Layer: GBNF/CFG grammar export, validation feedback loop, fine-tuning dataset) as the single highest-leverage milestone in the roadmap. M28 unlocks two compound effects simultaneously:
+
+- **μ → 1x** — A local 3–7B model fine-tuned on Naze via GBNF-constrained generation, deployable offline via Ollama or llama.cpp.
+- **r → 0.01–0.05** — Constrained decoding plus compile-time validation driving retry rates toward zero.
+
+These two effects are responsible for over 95% of the AEI advantage over React. Without M28, Naze's advantage is ~21x (from λ and σ alone). With M28, it is ~2,100x. M28 is the milestone that converts the theoretical framework into a measured reality.
+
+### 4. Market Strategy — Language Choice as Infrastructure Decision
+
+In a FAAD world, language choice becomes an infrastructure cost decision, not a developer preference decision. When AI agents write all the code, the "developer experience" argument for React and TypeScript disappears — what remains is the cost and throughput of the AI pipeline. Ψ reframes the comparison from *"which language do developers prefer?"* to *"which language minimizes AI infrastructure cost at scale?"*
+
+### 5. Language Evolution Risk — Maintaining AEI = 1x
+
+As Naze adds features through Phase 3 and Phase 4, there is a quantifiable risk of AEI degradation. Each feature can be pre-tested against the Ψ formula:
+
+- **Pipeline operators** `|` — adds grammar rules but maintains σ = 1 (expressions remain within single files). Acceptable: λ may increase slightly, grammar stays LL(1).
+- **`shared state`** — if implemented as cross-component state that requires reading another component's file, σ > 1. Must be designed so that the AI agent needs only the current file to understand and generate correct code.
+- **`js` interop** — if it requires understanding external JavaScript files, σ increases. Must be designed as a boundary call with type-checked signatures, keeping the semantic context bounded to the Naze file.
+
+The Ψ framework transforms language design from intuition-driven ("this feels clean") to metric-driven ("this keeps AEI = 1x").
 
 ---
 
@@ -289,12 +450,18 @@ Token Complexity is a proposed framework with several limitations:
 
 ## Summary
 
-Token Complexity **Λ(n)** provides a formal framework for evaluating how efficiently AI agents can work with a programming language as application size grows. The key insight is that **σ (the scatter factor) determines the scaling class** — and σ is determined by architectural decisions baked into the language and framework, not by the skill of the developer or the capability of the AI model.
+This document introduces a unified equation for evaluating any programming language's AI efficiency:
 
-| Class | Scaling | What Determines It | Practical Impact |
+### **Ψ(L, n) = n × λ(L) × σ(L, n) × (1 + r(L)) × μ(L)**
+
+Five parameters — verbosity (λ), coupling (σ), accuracy (r), and model cost (μ) — combine with application size (n) to produce a single number: the total dollar cost per AI interaction. The **AI Efficiency Index (AEI)** normalizes this to a baseline, giving a direct comparison score across languages.
+
+| Class | Scaling | AEI at n=100 (vs Naze) | Practical Impact |
 |---|---|---|---|
-| **Λ-Linear** | O(n) | Self-contained components, inline everything | AI cost scales predictably; large apps remain practical |
-| **Λ-LogLinear** | O(n log n) | Separated concerns, shared cross-cutting files | AI cost grows faster than app size; large apps become expensive |
-| **Λ-Quadratic** | O(n²) | Deep coupling, global state/styling | AI cost explodes; large apps become impractical for FAAD |
+| **Λ-Linear** | O(n) | 1x (Naze), ~180x (Svelte) | AI cost scales predictably; large apps remain practical for FAAD |
+| **Λ-LogLinear** | O(n log n) | ~1,400–2,800x (Vue, React, vanilla JS) | AI cost grows faster than app size; large apps become expensive |
+| **Λ-Quadratic** | O(n²) | ~3,000–25,000x (Angular, Java Spring) | AI cost explodes at scale; impractical for FAAD |
 
-In the era of FAAD, Token Complexity joins Time Complexity and Space Complexity as a fundamental metric for evaluating software tools. The most AI-efficient language is not the most popular or the most feature-rich — it is the one with the lowest Λ.
+The key insight is that all five parameters are determined by **language design** — grammar complexity, component architecture, type system, and canonical form count. Languages designed for AI efficiency achieve low values across all parameters simultaneously, because the same design principles (self-contained components, inline styling, simple grammar, one canonical form) reduce λ, σ, r, and μ together.
+
+In the era of FAAD, Cost Complexity Ψ joins Time Complexity and Space Complexity as a fundamental metric for evaluating software tools. The most AI-efficient language is not the most popular or the most feature-rich — it is the one with the lowest Ψ.

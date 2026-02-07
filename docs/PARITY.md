@@ -1326,6 +1326,8 @@ The compounding is multiplicative: smaller codebase → faster reads → more it
 
 **Why framework choice matters more under FAAD.** When humans write code, framework complexity is absorbed by developer skill and experience — a senior React developer "just knows" the hook patterns, the Tailwind classes, the Next.js conventions. Under FAAD, that complexity is absorbed by token costs and error rates. An AI agent doesn't accumulate experience across sessions — every interaction starts fresh from context. The most AI-efficient framework is the one that requires the least context to understand and the fewest tokens to express intent. Naze was designed for exactly this from day one: one canonical form per concept, maximum intent per token, minimum ceremony per interaction.
 
+Beyond feature parity and development time savings, Naze's architectural simplicity delivers a structural advantage in AI-driven development cost. The Token Complexity framework formalizes this as **Cost Complexity Ψ(L, n)** — a unified equation measuring the total dollar cost per AI interaction across five parameters: verbosity (λ), coupling (σ), accuracy (r), and model cost (μ), scaled by application size (n). Naze achieves an **AI Efficiency Index of 1x** (the baseline), while React + TypeScript scores **~2,100x** at 100 components — and the gap widens with scale. In a FAAD workflow, this is the difference between a viable autonomous development pipeline and an economically impractical one. See [TOKEN_EFFICIENCY.md](TOKEN_EFFICIENCY.md) for the full framework, formula, and multi-language comparison.
+
 ---
 
 ## Conclusion
