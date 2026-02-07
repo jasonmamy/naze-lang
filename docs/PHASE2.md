@@ -98,7 +98,7 @@ Design tokens for consistent styling.
 - [x] Token references in components: `color: theme.colors.primary`
 - [x] Compiler resolves tokens at compile time (inlines values)
 - [x] Built-in default theme
-- [ ] Warn on unknown token references
+- [ ] Warn on unknown token references — *deferred to Phase 3 M19*
 
 ### M7: Improved Layout ✅
 **Crates:** `naze-layout`
@@ -165,7 +165,7 @@ Depends on M2 (events). Required for production apps.
 - [x] Focus ring rendering on focused elements
 - [x] Keyboard-only operation for all interactive elements (Enter to activate, Escape to dismiss)
 - [x] Screen reader integration: hidden DOM overlay with ARIA attributes mirroring canvas content
-- [ ] Screen reader announcements on state change (live regions equivalent)
+- [ ] Screen reader announcements on state change (live regions equivalent) — *deferred to Phase 3 M22*
 - [x] Compiler: warn when interactive elements lack `role` or `label`
 
 ### M8e: Scroll & Overflow (partial)
@@ -179,63 +179,68 @@ Depends on M1 (state), M2 (events), M7 (improved layout).
 - [x] Layout: clip children to container bounds
 - [x] `on scroll` event
 - [x] `scroll-to` action: `scroll-to element-id`
-- [ ] Runtime: touch scroll
-- [ ] Virtual scrolling for large lists (stretch goal)
+- [ ] Runtime: touch scroll — *deferred to Phase 3 M22*
+- [ ] Virtual scrolling for large lists (stretch goal) — *deferred to Phase 3 M22*
 
 ---
 
 ## Phase 2b: Tooling & Platforms
 
-### M9: VS Code Extension
-**New crate:** `naze-lsp`, **new dir:** `editors/vscode/`
+### M9: VS Code Extension ✅
+**Crate:** `naze-lsp`, **Dir:** `editors/vscode/`
 
 Can start in parallel with Phase 2a — only needs existing parser/compiler.
 
-- [ ] TextMate grammar for `.naze` syntax highlighting
-- [ ] LSP server (`tower-lsp` crate): real-time diagnostics as you type
-- [ ] Autocomplete: element names, prop names, component names, type names
-- [ ] Hover: show element/component prop signatures
-- [ ] Go-to-definition: jump to component source file
-- [ ] VS Code extension wrapper (TypeScript, `vsce` packaging)
-- [ ] Extension published to VS Code Marketplace (or `.vsix` for local install)
+- [x] TextMate grammar for `.naze` syntax highlighting
+- [x] LSP server (`tower-lsp` crate): real-time diagnostics as you type
+- [x] Autocomplete: element names, prop names, component names, type names
+- [x] Hover: show element/component prop signatures
+- [x] Go-to-definition: jump to component source file
+- [x] Find all references, rename symbol, document outline
+- [x] Code actions: wrap in column/row, extract to component
+- [x] VS Code extension wrapper (TypeScript, `vsce` packaging)
+- [x] Visual editor: block-based view, properties panel, live preview, AI assistant
+- [ ] Full project-aware type-checking in LSP (currently parse-only diagnostics) — *deferred to Phase 3 M21*
+- [ ] Extension published to VS Code Marketplace — *deferred to Phase 3 M21*
 
-### M10: Dev Server & Hot Reload
+### M10: Dev Server & Hot Reload ✅
 **Crate:** `nazec`
 
-Fast iteration loop. Native hot reload is done; browser hot reload remaining.
+Fast iteration loop.
 
 - [x] File watcher on `.naze` files (notify crate) — implemented in `nazec run`
 - [x] Native hot reload: file change → rebuild → re-render in native window
 - [x] Debounced file watching (300ms quiet period, coalesces editor events)
-- [ ] `nazec dev` command: embedded HTTP server (hyper or tiny-http)
-- [ ] On change: rebuild → notify browser via WebSocket
-- [ ] Browser client: WebSocket listener, auto-reload on message
-- [ ] Incremental compilation: only re-parse changed files, reuse cached results
-- [ ] Console output: "rebuilt in Xms" timing
+- [x] `nazec dev` command: embedded HTTP server (Axum)
+- [x] On change: rebuild → notify browser via WebSocket
+- [x] Browser client: WebSocket listener, auto-reload on message
+- [ ] Incremental compilation: only re-parse changed files, reuse cached results — *deferred to Phase 3 M22*
+- [ ] Console output: "rebuilt in Xms" timing — *deferred to Phase 3 M22*
 
-### M11: Native Desktop Prototype (x86/ARM)
+### M11: Native Desktop Prototype (x86/ARM) ✅
 **Crates:** `nazec` (integrated), `naze-native` (standalone)
 
-Proof of concept: same `.naze` source renders in a desktop window. **Core functionality done.**
+Proof of concept: same `.naze` source renders in a desktop window.
 
 - [x] Desktop window via `winit`
 - [x] Software renderer via `tiny-skia` drawing same primitives as Canvas2D
 - [x] Reuses `naze-ir` (deserialize `app_data.bin`) and `naze-layout` (compute positions)
 - [x] `nazec run` previews in native window with live reload
 - [x] Renders rectangles, text, colors — same visual output as browser
-- [ ] `nazec build --target native` produces standalone binary
-- [ ] GPU renderer option (`wgpu`) for better performance (stretch)
+- [x] `nazec build --target native` produces native binary
+- [ ] Fully standalone binary without runtime dependencies — *deferred to Phase 3 M22*
+- [ ] GPU renderer option (`wgpu`) for better performance (stretch) — *deferred to Phase 3 M22*
 
-### M12: Android Prototype
-**New dir:** `platforms/android/`
+### M12: Android Prototype ✅
+**Crate:** `nazec` (android_build module)
 
 Proof of concept: same `.naze` source renders on Android.
 
-- [ ] Option A: Android app embedding Wasmtime, running existing WASM pipeline
-- [ ] Option B: Android app with native renderer (Skia / Canvas) reading `app_data.bin`
-- [ ] Same `naze-ir` format, same layout engine
-- [ ] Basic Android app shell (Kotlin)
-- [ ] Demonstrates cross-platform rendering from single `.naze` source
+- [x] `nazec build --target android` generates Android project with WebView
+- [x] Android project templates (Kotlin + Gradle)
+- [x] Same `naze-ir` format, same layout engine via WASM in WebView
+- [x] Demonstrates cross-platform rendering from single `.naze` source
+- [ ] Full end-to-end APK build without manual steps — *deferred to Phase 3 M22*
 
 ### M13: Data Fetching ✅
 **Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`
@@ -258,7 +263,7 @@ Depends on M1 (state) and M2 (events).
 - [x] Easing functions: `linear`, `ease`, `ease-in`, `ease-out`, `ease-in-out`
 - [x] Runtime: animation scheduler on requestAnimationFrame
 - [x] Property interpolation: color, number, opacity
-- [ ] `animate` blocks for explicit keyframe animations (stretch goal)
+- [ ] `animate` blocks for explicit keyframe animations (stretch goal) — *deferred to Phase 3 M18*
 
 ---
 
@@ -266,24 +271,13 @@ Depends on M1 (state) and M2 (events).
 
 ```
 Track A (language):   M1 ✅ → M2 ✅ → M3 ✅ → M4 ✅ → M5 ✅ → M6 ✅ → M7 ✅ → M8 ✅
-Track B (tooling):    M9 → M10
-Track C (platforms):       M11 (done) → M12
-Interactive:          M8b ✅ (after M1+M2), M8c ✅ (after M2), M8d ✅ (after M2), M8e (partial)
+Track B (tooling):    M9 ✅ → M10 ✅
+Track C (platforms):  M11 ✅ → M12 ✅
+Interactive:          M8b ✅ (after M1+M2), M8c ✅ (after M2), M8d ✅ (after M2), M8e ✅ (partial)
 Late features:        M13 ✅ (after M1+M3), M14 ✅ (after M1+M2)
 ```
 
-- **M1-M7** are **complete** — state, events, conditionals, slots, images, theming, layout (flex-grow/shrink, percentages)
-- **M2** is **complete** — click, hover, keypress events; focus management with Tab/Shift+Tab navigation; focus ring rendering
-- **M7** is **complete** — flex-grow, flex-shrink, percentages, align, justify, wrap, min/max constraints
-- **M8** is **complete** — multi-page routing with `page`, `link`, and `navigate` action
-- **M8b** is **complete** — form inputs with validation
-- **M8c** is **complete** — drag & drop with visual feedback (ghost element, drop zone highlighting)
-- **M8e** is **nearly complete** — scroll containers with wheel handling, scrollbars, on scroll event, scroll-to action; touch scroll remains
-- **M8d** is **complete** — role/label props, compiler warnings, hidden DOM overlay for screen readers
-- **M9** (VS Code) can start immediately, no dependencies on Phase 2a
-- **M11** (native desktop) core is **done** — `nazec run` with live reload works
-- **M13** (data fetching) is **complete** — `data` keyword with loading/error/data states
-- **M14** (animation) is **complete** — `transition` prop with easing functions, color/number/opacity interpolation
+**All milestones substantially complete.** Remaining polish items (incremental compilation, Marketplace publish, standalone native binary, touch scroll, live regions) are deferred to Phase 3. See [PHASE3.md](PHASE3.md) for the continuation.
 
 **Bonus:** `nazec gallery` command builds an interactive web gallery of all examples with instant switching (no page reload).
 
@@ -336,5 +330,4 @@ Phase 1 runtime: 69KB. Phase 2 adds event handling, state management, image load
 - Property interpolation for colors (RGB component-wise) and numbers (opacity, dimensions)
 - Detects property changes and automatically starts animations for transitioned properties
 
-**Next steps (in dependency order):**
-1. M9: VS Code extension (TextMate grammar, LSP server)
+**Next steps:** See [Phase 3](PHASE3.md) for language completion and developer experience milestones (M15-M22).
