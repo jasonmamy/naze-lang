@@ -3,12 +3,14 @@ mod build;
 mod cli;
 mod dev;
 mod diagnostic;
+mod exec;
 mod gallery;
 mod manifest;
 mod native_build;
 mod native_renderer;
 mod new;
 mod run;
+mod test_runner;
 
 use clap::Parser;
 use cli::{BuildTarget, Cli, Command, OutputFormat};
@@ -29,6 +31,7 @@ fn main() {
         Command::Run => do_run(),
         Command::Dev { port, open } => do_dev(port, open),
         Command::Parse { file } => parse_file(&file),
+        Command::Test { filter } => do_test(filter.as_deref(), format),
         Command::Gallery { build, native } => gallery::run(build, native),
     };
 
@@ -78,11 +81,34 @@ fn do_dev(port: u16, open: bool) -> Result<(), Box<dyn std::error::Error>> {
     dev::run(&manifest, port, open)
 }
 
+fn do_test(filter: Option<&str>, format: Format) -> Result<(), Box<dyn std::error::Error>> {
+    let project_dir = std::path::Path::new(".");
+    let suites = test_runner::run_all(project_dir, filter)?;
+
+    match format {
+        Format::Text => test_runner::print_results_text(&suites),
+        Format::Json => test_runner::print_results_json(&suites),
+    }
+
+    let failed: usize = suites.iter().map(|s| s.failed).sum();
+    if failed > 0 {
+        return Err(format!("{} test(s) failed", failed).into());
+    }
+    Ok(())
+}
+
 fn parse_file(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let source = std::fs::read_to_string(path)?;
-    let nodes = naze_parser::parse(&source, path)
-        .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
-    let json = serde_json::to_string_pretty(&nodes)?;
-    println!("{json}");
+    if path.ends_with(".test.naze") {
+        let test_file = naze_parser::parse_test_file(&source, path)
+            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
+        let json = serde_json::to_string_pretty(&test_file)?;
+        println!("{json}");
+    } else {
+        let nodes = naze_parser::parse(&source, path)
+            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
+        let json = serde_json::to_string_pretty(&nodes)?;
+        println!("{json}");
+    }
     Ok(())
 }

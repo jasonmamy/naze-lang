@@ -1,0 +1,22 @@
+use counter
+
+test "counter starts at zero" {
+  render counter
+  assert text "Current count: 0" is visible
+}
+
+test "counter increments on click" {
+  render counter
+  assert text "Current count: 0" is visible
+  click "Increment"
+  assert text "Current count: 1" is visible
+}
+
+test "counter resets to zero" {
+  render counter
+  click "Increment"
+  click "Increment"
+  assert text "Current count: 2" is visible
+  click "Reset"
+  assert text "Current count: 0" is visible
+}

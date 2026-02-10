@@ -61,6 +61,12 @@ pub enum Command {
         /// Path to the .naze file
         file: String,
     },
+    /// Run tests from .test.naze files
+    Test {
+        /// Run only tests matching this pattern
+        #[arg(short, long)]
+        filter: Option<String>,
+    },
     /// Build and serve example gallery
     Gallery {
         /// Only build, don't serve

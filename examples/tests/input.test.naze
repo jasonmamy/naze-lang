@@ -1,0 +1,12 @@
+use input
+
+test "input binds value" {
+  render input
+  fill "Type here..." with "alice"
+  assert state name is "alice"
+}
+
+test "heading is visible" {
+  render input
+  assert text "Text Input Demo" is visible
+}
