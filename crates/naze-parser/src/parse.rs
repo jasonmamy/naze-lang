@@ -64,7 +64,9 @@ pub fn parse(source: &str, file: &str) -> Result<Vec<Node>, ParseError> {
             Rule::data_stmt => nodes.push(parse_data(pair, file)),
             Rule::timer_stmt => nodes.push(parse_timer(pair, file)),
             Rule::param_stmt => nodes.push(parse_param_stmt(pair, file)),
+            Rule::function_def => nodes.push(parse_function_def(pair, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(pair, file)),
+            Rule::match_stmt => nodes.push(parse_match_stmt(pair, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(pair, file)),
             Rule::on_handler => {} // on_handler at file scope is meaningless; skip
             Rule::slot_stmt => nodes.push(parse_slot_stmt(pair, file)),
@@ -309,7 +311,12 @@ fn parse_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let mut inner = pair.into_inner();
     let name = inner.next().unwrap().as_str().to_string();
     let value = parse_value(inner.next().unwrap());
-    Node::State { name, value, shared: false, span }
+    Node::State {
+        name,
+        value,
+        shared: false,
+        span,
+    }
 }
 
 fn parse_shared_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -317,14 +324,20 @@ fn parse_shared_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let mut inner = pair.into_inner();
     let name = inner.next().unwrap().as_str().to_string();
     let value = parse_value(inner.next().unwrap());
-    Node::State { name, value, shared: true, span }
+    Node::State {
+        name,
+        value,
+        shared: true,
+        span,
+    }
 }
 
 fn parse_computed(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let mut inner = pair.into_inner();
     let name = inner.next().unwrap().as_str().to_string();
-    let expr = parse_expression(inner.next().unwrap());
+    let expr_pair = inner.next().unwrap();
+    let expr = parse_pipe_expression(expr_pair);
     Node::Computed { name, expr, span }
 }
 
@@ -406,7 +419,13 @@ fn parse_data(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
             }
         }
     }
-    Node::Data { name, url, source, config, span }
+    Node::Data {
+        name,
+        url,
+        source,
+        config,
+        span,
+    }
 }
 
 fn parse_timer(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -423,7 +442,13 @@ fn parse_timer(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let duration_ms = parse_duration_ms(duration_pair);
     let action_pair = inner.next().unwrap();
     let action = parse_action(action_pair, file);
-    Node::Timer { name, kind, duration_ms, action, span }
+    Node::Timer {
+        name,
+        kind,
+        duration_ms,
+        action,
+        span,
+    }
 }
 
 fn parse_param_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -439,7 +464,12 @@ fn parse_param_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
         _ => Type::Text,
     };
     let default = parse_value(inner.next().unwrap());
-    Node::Param { name, ty, default, span }
+    Node::Param {
+        name,
+        ty,
+        default,
+        span,
+    }
 }
 
 fn parse_duration_ms(pair: pest::iterators::Pair<Rule>) -> u64 {
@@ -472,9 +502,7 @@ fn parse_if_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
                 // else if — wrap the nested if in a single-element vec
                 vec![parse_if_stmt(next, file)]
             }
-            Rule::block => {
-                parse_block(next, file).nodes
-            }
+            Rule::block => parse_block(next, file).nodes,
             _ => Vec::new(),
         }
     } else {
@@ -495,14 +523,7 @@ fn parse_each_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
 
     let variable = inner.next().unwrap().as_str().to_string();
     let iterable_pair = inner.next().unwrap();
-    let iterable = match iterable_pair.as_rule() {
-        Rule::ref_path => {
-            let segments: Vec<String> = iterable_pair.as_str().split('.').map(String::from).collect();
-            Expression::StateRef(segments.join("."))
-        }
-        Rule::ident => Expression::StateRef(iterable_pair.as_str().to_string()),
-        _ => Expression::StateRef(iterable_pair.as_str().to_string()),
-    };
+    let iterable = parse_pipe_expression(iterable_pair);
     let body_block = inner.next().unwrap();
     let contents = parse_block(body_block, file);
 
@@ -511,6 +532,91 @@ fn parse_each_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
         iterable,
         children: contents.nodes,
         span,
+    }
+}
+
+fn parse_function_def(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let param_list = inner.next().unwrap();
+    let params: Vec<FuncParam> = param_list
+        .into_inner()
+        .map(|fp| {
+            let mut fp_inner = fp.into_inner();
+            let pname = fp_inner.next().unwrap().as_str().to_string();
+            let ty = parse_type(fp_inner.next().unwrap());
+            FuncParam { name: pname, ty }
+        })
+        .collect();
+    let return_type = parse_type(inner.next().unwrap());
+    let body_pair = inner.next().unwrap();
+    let body = parse_pipe_expression(body_pair);
+    Node::Function {
+        name,
+        params,
+        return_type,
+        body,
+        span,
+    }
+}
+
+fn parse_match_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let subject = parse_expression(inner.next().unwrap());
+    let mut arms = Vec::new();
+    for arm_pair in inner {
+        if arm_pair.as_rule() == Rule::match_arm {
+            let mut arm_inner = arm_pair.into_inner();
+            let pattern_pair = arm_inner.next().unwrap();
+            let pattern = parse_match_pattern(pattern_pair);
+            let body_pair = arm_inner.next().unwrap();
+            let children = match body_pair.as_rule() {
+                Rule::match_arm_body => {
+                    let contents = parse_block(body_pair, file);
+                    contents.nodes
+                }
+                _ => {
+                    // Single element (element rule)
+                    vec![parse_element(body_pair, file)]
+                }
+            };
+            arms.push(MatchArm { pattern, children });
+        }
+    }
+    Node::Match {
+        subject,
+        arms,
+        span,
+    }
+}
+
+fn parse_match_pattern(pair: pest::iterators::Pair<Rule>) -> MatchPattern {
+    // "_" is a literal in the grammar, not a rule — no inner child
+    match pair.into_inner().next() {
+        None => MatchPattern::Wildcard,
+        Some(inner) => match inner.as_rule() {
+            Rule::string_lit => match parse_string_lit(inner) {
+                Value::Str(s) => MatchPattern::StringLit(s),
+                _ => MatchPattern::StringLit(String::new()),
+            },
+            Rule::number_lit => {
+                let mut num_inner = inner.into_inner();
+                let raw = num_inner.next().unwrap().as_str();
+                MatchPattern::NumberLit(raw.parse().unwrap_or(0.0))
+            }
+            Rule::bool_lit => MatchPattern::BoolLit(inner.as_str() == "true"),
+            Rule::ident => {
+                let s = inner.as_str();
+                if s == "_" {
+                    MatchPattern::Wildcard
+                } else {
+                    MatchPattern::Ident(s.to_string())
+                }
+            }
+            _ => MatchPattern::Wildcard,
+        },
     }
 }
 
@@ -685,7 +791,8 @@ fn parse_value(pair: pest::iterators::Pair<Rule>) -> Value {
             Value::List(items)
         }
         Rule::object_lit => {
-            let entries: Vec<(String, Value)> = inner.into_inner()
+            let entries: Vec<(String, Value)> = inner
+                .into_inner()
                 .map(|entry| {
                     let mut entry_inner = entry.into_inner();
                     let key = entry_inner.next().unwrap().as_str().to_string();
@@ -760,7 +867,9 @@ fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> BlockContents {
             Rule::data_stmt => nodes.push(parse_data(p, file)),
             Rule::timer_stmt => nodes.push(parse_timer(p, file)),
             Rule::param_stmt => nodes.push(parse_param_stmt(p, file)),
+            Rule::function_def => nodes.push(parse_function_def(p, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(p, file)),
+            Rule::match_stmt => nodes.push(parse_match_stmt(p, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(p, file)),
             Rule::on_handler => handlers.push(parse_on_handler(p, file)),
             Rule::slot_stmt => nodes.push(parse_slot_stmt(p, file)),
@@ -790,12 +899,20 @@ fn parse_on_handler(pair: pest::iterators::Pair<Rule>, file: &str) -> EventHandl
             _ => ModifierKind::Debounce,
         };
         let duration_ms = parse_duration_ms(mod_inner.next().unwrap());
-        (Some(EventModifier { kind, duration_ms }), inner.next().unwrap())
+        (
+            Some(EventModifier { kind, duration_ms }),
+            inner.next().unwrap(),
+        )
     } else {
         (None, next)
     };
     let action = parse_action(action_pair, file);
-    EventHandler { event, action, modifier, span }
+    EventHandler {
+        event,
+        action,
+        modifier,
+        span,
+    }
 }
 
 fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
@@ -842,9 +959,70 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
             let mut inner = pair.into_inner();
             let stream_name = inner.next().unwrap().as_str().to_string();
             let expr = parse_expression(inner.next().unwrap());
-            Action::Send { stream_name, expr, span }
+            Action::Send {
+                stream_name,
+                expr,
+                span,
+            }
         }
         _ => panic!("unexpected action rule: {:?}", pair.as_rule()),
+    }
+}
+
+fn parse_pipe_expression(pair: pest::iterators::Pair<Rule>) -> Expression {
+    match pair.as_rule() {
+        Rule::pipe_expression => {
+            let mut inner = pair.into_inner();
+            let first = inner.next().unwrap();
+            let source = parse_expression(first);
+            let stages: Vec<PipelineStage> = inner.map(parse_pipe_stage).collect();
+            if stages.is_empty() {
+                source
+            } else {
+                Expression::Pipeline {
+                    source: Box::new(source),
+                    stages,
+                }
+            }
+        }
+        Rule::expression => parse_expression(pair),
+        Rule::ref_path => {
+            let segments: Vec<String> = pair.as_str().split('.').map(String::from).collect();
+            Expression::StateRef(segments.join("."))
+        }
+        Rule::ident => Expression::StateRef(pair.as_str().to_string()),
+        _ => Expression::StateRef(pair.as_str().to_string()),
+    }
+}
+
+fn parse_pipe_stage(pair: pest::iterators::Pair<Rule>) -> PipelineStage {
+    let mut inner = pair.into_inner();
+    let fn_pair = inner.next().unwrap();
+    let function = match fn_pair.as_str() {
+        "filter" => PipelineFn::Filter,
+        "map" => PipelineFn::Map,
+        "sort-by" => PipelineFn::SortBy,
+        "take" => PipelineFn::Take,
+        "sum" => PipelineFn::Sum,
+        "count" => PipelineFn::Count,
+        "reduce" => PipelineFn::Reduce,
+        "group-by" => PipelineFn::GroupBy,
+        "flatten" => PipelineFn::Flatten,
+        "distinct" => PipelineFn::Distinct,
+        _ => panic!("unknown pipeline function: {}", fn_pair.as_str()),
+    };
+    let argument = inner.next().map(|arg_pair| {
+        let expr_pair = arg_pair.into_inner().next().unwrap();
+        parse_expression(expr_pair)
+    });
+    let argument2 = inner.next().map(|arg_pair| {
+        let expr_pair = arg_pair.into_inner().next().unwrap();
+        parse_expression(expr_pair)
+    });
+    PipelineStage {
+        function,
+        argument,
+        argument2,
     }
 }
 
@@ -881,6 +1059,15 @@ fn parse_expr_atom(pair: pest::iterators::Pair<Rule>) -> Expression {
         }
         Rule::bool_lit => Expression::Literal(Value::Bool(inner.as_str() == "true")),
         Rule::string_lit => Expression::Literal(parse_string_lit(inner)),
+        Rule::function_call => {
+            let mut call_inner = inner.into_inner();
+            let name = call_inner.next().unwrap().as_str().to_string();
+            let args = match call_inner.next() {
+                Some(args_pair) => args_pair.into_inner().map(parse_expression).collect(),
+                None => vec![],
+            };
+            Expression::FunctionCall { name, args }
+        }
         Rule::ref_path => {
             let segments: Vec<String> = inner.as_str().split('.').map(String::from).collect();
             Expression::StateRef(segments.join("."))
@@ -961,7 +1148,9 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::App { title, children, .. } => {
+            Node::App {
+                title, children, ..
+            } => {
                 assert_eq!(title, "Hello");
                 assert_eq!(children.len(), 1);
             }
@@ -1043,7 +1232,10 @@ mod tests {
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
             Node::Component {
-                name, params, children, ..
+                name,
+                params,
+                children,
+                ..
             } => {
                 assert_eq!(name, "box");
                 assert_eq!(params.len(), 2);
@@ -1075,7 +1267,9 @@ mod tests {
                 assert_eq!(children.len(), 1); // column
                 match &children[0] {
                     Node::Element {
-                        name, children: col_children, ..
+                        name,
+                        children: col_children,
+                        ..
                     } => {
                         assert_eq!(name, "column");
                         assert_eq!(col_children.len(), 2); // heading + row
@@ -1259,9 +1453,13 @@ mod tests {
                                 // expr should be count + 1
                                 match expr {
                                     Expression::BinOp { left, op, right } => {
-                                        assert!(matches!(**left, Expression::StateRef(ref s) if s == "count"));
+                                        assert!(
+                                            matches!(**left, Expression::StateRef(ref s) if s == "count")
+                                        );
                                         assert_eq!(*op, BinOp::Add);
-                                        assert!(matches!(**right, Expression::Literal(Value::Num(n, _)) if n == 1.0));
+                                        assert!(
+                                            matches!(**right, Expression::Literal(Value::Num(n, _)) if n == 1.0)
+                                        );
                                     }
                                     _ => panic!("expected BinOp expression"),
                                 }
@@ -1330,7 +1528,9 @@ mod tests {
                     match &handlers[0].action {
                         Action::Set { target, expr, .. } => {
                             assert_eq!(target, "count");
-                            assert!(matches!(expr, Expression::Literal(Value::Num(n, _)) if *n == 0.0));
+                            assert!(
+                                matches!(expr, Expression::Literal(Value::Num(n, _)) if *n == 0.0)
+                            );
                         }
                         _ => panic!("expected Set action"),
                     }
@@ -1464,9 +1664,7 @@ mod tests {
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
             Node::Storage {
-                name,
-                storage_type,
-                ..
+                name, storage_type, ..
             } => {
                 assert_eq!(name, "token");
                 assert!(matches!(storage_type, StorageType::Session));
@@ -1477,11 +1675,14 @@ mod tests {
 
     #[test]
     fn parse_data_with_config() {
-        let source = "data users: fetch \"/api/users\" {\n  method: post\n  cache: 5min\n  retry: 3\n}\n";
+        let source =
+            "data users: fetch \"/api/users\" {\n  method: post\n  cache: 5min\n  retry: 3\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Data { name, url, config, .. } => {
+            Node::Data {
+                name, url, config, ..
+            } => {
                 assert_eq!(name, "users");
                 assert_eq!(url, "/api/users");
                 assert_eq!(config.method.as_deref(), Some("post"));
@@ -1498,7 +1699,13 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Timer { name, kind, duration_ms, action, .. } => {
+            Node::Timer {
+                name,
+                kind,
+                duration_ms,
+                action,
+                ..
+            } => {
                 assert_eq!(name, "dismiss");
                 assert!(matches!(kind, TimerKind::After));
                 assert_eq!(*duration_ms, 5000);
@@ -1514,7 +1721,12 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Timer { name, kind, duration_ms, .. } => {
+            Node::Timer {
+                name,
+                kind,
+                duration_ms,
+                ..
+            } => {
                 assert_eq!(name, "tick");
                 assert!(matches!(kind, TimerKind::Every));
                 assert_eq!(*duration_ms, 1000);
@@ -1581,19 +1793,17 @@ mod tests {
 }"#;
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::If {
-                        then_children,
-                        else_children,
-                        ..
-                    } => {
-                        assert_eq!(then_children.len(), 1);
-                        assert_eq!(else_children.len(), 1);
-                    }
-                    other => panic!("expected If, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::If {
+                    then_children,
+                    else_children,
+                    ..
+                } => {
+                    assert_eq!(then_children.len(), 1);
+                    assert_eq!(else_children.len(), 1);
                 }
-            }
+                other => panic!("expected If, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -1641,21 +1851,19 @@ mod tests {
 }"#;
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Each {
-                        variable,
-                        iterable,
-                        children,
-                        ..
-                    } => {
-                        assert_eq!(variable, "item");
-                        assert!(matches!(iterable, Expression::StateRef(name) if name == "items"));
-                        assert_eq!(children.len(), 1);
-                    }
-                    other => panic!("expected Each, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Each {
+                    variable,
+                    iterable,
+                    children,
+                    ..
+                } => {
+                    assert_eq!(variable, "item");
+                    assert!(matches!(iterable, Expression::StateRef(name) if name == "items"));
+                    assert_eq!(children.len(), 1);
                 }
-            }
+                other => panic!("expected Each, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -1685,7 +1893,8 @@ mod tests {
 
     #[test]
     fn parse_slot_named() {
-        let source = "component page(title: text) {\n  slot \"header\"\n  slot\n  slot \"footer\"\n}\n";
+        let source =
+            "component page(title: text) {\n  slot \"header\"\n  slot\n  slot \"footer\"\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
             Node::Component { children, .. } => {
@@ -1709,7 +1918,8 @@ mod tests {
 
     #[test]
     fn parse_slot_with_fallback() {
-        let source = "component panel(title: text) {\n  slot {\n    text \"default content\"\n  }\n}\n";
+        let source =
+            "component panel(title: text) {\n  slot {\n    text \"default content\"\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
             Node::Component { children, .. } => {
@@ -1742,9 +1952,7 @@ mod tests {
             Node::App { children, .. } => {
                 assert_eq!(children.len(), 1);
                 match &children[0] {
-                    Node::Fill {
-                        name, children, ..
-                    } => {
+                    Node::Fill { name, children, .. } => {
                         assert_eq!(name, "header");
                         assert_eq!(children.len(), 1);
                     }
@@ -1762,23 +1970,21 @@ mod tests {
 }"#;
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[0] {
-                    Node::State { name, value, .. } => {
-                        assert_eq!(name, "items");
-                        match value {
-                            Value::List(items) => {
-                                assert_eq!(items.len(), 3);
-                                assert!(matches!(&items[0], Value::Num(1.0, None)));
-                                assert!(matches!(&items[1], Value::Num(2.0, None)));
-                                assert!(matches!(&items[2], Value::Str(s) if s == "hello"));
-                            }
-                            other => panic!("expected List, got {:?}", other),
+            Node::App { children, .. } => match &children[0] {
+                Node::State { name, value, .. } => {
+                    assert_eq!(name, "items");
+                    match value {
+                        Value::List(items) => {
+                            assert_eq!(items.len(), 3);
+                            assert!(matches!(&items[0], Value::Num(1.0, None)));
+                            assert!(matches!(&items[1], Value::Num(2.0, None)));
+                            assert!(matches!(&items[2], Value::Str(s) if s == "hello"));
                         }
+                        other => panic!("expected List, got {:?}", other),
                     }
-                    other => panic!("expected State, got {:?}", other),
                 }
-            }
+                other => panic!("expected State, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -1844,7 +2050,9 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Link { text, to, children, .. } => {
+            Node::Link {
+                text, to, children, ..
+            } => {
                 match text {
                     Value::Str(s) => assert_eq!(s, "Go to About"),
                     _ => panic!("expected Str for link text"),
@@ -1873,7 +2081,10 @@ mod tests {
                 assert_eq!(children.len(), 2);
                 match &children[1] {
                     Node::Element {
-                        name, props, children, ..
+                        name,
+                        props,
+                        children,
+                        ..
                     } => {
                         assert_eq!(name, "overlay");
                         assert_eq!(props.len(), 2);
@@ -1916,7 +2127,9 @@ mod tests {
                             Node::Element { name, props, .. } => {
                                 assert_eq!(name, "overlay");
                                 assert_eq!(props[0].key, "anchor");
-                                assert!(matches!(&props[0].value, Value::Str(s) if s == "menu-btn"));
+                                assert!(
+                                    matches!(&props[0].value, Value::Str(s) if s == "menu-btn")
+                                );
                                 assert_eq!(props[1].key, "anchor-placement");
                                 assert!(matches!(&props[1].value, Value::Str(s) if s == "bottom"));
                             }
@@ -1940,20 +2153,18 @@ mod tests {
 }"#;
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { name, handlers, .. } => {
-                        assert_eq!(name, "overlay");
-                        assert_eq!(handlers.len(), 1);
-                        assert_eq!(handlers[0].event, "click-outside");
-                        match &handlers[0].action {
-                            Action::Set { target, .. } => assert_eq!(target, "open"),
-                            other => panic!("expected Set action, got {:?}", other),
-                        }
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { name, handlers, .. } => {
+                    assert_eq!(name, "overlay");
+                    assert_eq!(handlers.len(), 1);
+                    assert_eq!(handlers[0].event, "click-outside");
+                    match &handlers[0].action {
+                        Action::Set { target, .. } => assert_eq!(target, "open"),
+                        other => panic!("expected Set action, got {:?}", other),
                     }
-                    other => panic!("expected overlay Element, got {:?}", other),
                 }
-            }
+                other => panic!("expected overlay Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -1968,14 +2179,12 @@ mod tests {
 }"#;
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers[0].event, "context-menu");
-                    }
-                    other => panic!("expected Element, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers[0].event, "context-menu");
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -1990,14 +2199,12 @@ mod tests {
 }"#;
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers[0].event, "pointer-move");
-                    }
-                    other => panic!("expected Element, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers[0].event, "pointer-move");
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -2015,18 +2222,16 @@ mod tests {
 }"#;
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers.len(), 4);
-                        assert_eq!(handlers[0].event, "arrow-up");
-                        assert_eq!(handlers[1].event, "arrow-down");
-                        assert_eq!(handlers[2].event, "arrow-left");
-                        assert_eq!(handlers[3].event, "arrow-right");
-                    }
-                    other => panic!("expected Element, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 4);
+                    assert_eq!(handlers[0].event, "arrow-up");
+                    assert_eq!(handlers[1].event, "arrow-down");
+                    assert_eq!(handlers[2].event, "arrow-left");
+                    assert_eq!(handlers[3].event, "arrow-right");
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -2065,18 +2270,16 @@ mod tests {
         let source = "app \"Test\" {\n  data items: fetch \"/api/items\"\n  rect {\n    on click: trigger items\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers.len(), 1);
-                        match &handlers[0].action {
-                            Action::Trigger { data_name, .. } => assert_eq!(data_name, "items"),
-                            other => panic!("expected Trigger action, got {:?}", other),
-                        }
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    match &handlers[0].action {
+                        Action::Trigger { data_name, .. } => assert_eq!(data_name, "items"),
+                        other => panic!("expected Trigger action, got {:?}", other),
                     }
-                    other => panic!("expected Element, got {:?}", other),
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -2086,20 +2289,18 @@ mod tests {
         let source = "app \"Test\" {\n  state url = \"https://example.com\"\n  rect {\n    on click: copy url\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers.len(), 1);
-                        match &handlers[0].action {
-                            Action::Copy { expr, .. } => {
-                                assert!(matches!(expr, Expression::StateRef(n) if n == "url"));
-                            }
-                            other => panic!("expected Copy action, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    match &handlers[0].action {
+                        Action::Copy { expr, .. } => {
+                            assert!(matches!(expr, Expression::StateRef(n) if n == "url"));
                         }
+                        other => panic!("expected Copy action, got {:?}", other),
                     }
-                    other => panic!("expected Element, got {:?}", other),
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -2110,7 +2311,9 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Data { name, url, source, .. } => {
+            Node::Data {
+                name, url, source, ..
+            } => {
                 assert_eq!(name, "chat");
                 assert_eq!(url, "wss://api.example.com/chat");
                 assert!(matches!(source, DataSource::Stream));
@@ -2124,21 +2327,21 @@ mod tests {
         let source = "app \"Test\" {\n  state msg = \"hello\"\n  rect {\n    on click: send chat msg\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers.len(), 1);
-                        match &handlers[0].action {
-                            Action::Send { stream_name, expr, .. } => {
-                                assert_eq!(stream_name, "chat");
-                                assert!(matches!(expr, Expression::StateRef(n) if n == "msg"));
-                            }
-                            other => panic!("expected Send action, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    match &handlers[0].action {
+                        Action::Send {
+                            stream_name, expr, ..
+                        } => {
+                            assert_eq!(stream_name, "chat");
+                            assert!(matches!(expr, Expression::StateRef(n) if n == "msg"));
                         }
+                        other => panic!("expected Send action, got {:?}", other),
                     }
-                    other => panic!("expected Element, got {:?}", other),
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -2149,7 +2352,9 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Param { name, ty, default, .. } => {
+            Node::Param {
+                name, ty, default, ..
+            } => {
                 assert_eq!(name, "page");
                 assert!(matches!(ty, Type::Number));
                 match default {
@@ -2167,7 +2372,9 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Param { name, ty, default, .. } => {
+            Node::Param {
+                name, ty, default, ..
+            } => {
                 assert_eq!(name, "query");
                 assert!(matches!(ty, Type::Text));
                 match default {
@@ -2212,17 +2419,15 @@ mod tests {
         let source = "app \"Test\" {\n  state q = \"\"\n  rect {\n    on change debounce 300ms: set q = q\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers.len(), 1);
-                        let m = handlers[0].modifier.as_ref().unwrap();
-                        assert!(matches!(m.kind, ModifierKind::Debounce));
-                        assert_eq!(m.duration_ms, 300);
-                    }
-                    other => panic!("expected Element, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    let m = handlers[0].modifier.as_ref().unwrap();
+                    assert!(matches!(m.kind, ModifierKind::Debounce));
+                    assert_eq!(m.duration_ms, 300);
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
@@ -2232,36 +2437,163 @@ mod tests {
         let source = "app \"Test\" {\n  state x = 0\n  rect {\n    on scroll throttle 100ms: set x = x + 1\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers.len(), 1);
-                        let m = handlers[0].modifier.as_ref().unwrap();
-                        assert!(matches!(m.kind, ModifierKind::Throttle));
-                        assert_eq!(m.duration_ms, 100);
-                    }
-                    other => panic!("expected Element, got {:?}", other),
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    let m = handlers[0].modifier.as_ref().unwrap();
+                    assert!(matches!(m.kind, ModifierKind::Throttle));
+                    assert_eq!(m.duration_ms, 100);
                 }
-            }
+                other => panic!("expected Element, got {:?}", other),
+            },
             _ => panic!("expected App"),
         }
     }
 
     #[test]
     fn parse_no_modifier() {
-        let source = "app \"Test\" {\n  state c = 0\n  rect {\n    on click: set c = c + 1\n  }\n}\n";
+        let source =
+            "app \"Test\" {\n  state c = 0\n  rect {\n    on click: set c = c + 1\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::App { children, .. } => {
-                match &children[1] {
-                    Node::Element { handlers, .. } => {
-                        assert_eq!(handlers.len(), 1);
-                        assert!(handlers[0].modifier.is_none());
+            Node::App { children, .. } => match &children[1] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    assert!(handlers[0].modifier.is_none());
+                }
+                other => panic!("expected Element, got {:?}", other),
+            },
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_computed_pipeline() {
+        let source = "computed total = items | map price | sum\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Computed { name, expr, .. } => {
+                assert_eq!(name, "total");
+                match expr {
+                    Expression::Pipeline { source, stages } => {
+                        assert!(matches!(**source, Expression::StateRef(ref s) if s == "items"));
+                        assert_eq!(stages.len(), 2);
+                        assert!(matches!(stages[0].function, PipelineFn::Map));
+                        assert!(stages[0].argument.is_some());
+                        assert!(matches!(stages[1].function, PipelineFn::Sum));
+                        assert!(stages[1].argument.is_none());
                     }
-                    other => panic!("expected Element, got {:?}", other),
+                    _ => panic!("expected Pipeline expression"),
                 }
             }
+            _ => panic!("expected Computed node"),
+        }
+    }
+
+    #[test]
+    fn parse_pipeline_filter() {
+        let source = "computed passing = students | filter score > 60\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Computed { expr, .. } => {
+                match expr {
+                    Expression::Pipeline { source, stages } => {
+                        assert!(matches!(**source, Expression::StateRef(ref s) if s == "students"));
+                        assert_eq!(stages.len(), 1);
+                        assert!(matches!(stages[0].function, PipelineFn::Filter));
+                        // Argument is "score > 60" — a BinOp expression
+                        match &stages[0].argument {
+                            Some(Expression::BinOp { left, op, right }) => {
+                                assert!(
+                                    matches!(**left, Expression::StateRef(ref s) if s == "score")
+                                );
+                                assert_eq!(*op, BinOp::Gt);
+                                assert!(
+                                    matches!(**right, Expression::Literal(Value::Num(n, _)) if n == 60.0)
+                                );
+                            }
+                            other => panic!("expected BinOp argument, got {:?}", other),
+                        }
+                    }
+                    _ => panic!("expected Pipeline expression"),
+                }
+            }
+            _ => panic!("expected Computed node"),
+        }
+    }
+
+    #[test]
+    fn parse_pipeline_sort_by_take() {
+        let source = "computed top = items | sort-by name | take 3\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Computed { expr, .. } => match expr {
+                Expression::Pipeline { stages, .. } => {
+                    assert_eq!(stages.len(), 2);
+                    assert!(matches!(stages[0].function, PipelineFn::SortBy));
+                    assert!(matches!(stages[1].function, PipelineFn::Take));
+                }
+                _ => panic!("expected Pipeline expression"),
+            },
+            _ => panic!("expected Computed node"),
+        }
+    }
+
+    #[test]
+    fn parse_pipeline_count() {
+        let source = "computed n = items | count\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Computed { expr, .. } => match expr {
+                Expression::Pipeline { stages, .. } => {
+                    assert_eq!(stages.len(), 1);
+                    assert!(matches!(stages[0].function, PipelineFn::Count));
+                    assert!(stages[0].argument.is_none());
+                }
+                _ => panic!("expected Pipeline expression"),
+            },
+            _ => panic!("expected Computed node"),
+        }
+    }
+
+    #[test]
+    fn parse_each_with_pipeline() {
+        let source = r#"app "Test" {
+  state items = [1, 2, 3]
+  each item in items | take 2 {
+    text "{item}"
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => match &children[1] {
+                Node::Each {
+                    variable,
+                    iterable,
+                    children,
+                    ..
+                } => {
+                    assert_eq!(variable, "item");
+                    assert!(matches!(iterable, Expression::Pipeline { .. }));
+                    assert_eq!(children.len(), 1);
+                }
+                other => panic!("expected Each, got {:?}", other),
+            },
             _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_computed_no_pipeline() {
+        // Verify non-pipeline computed still works
+        let source = "computed total = count * price\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Computed { expr, .. } => {
+                assert!(matches!(expr, Expression::BinOp { .. }));
+            }
+            _ => panic!("expected Computed node"),
         }
     }
 }

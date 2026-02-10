@@ -1,15 +1,34 @@
 use std::collections::HashMap;
 
-use naze_parser::ast::{Node, Prop, StringPart, StorageType, TimerKind, DataSource, Unit, Value, EventHandler, Action, Expression, BinOp};
+use naze_parser::ast::{
+    Action, BinOp, DataSource, EventHandler, Expression, FuncParam, MatchArm, MatchPattern, Node,
+    PipelineStage, Prop, StorageType, StringPart, TimerKind, Unit, Value,
+};
+
+use std::cell::RefCell;
+
+// Thread-local storage for function definitions during lowering.
+// Maps function name → (params, body expression).
+thread_local! {
+    static FUNCTIONS: RefCell<HashMap<String, (Vec<FuncParam>, Expression)>> = RefCell::new(HashMap::new());
+}
 
 use crate::resolve::{ComponentDef, ResolvedProject};
 
 // Re-export IR types so existing consumers can use `naze_compiler::codegen::*`
-pub use naze_ir::{ComputedDecl, DataDecl, IrAction, IrBinOp, IrEventHandler, IrExpression, PageDef, ParamDecl, RenderNode, RenderTree, RenderValue, StateDecl, StorageDecl, TimerDecl, TextPart};
+pub use naze_ir::{
+    ComputedDecl, DataDecl, IrAction, IrBinOp, IrEventHandler, IrExpression, IrPipelineStage,
+    PageDef, ParamDecl, RenderNode, RenderTree, RenderValue, StateDecl, StorageDecl, TextPart,
+    TimerDecl,
+};
 
 /// Lower a resolved project into a flattened RenderTree.
 /// All component invocations are inlined with prop substitution.
 pub fn lower(project: &ResolvedProject) -> RenderTree {
+    // Clear and collect function definitions into thread-local for inlining
+    FUNCTIONS.with(|f| f.borrow_mut().clear());
+    collect_functions(&project.entry.nodes);
+
     let by_name: HashMap<&str, &ComponentDef> = project
         .components
         .values()
@@ -40,13 +59,20 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
     for node in &project.entry.nodes {
         match node {
             Node::App {
-                title: t,
-                children,
-                ..
+                title: t, children, ..
             } => {
                 title = t.clone();
                 // Collect state, data, computed, and let declarations from inside the app block
-                collect_declarations(children, &mut state, &mut data, &mut computed, &mut storage, &mut timers, &mut params, &mut let_scope);
+                collect_declarations(
+                    children,
+                    &mut state,
+                    &mut data,
+                    &mut computed,
+                    &mut storage,
+                    &mut timers,
+                    &mut params,
+                    &mut let_scope,
+                );
                 // Check for page blocks within the app
                 let (app_root, app_pages) = lower_nodes_with_pages(children, &by_name, &let_scope);
                 root = app_root;
@@ -56,14 +82,25 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
             Node::Let { name, value, .. } => {
                 let_scope.insert(name.clone(), lower_value(value, &let_scope));
             }
-            Node::State { name, value, shared, .. } => {
+            Node::State {
+                name,
+                value,
+                shared,
+                ..
+            } => {
                 state.push(StateDecl {
                     name: name.clone(),
                     initial: lower_value(value, &let_scope),
                     shared: *shared,
                 });
             }
-            Node::Data { name, url, source, config, .. } => {
+            Node::Data {
+                name,
+                url,
+                source,
+                config,
+                ..
+            } => {
                 data.push(DataDecl {
                     name: name.clone(),
                     url: url.clone(),
@@ -74,7 +111,11 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                     method: config.method.clone().unwrap_or_else(|| "get".to_string()),
                     cache_ms: config.cache_ms.unwrap_or(0),
                     retry_count: config.retry.unwrap_or(0),
-                    trigger_mode: if config.trigger.as_deref() == Some("manual") { 1 } else { 0 },
+                    trigger_mode: if config.trigger.as_deref() == Some("manual") {
+                        1
+                    } else {
+                        0
+                    },
                     content_type: config.content_type.clone().unwrap_or_default(),
                 });
             }
@@ -101,10 +142,19 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                     default: lower_value(default, &let_scope),
                 });
             }
-            Node::Timer { name, kind, duration_ms, action, .. } => {
+            Node::Timer {
+                name,
+                kind,
+                duration_ms,
+                action,
+                ..
+            } => {
                 timers.push(TimerDecl {
                     name: name.clone(),
-                    kind: match kind { TimerKind::After => 0, TimerKind::Every => 1 },
+                    kind: match kind {
+                        TimerKind::After => 0,
+                        TimerKind::Every => 1,
+                    },
                     duration_ms: *duration_ms,
                     action: lower_action(action),
                 });
@@ -114,7 +164,17 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
         }
     }
 
-    RenderTree { title, root, state, data, computed, storage, timers, params, pages }
+    RenderTree {
+        title,
+        root,
+        state,
+        data,
+        computed,
+        storage,
+        timers,
+        params,
+        pages,
+    }
 }
 
 /// Walk children to collect state/let/data/computed declarations (does not recurse into elements).
@@ -133,14 +193,25 @@ fn collect_declarations(
             Node::Let { name, value, .. } => {
                 let_scope.insert(name.clone(), lower_value(value, let_scope));
             }
-            Node::State { name, value, shared, .. } => {
+            Node::State {
+                name,
+                value,
+                shared,
+                ..
+            } => {
                 state.push(StateDecl {
                     name: name.clone(),
                     initial: lower_value(value, let_scope),
                     shared: *shared,
                 });
             }
-            Node::Data { name, url, source, config, .. } => {
+            Node::Data {
+                name,
+                url,
+                source,
+                config,
+                ..
+            } => {
                 data.push(DataDecl {
                     name: name.clone(),
                     url: url.clone(),
@@ -151,7 +222,11 @@ fn collect_declarations(
                     method: config.method.clone().unwrap_or_else(|| "get".to_string()),
                     cache_ms: config.cache_ms.unwrap_or(0),
                     retry_count: config.retry.unwrap_or(0),
-                    trigger_mode: if config.trigger.as_deref() == Some("manual") { 1 } else { 0 },
+                    trigger_mode: if config.trigger.as_deref() == Some("manual") {
+                        1
+                    } else {
+                        0
+                    },
                     content_type: config.content_type.clone().unwrap_or_default(),
                 });
             }
@@ -178,21 +253,33 @@ fn collect_declarations(
                     default: lower_value(default, let_scope),
                 });
             }
-            Node::Timer { name, kind, duration_ms, action, .. } => {
+            Node::Timer {
+                name,
+                kind,
+                duration_ms,
+                action,
+                ..
+            } => {
                 timers.push(TimerDecl {
                     name: name.clone(),
-                    kind: match kind { TimerKind::After => 0, TimerKind::Every => 1 },
+                    kind: match kind {
+                        TimerKind::After => 0,
+                        TimerKind::Every => 1,
+                    },
                     duration_ms: *duration_ms,
                     action: lower_action(action),
                 });
             }
-            Node::Param { name, ty, default, .. } => {
+            Node::Param {
+                name, ty, default, ..
+            } => {
                 let param_type = match ty {
                     naze_parser::ast::Type::Text => "text",
                     naze_parser::ast::Type::Number => "number",
                     naze_parser::ast::Type::Bool => "bool",
                     naze_parser::ast::Type::Color => "color",
-                }.to_string();
+                }
+                .to_string();
                 params.push(ParamDecl {
                     name: name.clone(),
                     param_type,
@@ -211,7 +298,12 @@ fn collect_declarations(
 fn collect_validation_state(nodes: &[Node], state: &mut Vec<StateDecl>) {
     for node in nodes {
         match node {
-            Node::Element { name, props, children, .. } => {
+            Node::Element {
+                name,
+                props,
+                children,
+                ..
+            } => {
                 // Check if this is an input with both bind and validate props
                 if name == "input" {
                     let has_validate = props.iter().any(|p| p.key == "validate");
@@ -245,7 +337,11 @@ fn collect_validation_state(nodes: &[Node], state: &mut Vec<StateDecl>) {
                 // Recurse into children
                 collect_validation_state(children, state);
             }
-            Node::If { then_children, else_children, .. } => {
+            Node::If {
+                then_children,
+                else_children,
+                ..
+            } => {
                 collect_validation_state(then_children, state);
                 collect_validation_state(else_children, state);
             }
@@ -261,7 +357,9 @@ fn collect_validation_state(nodes: &[Node], state: &mut Vec<StateDecl>) {
             Node::Component { children, .. } => {
                 collect_validation_state(children, state);
             }
-            Node::Slot { default_children, .. } => {
+            Node::Slot {
+                default_children, ..
+            } => {
                 collect_validation_state(default_children, state);
             }
             Node::Fill { children, .. } => {
@@ -374,7 +472,9 @@ fn lower_node(
                 }]
             }
         }
-        Node::Link { text, to, children, .. } => {
+        Node::Link {
+            text, to, children, ..
+        } => {
             let mut props = HashMap::new();
             props.insert("__text".to_string(), lower_value(text, scope));
             props.insert("to".to_string(), RenderValue::Str(to.clone()));
@@ -519,7 +619,9 @@ fn lower_nodes(
                     });
                 }
             }
-            Node::Link { text, to, children, .. } => {
+            Node::Link {
+                text, to, children, ..
+            } => {
                 let mut props = HashMap::new();
                 props.insert("__text".to_string(), lower_value(text, scope));
                 props.insert("to".to_string(), RenderValue::Str(to.clone()));
@@ -587,6 +689,9 @@ fn lower_nodes(
             Node::Slot { .. } | Node::Fill { .. } => {
                 // Slots/fills outside component inlining context are no-ops
             }
+            Node::Match { subject, arms, .. } => {
+                out.extend(desugar_match(subject, arms, components, scope));
+            }
             Node::Comment(_)
             | Node::UseStmt { .. }
             | Node::Component { .. }
@@ -597,6 +702,7 @@ fn lower_nodes(
             | Node::Storage { .. }
             | Node::Timer { .. }
             | Node::Param { .. }
+            | Node::Function { .. }
             | Node::Theme { .. } => {
                 // Skip non-renderable nodes (declarations processed separately)
             }
@@ -641,7 +747,10 @@ fn inline_component(
     for child in call_children {
         match child {
             Node::Fill { name, children, .. } => {
-                fills.entry(name.clone()).or_default().extend(children.iter());
+                fills
+                    .entry(name.clone())
+                    .or_default()
+                    .extend(children.iter());
             }
             _ => {
                 default_nodes.push(child);
@@ -731,12 +840,18 @@ fn lower_nodes_with_slots(
                 ..
             } => {
                 if let Some(comp) = components.get(name.as_str()) {
-                    out.extend(inline_component(comp, props, children, components, comp_scope));
+                    out.extend(inline_component(
+                        comp, props, children, components, comp_scope,
+                    ));
                 } else {
                     let resolved_props = resolve_props(props, comp_scope);
                     let child_nodes = lower_nodes_with_slots(
-                        children, components, comp_scope, caller_scope,
-                        default_slot_nodes, fills,
+                        children,
+                        components,
+                        comp_scope,
+                        caller_scope,
+                        default_slot_nodes,
+                        fills,
                     );
                     let mut ir_handlers = lower_handlers(handlers);
 
@@ -795,15 +910,23 @@ fn lower_nodes_with_slots(
                 ..
             } => {
                 let then_nodes = lower_nodes_with_slots(
-                    then_children, components, comp_scope, caller_scope,
-                    default_slot_nodes, fills,
+                    then_children,
+                    components,
+                    comp_scope,
+                    caller_scope,
+                    default_slot_nodes,
+                    fills,
                 );
                 let else_nodes = if else_children.is_empty() {
                     None
                 } else {
                     Some(lower_nodes_with_slots(
-                        else_children, components, comp_scope, caller_scope,
-                        default_slot_nodes, fills,
+                        else_children,
+                        components,
+                        comp_scope,
+                        caller_scope,
+                        default_slot_nodes,
+                        fills,
                     ))
                 };
                 out.push(RenderNode {
@@ -823,8 +946,12 @@ fn lower_nodes_with_slots(
                 ..
             } => {
                 let child_nodes = lower_nodes_with_slots(
-                    children, components, comp_scope, caller_scope,
-                    default_slot_nodes, fills,
+                    children,
+                    components,
+                    comp_scope,
+                    caller_scope,
+                    default_slot_nodes,
+                    fills,
                 );
                 out.push(RenderNode {
                     kind: "__each".to_string(),
@@ -836,13 +963,19 @@ fn lower_nodes_with_slots(
                     each_binding: Some((variable.clone(), lower_expression(iterable))),
                 });
             }
-            Node::Link { text, to, children, .. } => {
+            Node::Link {
+                text, to, children, ..
+            } => {
                 let mut props = HashMap::new();
                 props.insert("__text".to_string(), lower_value(text, comp_scope));
                 props.insert("to".to_string(), RenderValue::Str(to.clone()));
                 let child_nodes = lower_nodes_with_slots(
-                    children, components, comp_scope, caller_scope,
-                    default_slot_nodes, fills,
+                    children,
+                    components,
+                    comp_scope,
+                    caller_scope,
+                    default_slot_nodes,
+                    fills,
                 );
                 let navigate_handler = IrEventHandler {
                     event: "click".to_string(),
@@ -863,8 +996,12 @@ fn lower_nodes_with_slots(
             Node::Page { children, .. } => {
                 // Page blocks inside components: just lower their children
                 out.extend(lower_nodes_with_slots(
-                    children, components, comp_scope, caller_scope,
-                    default_slot_nodes, fills,
+                    children,
+                    components,
+                    comp_scope,
+                    caller_scope,
+                    default_slot_nodes,
+                    fills,
                 ));
             }
             Node::Fill { .. } => {
@@ -934,14 +1071,12 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
             }
         }
         Value::Bind(name) => RenderValue::Bind(name.clone()),
-        Value::Object(entries) => {
-            RenderValue::Object(
-                entries
-                    .iter()
-                    .map(|(k, v)| (k.clone(), lower_value(v, scope)))
-                    .collect(),
-            )
-        }
+        Value::Object(entries) => RenderValue::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), lower_value(v, scope)))
+                .collect(),
+        ),
     }
 }
 
@@ -988,7 +1123,9 @@ fn lower_action(a: &Action) -> IrAction {
             expr: lower_expression(expr),
         },
         Action::Navigate { path, .. } => IrAction::Navigate { path: path.clone() },
-        Action::ScrollTo { element_id, .. } => IrAction::ScrollTo { element_id: element_id.clone() },
+        Action::ScrollTo { element_id, .. } => IrAction::ScrollTo {
+            element_id: element_id.clone(),
+        },
         Action::Log { expr, .. } => IrAction::Log {
             expr: lower_expression(expr),
         },
@@ -998,10 +1135,66 @@ fn lower_action(a: &Action) -> IrAction {
         Action::Copy { expr, .. } => IrAction::Copy {
             expr: lower_expression(expr),
         },
-        Action::Send { stream_name, expr, .. } => IrAction::Send {
+        Action::Send {
+            stream_name, expr, ..
+        } => IrAction::Send {
             stream_name: stream_name.clone(),
             expr: lower_expression(expr),
         },
+    }
+}
+
+/// Recursively collect function definitions from AST nodes into thread-local storage.
+fn collect_functions(nodes: &[Node]) {
+    for node in nodes {
+        match node {
+            Node::Function {
+                name, params, body, ..
+            } => {
+                FUNCTIONS.with(|f| {
+                    f.borrow_mut()
+                        .insert(name.clone(), (params.clone(), body.clone()));
+                });
+            }
+            Node::App { children, .. } | Node::Page { children, .. } => {
+                collect_functions(children);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Substitute parameter references in an expression with argument expressions (AST-level inlining).
+fn substitute_ast_expr(expr: &Expression, subs: &HashMap<&str, &Expression>) -> Expression {
+    match expr {
+        Expression::StateRef(name) => {
+            if let Some(replacement) = subs.get(name.as_str()) {
+                (*replacement).clone()
+            } else {
+                expr.clone()
+            }
+        }
+        Expression::BinOp { left, op, right } => Expression::BinOp {
+            left: Box::new(substitute_ast_expr(left, subs)),
+            op: *op,
+            right: Box::new(substitute_ast_expr(right, subs)),
+        },
+        Expression::Pipeline { source, stages } => Expression::Pipeline {
+            source: Box::new(substitute_ast_expr(source, subs)),
+            stages: stages
+                .iter()
+                .map(|s| PipelineStage {
+                    function: s.function.clone(),
+                    argument: s.argument.as_ref().map(|a| substitute_ast_expr(a, subs)),
+                    argument2: s.argument2.as_ref().map(|a| substitute_ast_expr(a, subs)),
+                })
+                .collect(),
+        },
+        Expression::FunctionCall { name, args } => Expression::FunctionCall {
+            name: name.clone(),
+            args: args.iter().map(|a| substitute_ast_expr(a, subs)).collect(),
+        },
+        Expression::Literal(_) => expr.clone(),
     }
 }
 
@@ -1017,7 +1210,115 @@ fn lower_expression(e: &Expression) -> IrExpression {
             op: lower_binop(*op),
             right: Box::new(lower_expression(right)),
         },
+        Expression::Pipeline { source, stages } => IrExpression::Pipeline {
+            source: Box::new(lower_expression(source)),
+            stages: stages
+                .iter()
+                .map(|s| {
+                    use naze_parser::ast::PipelineFn;
+                    IrPipelineStage {
+                        function: match s.function {
+                            PipelineFn::Filter => 0,
+                            PipelineFn::Map => 1,
+                            PipelineFn::SortBy => 2,
+                            PipelineFn::Take => 3,
+                            PipelineFn::Sum => 4,
+                            PipelineFn::Count => 5,
+                            PipelineFn::Reduce => 6,
+                            PipelineFn::GroupBy => 7,
+                            PipelineFn::Flatten => 8,
+                            PipelineFn::Distinct => 9,
+                        },
+                        argument: s.argument.as_ref().map(|a| lower_expression(a)),
+                        argument2: s.argument2.as_ref().map(|a| lower_expression(a)),
+                    }
+                })
+                .collect(),
+        },
+        Expression::FunctionCall { name, args } => FUNCTIONS.with(|f| {
+            let funcs = f.borrow();
+            if let Some((params, body)) = funcs.get(name.as_str()) {
+                let subs: HashMap<&str, &Expression> = params
+                    .iter()
+                    .zip(args.iter())
+                    .map(|(p, a)| (p.name.as_str(), a))
+                    .collect();
+                let inlined = substitute_ast_expr(body, &subs);
+                lower_expression(&inlined)
+            } else {
+                IrExpression::Str(String::new())
+            }
+        }),
     }
+}
+
+/// Desugar a match statement into nested if/else RenderNodes.
+fn desugar_match(
+    subject: &Expression,
+    arms: &[MatchArm],
+    components: &HashMap<&str, &ComponentDef>,
+    scope: &HashMap<String, RenderValue>,
+) -> Vec<RenderNode> {
+    let ir_subject = lower_expression(subject);
+
+    // Separate wildcard arm from pattern arms
+    let mut pattern_arms: Vec<&MatchArm> = Vec::new();
+    let mut wildcard_arm: Option<&MatchArm> = None;
+    for arm in arms {
+        match &arm.pattern {
+            MatchPattern::Wildcard => wildcard_arm = Some(arm),
+            _ => pattern_arms.push(arm),
+        }
+    }
+
+    let else_children = wildcard_arm
+        .map(|arm| lower_nodes(&arm.children, components, scope))
+        .filter(|nodes| !nodes.is_empty());
+
+    // Build nested if/else chain from last pattern arm to first
+    let mut current_else: Option<Vec<RenderNode>> = else_children;
+
+    for arm in pattern_arms.iter().rev() {
+        let condition = match &arm.pattern {
+            MatchPattern::StringLit(s) => IrExpression::BinOp {
+                left: Box::new(ir_subject.clone()),
+                op: IrBinOp::Eq,
+                right: Box::new(IrExpression::Str(s.clone())),
+            },
+            MatchPattern::NumberLit(n) => IrExpression::BinOp {
+                left: Box::new(ir_subject.clone()),
+                op: IrBinOp::Eq,
+                right: Box::new(IrExpression::Num(*n)),
+            },
+            MatchPattern::BoolLit(b) => IrExpression::BinOp {
+                left: Box::new(ir_subject.clone()),
+                op: IrBinOp::Eq,
+                right: Box::new(IrExpression::Bool(*b)),
+            },
+            MatchPattern::Ident(name) => IrExpression::BinOp {
+                left: Box::new(ir_subject.clone()),
+                op: IrBinOp::Eq,
+                right: Box::new(IrExpression::StateRef(name.clone())),
+            },
+            MatchPattern::Wildcard => unreachable!(),
+        };
+
+        let then_children = lower_nodes(&arm.children, components, scope);
+
+        let if_node = RenderNode {
+            kind: "__if".to_string(),
+            props: HashMap::new(),
+            children: then_children,
+            handlers: vec![],
+            condition: Some(condition),
+            else_children: current_else.take(),
+            each_binding: None,
+        };
+
+        current_else = Some(vec![if_node]);
+    }
+
+    current_else.unwrap_or_default()
 }
 
 fn lower_binop(op: BinOp) -> IrBinOp {
@@ -1340,7 +1641,12 @@ mod tests {
             .unwrap()
             .join("examples");
 
-        for name in &["component-basic.naze", "component-props.naze", "multi-component.naze", "slots.naze"] {
+        for name in &[
+            "component-basic.naze",
+            "component-props.naze",
+            "multi-component.naze",
+            "slots.naze",
+        ] {
             let project = resolve(&examples_dir, name);
             let tree = lower(&project);
             assert!(!tree.title.is_empty(), "empty title in {}", name);
@@ -1576,7 +1882,7 @@ app "Test" {
 "#,
         )]);
         assert_eq!(tree.root.len(), 2); // rect + column
-        // theme.colors.primary is #2563eb (default)
+                                        // theme.colors.primary is #2563eb (default)
         assert_eq!(
             tree.root[0].props.get("color"),
             Some(&RenderValue::Color(0x2563eb))
@@ -1586,5 +1892,70 @@ app "Test" {
             tree.root[1].props.get("padding"),
             Some(&RenderValue::Num(16.0, Some("px".to_string())))
         );
+    }
+
+    #[test]
+    fn lower_computed_pipeline() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            r#"app "Pipeline Test" {
+  state items = [1, 2, 3]
+  computed total = items | map __it | sum
+  computed n = items | count
+  text "hello"
+}
+"#,
+        )]);
+        assert_eq!(tree.computed.len(), 2);
+        assert_eq!(tree.computed[0].name, "total");
+        match &tree.computed[0].expr {
+            IrExpression::Pipeline { source, stages } => {
+                assert!(matches!(**source, IrExpression::StateRef(ref s) if s == "items"));
+                assert_eq!(stages.len(), 2);
+                assert_eq!(stages[0].function, 1); // map
+                assert_eq!(stages[1].function, 4); // sum
+            }
+            other => panic!("expected Pipeline, got {:?}", other),
+        }
+        assert_eq!(tree.computed[1].name, "n");
+        match &tree.computed[1].expr {
+            IrExpression::Pipeline { stages, .. } => {
+                assert_eq!(stages.len(), 1);
+                assert_eq!(stages[0].function, 5); // count
+            }
+            other => panic!("expected Pipeline, got {:?}", other),
+        }
+
+        // Roundtrip
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn lower_each_with_pipeline() {
+        let tree = setup_and_lower(&[(
+            "app.naze",
+            r#"app "Pipeline Each" {
+  state items = [1, 2, 3]
+  each item in items | take 2 {
+    text "{item}"
+  }
+}
+"#,
+        )]);
+        assert_eq!(tree.root.len(), 1);
+        let each_node = &tree.root[0];
+        assert_eq!(each_node.kind, "__each");
+        let (var, iterable) = each_node.each_binding.as_ref().unwrap();
+        assert_eq!(var, "item");
+        match iterable {
+            IrExpression::Pipeline { source, stages } => {
+                assert!(matches!(**source, IrExpression::StateRef(ref s) if s == "items"));
+                assert_eq!(stages.len(), 1);
+                assert_eq!(stages[0].function, 3); // take
+            }
+            other => panic!("expected Pipeline, got {:?}", other),
+        }
     }
 }

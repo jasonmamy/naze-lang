@@ -5,7 +5,10 @@ use js_sys::RegExp;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-use naze_ir::{ComputedDecl, IrAction, IrBinOp, IrExpression, PageDef, ParamDecl, RenderNode, RenderTree, RenderValue, StorageDecl, TimerDecl, TextPart};
+use naze_ir::{
+    ComputedDecl, IrAction, IrBinOp, IrExpression, IrPipelineStage, PageDef, ParamDecl, RenderNode,
+    RenderTree, RenderValue, StorageDecl, TextPart, TimerDecl,
+};
 use naze_layout::{self, LayoutTree, PositionedNode, ScrollInfo};
 use naze_renderer::{self, canvas::Renderer};
 
@@ -24,10 +27,10 @@ struct FocusedInput {
 /// Tracks drag & drop state during a drag operation.
 #[derive(Clone)]
 struct DragState {
-    source_node_id: String,         // ID of element being dragged
+    source_node_id: String,              // ID of element being dragged
     source_bounds: (f32, f32, f32, f32), // (x, y, width, height) of source element
-    source_color: String,           // Color of source element for ghost
-    drag_data: RenderValue,         // Data attached to drag
+    source_color: String,                // Color of source element for ghost
+    drag_data: RenderValue,              // Data attached to drag
     start_x: f32,
     start_y: f32,
     current_x: f32,
@@ -46,10 +49,10 @@ struct ScrollState {
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum EasingFn {
     Linear,
-    Ease,       // cubic-bezier(0.25, 0.1, 0.25, 1.0)
-    EaseIn,     // cubic-bezier(0.42, 0, 1.0, 1.0)
-    EaseOut,    // cubic-bezier(0, 0, 0.58, 1.0)
-    EaseInOut,  // cubic-bezier(0.42, 0, 0.58, 1.0)
+    Ease,      // cubic-bezier(0.25, 0.1, 0.25, 1.0)
+    EaseIn,    // cubic-bezier(0.42, 0, 1.0, 1.0)
+    EaseOut,   // cubic-bezier(0, 0, 0.58, 1.0)
+    EaseInOut, // cubic-bezier(0.42, 0, 0.58, 1.0)
 }
 
 impl EasingFn {
@@ -120,8 +123,8 @@ fn bezier_derivative(p1: f64, p2: f64, t: f64) -> f64 {
 /// Parsed transition specification.
 #[derive(Clone, Debug)]
 struct TransitionSpec {
-    property: String,      // e.g., "color", "opacity", "background"
-    duration_ms: f64,      // Duration in milliseconds
+    property: String, // e.g., "color", "opacity", "background"
+    duration_ms: f64, // Duration in milliseconds
     easing: EasingFn,
 }
 
@@ -150,7 +153,11 @@ impl TransitionSpec {
             }
         }
 
-        Some(TransitionSpec { property, duration_ms, easing })
+        Some(TransitionSpec {
+            property,
+            duration_ms,
+            easing,
+        })
     }
 }
 
@@ -170,7 +177,7 @@ struct ActiveAnimation {
 #[derive(Clone, Debug)]
 enum AnimValue {
     Number(f64),
-    Color(u32),  // RRGGBB
+    Color(u32), // RRGGBB
 }
 
 impl AnimValue {
@@ -212,18 +219,18 @@ struct App {
     renderer: Renderer,
     layout: Option<LayoutTree>,
     raf_pending: bool,
-    current_path: String,  // Current page path for routing
-    focused_input: Option<FocusedInput>,  // Currently focused text input
+    current_path: String,                // Current page path for routing
+    focused_input: Option<FocusedInput>, // Currently focused text input
     focused_element_id: Option<String>,  // Currently focused element (for keyboard nav)
     hovered_element_id: Option<String>,  // Element currently under mouse (for hover events)
     // Animation state
-    animations: Vec<ActiveAnimation>,    // Currently running animations
-    prev_props: HashMap<String, HashMap<String, RenderValue>>,  // Previous prop values by node key
-    open_select_id: Option<String>,  // Currently open select dropdown
-    caret_visible: bool,  // Blinking caret state
-    caret_interval_id: Option<i32>,  // setInterval ID for caret blinking
-    drag_state: Option<DragState>,   // Active drag operation
-    scroll_states: HashMap<String, ScrollState>,  // Scroll position per container
+    animations: Vec<ActiveAnimation>, // Currently running animations
+    prev_props: HashMap<String, HashMap<String, RenderValue>>, // Previous prop values by node key
+    open_select_id: Option<String>,   // Currently open select dropdown
+    caret_visible: bool,              // Blinking caret state
+    caret_interval_id: Option<i32>,   // setInterval ID for caret blinking
+    drag_state: Option<DragState>,    // Active drag operation
+    scroll_states: HashMap<String, ScrollState>, // Scroll position per container
 }
 
 thread_local! {
@@ -253,7 +260,10 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
     // 3. Initialize data state variables (loading=true, error=null, data=null)
     for decl in &render_tree.data {
         state_store.insert(format!("{}.loading", decl.name), RenderValue::Bool(true));
-        state_store.insert(format!("{}.error", decl.name), RenderValue::Str(String::new()));
+        state_store.insert(
+            format!("{}.error", decl.name),
+            RenderValue::Str(String::new()),
+        );
         state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
     }
 
@@ -273,13 +283,17 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
     let current_path = get_current_path();
 
     // 6. Collect data declarations for fetching after setup (skip manual triggers and streams)
-    let data_fetches: Vec<(String, String, String)> = render_tree.data.iter()
+    let data_fetches: Vec<(String, String, String)> = render_tree
+        .data
+        .iter()
         .filter(|d| d.trigger_mode == 0 && d.source_type == 0) // skip manual trigger and streams
         .map(|d| (d.name.clone(), d.url.clone(), d.method.clone()))
         .collect();
 
     // 6b. Collect stream declarations for WebSocket/SSE connections
-    let stream_connects: Vec<(String, String)> = render_tree.data.iter()
+    let stream_connects: Vec<(String, String)> = render_tree
+        .data
+        .iter()
         .filter(|d| d.source_type == 1) // stream sources
         .map(|d| (d.name.clone(), d.url.clone()))
         .collect();
@@ -372,7 +386,10 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
     // 2b. Initialize data state variables (loading=true, error=null, data=null)
     for decl in &render_tree.data {
         state_store.insert(format!("{}.loading", decl.name), RenderValue::Bool(true));
-        state_store.insert(format!("{}.error", decl.name), RenderValue::Str(String::new()));
+        state_store.insert(
+            format!("{}.error", decl.name),
+            RenderValue::Str(String::new()),
+        );
         state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
     }
 
@@ -397,7 +414,7 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
             app.focused_element_id = None; // Clear focused element
             app.hovered_element_id = None; // Clear hovered element
             app.open_select_id = None; // Clear open select
-            // Stop caret timer if running
+                                       // Stop caret timer if running
             if let Some(id) = app.caret_interval_id.take() {
                 if let Some(window) = web_sys::window() {
                     window.clear_interval_with_handle(id);
@@ -696,21 +713,34 @@ fn do_render() -> Result<(), JsValue> {
 
         // 7. Clear and draw
         app.renderer.clear();
-        let focused_input_id: Option<String> = app.focused_input.as_ref().map(|f| f.node_id.clone());
+        let focused_input_id: Option<String> =
+            app.focused_input.as_ref().map(|f| f.node_id.clone());
         let focused_element_id: Option<String> = app.focused_element_id.clone();
         let open_select: Option<String> = app.open_select_id.clone();
         let caret_visible = app.caret_visible;
-        draw_tree(&app.renderer, &layout, &app.state_store, focused_input_id.as_deref(), focused_element_id.as_deref(), open_select.as_deref(), caret_visible, &app.scroll_states);
+        draw_tree(
+            &app.renderer,
+            &layout,
+            &app.state_store,
+            focused_input_id.as_deref(),
+            focused_element_id.as_deref(),
+            open_select.as_deref(),
+            caret_visible,
+            &app.scroll_states,
+        );
 
         // 8. Draw drag ghost and drop zone highlighting if dragging
         if let Some(ref drag) = app.drag_state {
             // Draw drop zone highlight if over a target
             if let Some(ref target_id) = drag.over_target_id {
                 // Find the target's bounds
-                if let Some(target_info) = find_drop_target_at_point(&layout.root, drag.current_x, drag.current_y) {
+                if let Some(target_info) =
+                    find_drop_target_at_point(&layout.root, drag.current_x, drag.current_y)
+                {
                     if target_info.node_id == *target_id {
                         let (tx, ty, tw, th) = target_info.bounds;
-                        app.renderer.draw_drop_highlight(tx as f64, ty as f64, tw as f64, th as f64);
+                        app.renderer
+                            .draw_drop_highlight(tx as f64, ty as f64, tw as f64, th as f64);
                     }
                 }
             }
@@ -719,7 +749,13 @@ fn do_render() -> Result<(), JsValue> {
             let (_, _, sw, sh) = drag.source_bounds;
             let ghost_x = drag.current_x - (sw / 2.0);
             let ghost_y = drag.current_y - (sh / 2.0);
-            app.renderer.draw_drag_ghost(ghost_x as f64, ghost_y as f64, sw as f64, sh as f64, &drag.source_color);
+            app.renderer.draw_drag_ghost(
+                ghost_x as f64,
+                ghost_y as f64,
+                sw as f64,
+                sh as f64,
+                &drag.source_color,
+            );
         }
 
         // 9. Update screen reader accessibility DOM
@@ -781,10 +817,14 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         timers: tree.timers.clone(),
         params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
-        pages: tree.pages.iter().map(|page| PageDef {
-            path: page.path.clone(),
-            root: resolve_nodes(&page.root, state),
-        }).collect(),
+        pages: tree
+            .pages
+            .iter()
+            .map(|page| PageDef {
+                path: page.path.clone(),
+                root: resolve_nodes(&page.root, state),
+            })
+            .collect(),
     }
 }
 
@@ -916,11 +956,29 @@ fn draw_tree(
     scroll_states: &HashMap<String, ScrollState>,
 ) {
     for node in &layout.root {
-        draw_node(renderer, node, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+        draw_node(
+            renderer,
+            node,
+            state,
+            focused_input_id,
+            focused_element_id,
+            open_select_id,
+            caret_visible,
+            scroll_states,
+        );
     }
     // Draw overlays on top of root content (later index = higher z-order)
     for node in &layout.overlays {
-        draw_node(renderer, node, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+        draw_node(
+            renderer,
+            node,
+            state,
+            focused_input_id,
+            focused_element_id,
+            open_select_id,
+            caret_visible,
+            scroll_states,
+        );
     }
 }
 
@@ -977,7 +1035,8 @@ fn draw_node(
             } else {
                 let color = naze_renderer::get_color_prop(&node.props, "color", "#000000");
                 let border = naze_renderer::get_num_prop(&node.props, "border", 0.0);
-                let border_color = naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
+                let border_color =
+                    naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
                 renderer.draw_rect_with_border(x, y, w, h, &color, radius, border, &border_color);
             }
             if has_shadow {
@@ -999,9 +1058,19 @@ fn draw_node(
             } else {
                 let color = naze_renderer::get_color_prop(&node.props, "color", "");
                 let border = naze_renderer::get_num_prop(&node.props, "border", 0.0);
-                let border_color = naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
+                let border_color =
+                    naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
                 if !color.is_empty() || border > 0.0 {
-                    renderer.draw_rect_with_border(x, y, w, h, &color, radius, border, &border_color);
+                    renderer.draw_rect_with_border(
+                        x,
+                        y,
+                        w,
+                        h,
+                        &color,
+                        radius,
+                        border,
+                        &border_color,
+                    );
                 }
             }
             if has_shadow {
@@ -1009,7 +1078,16 @@ fn draw_node(
                 renderer.restore();
             }
             for child in &node.children {
-                draw_node(renderer, child, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+                draw_node(
+                    renderer,
+                    child,
+                    state,
+                    focused_input_id,
+                    focused_element_id,
+                    open_select_id,
+                    caret_visible,
+                    scroll_states,
+                );
             }
         }
         "text" => {
@@ -1019,14 +1097,24 @@ fn draw_node(
                 let color = naze_renderer::get_color_prop(&node.props, "color", "#000000");
                 let text_align = naze_renderer::get_str_prop(&node.props, "text-align", "");
                 let text_overflow = naze_renderer::get_str_prop(&node.props, "text-overflow", "");
-                let letter_spacing = naze_renderer::get_num_prop(&node.props, "letter-spacing", 0.0);
+                let letter_spacing =
+                    naze_renderer::get_num_prop(&node.props, "letter-spacing", 0.0);
                 if letter_spacing != 0.0 {
                     renderer.set_letter_spacing(letter_spacing);
                 }
                 if text_overflow == "ellipsis" {
                     renderer.draw_text_ellipsis(&text, x, y, font_size, false, &color, w);
                 } else if !text_align.is_empty() {
-                    renderer.draw_text_aligned(&text, x, y, font_size, false, &color, &text_align, w);
+                    renderer.draw_text_aligned(
+                        &text,
+                        x,
+                        y,
+                        font_size,
+                        false,
+                        &color,
+                        &text_align,
+                        w,
+                    );
                 } else {
                     renderer.draw_text(&text, x, y, font_size, false, &color);
                 }
@@ -1052,14 +1140,24 @@ fn draw_node(
                 let color = naze_renderer::get_color_prop(&node.props, "color", "#000000");
                 let text_align = naze_renderer::get_str_prop(&node.props, "text-align", "");
                 let text_overflow = naze_renderer::get_str_prop(&node.props, "text-overflow", "");
-                let letter_spacing = naze_renderer::get_num_prop(&node.props, "letter-spacing", 0.0);
+                let letter_spacing =
+                    naze_renderer::get_num_prop(&node.props, "letter-spacing", 0.0);
                 if letter_spacing != 0.0 {
                     renderer.set_letter_spacing(letter_spacing);
                 }
                 if text_overflow == "ellipsis" {
                     renderer.draw_text_ellipsis(&text, x, y, font_size, true, &color, w);
                 } else if !text_align.is_empty() {
-                    renderer.draw_text_aligned(&text, x, y, font_size, true, &color, &text_align, w);
+                    renderer.draw_text_aligned(
+                        &text,
+                        x,
+                        y,
+                        font_size,
+                        true,
+                        &color,
+                        &text_align,
+                        w,
+                    );
                 } else {
                     renderer.draw_text(&text, x, y, font_size, true, &color);
                 }
@@ -1102,18 +1200,25 @@ fn draw_node(
                 renderer.draw_text(&text, x, y, font_size, false, &color);
             }
             for child in &node.children {
-                draw_node(renderer, child, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+                draw_node(
+                    renderer,
+                    child,
+                    state,
+                    focused_input_id,
+                    focused_element_id,
+                    open_select_id,
+                    caret_visible,
+                    scroll_states,
+                );
             }
         }
         "checkbox" => {
             let label = naze_renderer::get_text_content(&node.props);
             let checked = match node.props.get("bind") {
-                Some(RenderValue::Bind(var)) => {
-                    match state.get(var) {
-                        Some(RenderValue::Bool(b)) => *b,
-                        _ => false,
-                    }
-                }
+                Some(RenderValue::Bind(var)) => match state.get(var) {
+                    Some(RenderValue::Bool(b)) => *b,
+                    _ => false,
+                },
                 _ => false,
             };
             renderer.draw_checkbox(x, y, checked, &label);
@@ -1122,12 +1227,10 @@ fn draw_node(
             let label = naze_renderer::get_text_content(&node.props);
             // Radio is selected when state[bind] == value
             let selected = match (node.props.get("bind"), node.props.get("value")) {
-                (Some(RenderValue::Bind(var)), Some(value)) => {
-                    match state.get(var) {
-                        Some(state_val) => state_val == value,
-                        None => false,
-                    }
-                }
+                (Some(RenderValue::Bind(var)), Some(value)) => match state.get(var) {
+                    Some(state_val) => state_val == value,
+                    None => false,
+                },
                 _ => false,
             };
             renderer.draw_radio(x, y, selected, &label);
@@ -1141,9 +1244,17 @@ fn draw_node(
                     match state.get(var) {
                         Some(RenderValue::Str(s)) => s.clone(),
                         // For file inputs, state is an Object — extract the "name" field
-                        Some(RenderValue::Object(obj)) => {
-                            obj.iter().find(|(k, _)| k == "name").and_then(|(_, v)| if let RenderValue::Str(s) = v { Some(s.clone()) } else { None }).unwrap_or_default()
-                        }
+                        Some(RenderValue::Object(obj)) => obj
+                            .iter()
+                            .find(|(k, _)| k == "name")
+                            .and_then(|(_, v)| {
+                                if let RenderValue::Str(s) = v {
+                                    Some(s.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap_or_default(),
                         _ => String::new(),
                     }
                 }
@@ -1154,31 +1265,50 @@ fn draw_node(
             let focused = focused_input_id == Some(node_id.as_str());
             // Only show caret when focused AND caret is in visible phase
             let show_caret = focused && caret_visible;
-            renderer.draw_input(x, y, w as f64, h as f64, &value, &placeholder, focused, &input_type, show_caret);
+            renderer.draw_input(
+                x,
+                y,
+                w as f64,
+                h as f64,
+                &value,
+                &placeholder,
+                focused,
+                &input_type,
+                show_caret,
+            );
         }
         "select" => {
             let placeholder = naze_renderer::get_str_prop(&node.props, "placeholder", "Select...");
             // Get current value from bind
             let current_value = match node.props.get("bind") {
-                Some(RenderValue::Bind(var)) => {
-                    match state.get(var) {
-                        Some(RenderValue::Str(s)) => s.clone(),
-                        _ => String::new(),
-                    }
-                }
+                Some(RenderValue::Bind(var)) => match state.get(var) {
+                    Some(RenderValue::Str(s)) => s.clone(),
+                    _ => String::new(),
+                },
                 _ => String::new(),
             };
             // Extract options from children
             let options = extract_select_options(&node.children);
             // Find display text for current value
-            let display_text = options.iter()
+            let display_text = options
+                .iter()
                 .find(|(_, v)| v == &current_value)
                 .map(|(label, _)| label.as_str())
                 .unwrap_or("");
             // Check if this select is open
             let select_id = format!("select_{}_{}", x as i32, y as i32);
             let is_open = open_select_id == Some(select_id.as_str());
-            renderer.draw_select(x, y, w, h, display_text, &placeholder, is_open, &options, &current_value);
+            renderer.draw_select(
+                x,
+                y,
+                w,
+                h,
+                display_text,
+                &placeholder,
+                is_open,
+                &options,
+                &current_value,
+            );
         }
         "option" => {
             // Options are rendered by the parent select, not directly
@@ -1188,7 +1318,8 @@ fn draw_node(
             let color = naze_renderer::get_color_prop(&node.props, "color", "");
             let radius = naze_renderer::get_num_prop(&node.props, "radius", 0.0);
             let border = naze_renderer::get_num_prop(&node.props, "border", 0.0);
-            let border_color = naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
+            let border_color =
+                naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
 
             // Draw background
             if !color.is_empty() || border > 0.0 {
@@ -1220,7 +1351,16 @@ fn draw_node(
 
             // Draw children
             for child in &node.children {
-                draw_node(renderer, child, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+                draw_node(
+                    renderer,
+                    child,
+                    state,
+                    focused_input_id,
+                    focused_element_id,
+                    open_select_id,
+                    caret_visible,
+                    scroll_states,
+                );
             }
 
             // End clipping (restores transform)
@@ -1267,7 +1407,16 @@ fn draw_node(
                 renderer.begin_clip(x, y, w, h, radius);
             }
             for child in &node.children {
-                draw_node(renderer, child, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+                draw_node(
+                    renderer,
+                    child,
+                    state,
+                    focused_input_id,
+                    focused_element_id,
+                    open_select_id,
+                    caret_visible,
+                    scroll_states,
+                );
             }
             if clip {
                 renderer.end_clip();
@@ -1276,7 +1425,16 @@ fn draw_node(
         "spacer" => {}
         _ => {
             for child in &node.children {
-                draw_node(renderer, child, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+                draw_node(
+                    renderer,
+                    child,
+                    state,
+                    focused_input_id,
+                    focused_element_id,
+                    open_select_id,
+                    caret_visible,
+                    scroll_states,
+                );
             }
         }
     }
@@ -1314,33 +1472,37 @@ fn extract_select_options(children: &[PositionedNode]) -> Vec<(String, String)> 
 /// Set up event listeners on the canvas for clicks, drags, and mouse movement.
 fn setup_event_listeners() -> Result<(), JsValue> {
     // Get canvas element from the app
-    let canvas = APP.with(|cell| {
-        let borrow = cell.borrow();
-        let app = borrow.as_ref().ok_or("app not initialized")?;
-        Ok::<_, &str>(app.renderer.canvas_element().clone())
-    }).map_err(|e| JsValue::from_str(e))?;
+    let canvas = APP
+        .with(|cell| {
+            let borrow = cell.borrow();
+            let app = borrow.as_ref().ok_or("app not initialized")?;
+            Ok::<_, &str>(app.renderer.canvas_element().clone())
+        })
+        .map_err(|e| JsValue::from_str(e))?;
 
     // Mousedown handler — start drag if on draggable element
-    let mousedown_cb = Closure::<dyn Fn(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
-        let x = event.offset_x() as f32;
-        let y = event.offset_y() as f32;
-        let needs_render = handle_mousedown(x, y);
-        if needs_render {
-            schedule_render();
-        }
-    });
+    let mousedown_cb =
+        Closure::<dyn Fn(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
+            let x = event.offset_x() as f32;
+            let y = event.offset_y() as f32;
+            let needs_render = handle_mousedown(x, y);
+            if needs_render {
+                schedule_render();
+            }
+        });
     canvas.add_event_listener_with_callback("mousedown", mousedown_cb.as_ref().unchecked_ref())?;
     mousedown_cb.forget();
 
     // Mouseup handler — complete drop or trigger click
-    let mouseup_cb = Closure::<dyn Fn(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
-        let x = event.offset_x() as f32;
-        let y = event.offset_y() as f32;
-        let needs_render = handle_mouseup(x, y);
-        if needs_render {
-            schedule_render();
-        }
-    });
+    let mouseup_cb =
+        Closure::<dyn Fn(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
+            let x = event.offset_x() as f32;
+            let y = event.offset_y() as f32;
+            let needs_render = handle_mouseup(x, y);
+            if needs_render {
+                schedule_render();
+            }
+        });
     canvas.add_event_listener_with_callback("mouseup", mouseup_cb.as_ref().unchecked_ref())?;
     mouseup_cb.forget();
 
@@ -1357,17 +1519,18 @@ fn setup_event_listeners() -> Result<(), JsValue> {
     move_cb.forget();
 
     // Wheel handler — scroll content in scroll containers
-    let wheel_cb = Closure::<dyn Fn(web_sys::WheelEvent)>::new(move |event: web_sys::WheelEvent| {
-        let x = event.offset_x() as f32;
-        let y = event.offset_y() as f32;
-        let delta_x = event.delta_x() as f32;
-        let delta_y = event.delta_y() as f32;
-        let needs_render = handle_wheel(x, y, delta_x, delta_y);
-        if needs_render {
-            event.prevent_default();
-            schedule_render();
-        }
-    });
+    let wheel_cb =
+        Closure::<dyn Fn(web_sys::WheelEvent)>::new(move |event: web_sys::WheelEvent| {
+            let x = event.offset_x() as f32;
+            let y = event.offset_y() as f32;
+            let delta_x = event.delta_x() as f32;
+            let delta_y = event.delta_y() as f32;
+            let needs_render = handle_wheel(x, y, delta_x, delta_y);
+            if needs_render {
+                event.prevent_default();
+                schedule_render();
+            }
+        });
     canvas.add_event_listener_with_callback("wheel", wheel_cb.as_ref().unchecked_ref())?;
     wheel_cb.forget();
 
@@ -1380,27 +1543,30 @@ fn setup_event_listeners() -> Result<(), JsValue> {
     resize_cb.forget();
 
     // Keydown handler — handle keyboard events for focused elements and tab navigation
-    let keydown_cb = Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |event: web_sys::KeyboardEvent| {
-        let key = event.key();
-        let needs_render = handle_keydown(&key, event.shift_key());
-        if needs_render {
-            schedule_render();
-        }
-    });
+    let keydown_cb =
+        Closure::<dyn Fn(web_sys::KeyboardEvent)>::new(move |event: web_sys::KeyboardEvent| {
+            let key = event.key();
+            let needs_render = handle_keydown(&key, event.shift_key());
+            if needs_render {
+                schedule_render();
+            }
+        });
     window.add_event_listener_with_callback("keydown", keydown_cb.as_ref().unchecked_ref())?;
     keydown_cb.forget();
 
     // Context menu handler — fire context-menu event handlers, suppress browser menu
-    let contextmenu_cb = Closure::<dyn Fn(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
-        let x = event.offset_x() as f32;
-        let y = event.offset_y() as f32;
-        let handled = handle_contextmenu(x, y);
-        if handled {
-            event.prevent_default();
-            schedule_render();
-        }
-    });
-    canvas.add_event_listener_with_callback("contextmenu", contextmenu_cb.as_ref().unchecked_ref())?;
+    let contextmenu_cb =
+        Closure::<dyn Fn(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
+            let x = event.offset_x() as f32;
+            let y = event.offset_y() as f32;
+            let handled = handle_contextmenu(x, y);
+            if handled {
+                event.prevent_default();
+                schedule_render();
+            }
+        });
+    canvas
+        .add_event_listener_with_callback("contextmenu", contextmenu_cb.as_ref().unchecked_ref())?;
     contextmenu_cb.forget();
 
     Ok(())
@@ -1427,16 +1593,36 @@ fn handle_click(x: f32, y: f32) -> bool {
         for overlay in layout.overlays.iter().rev() {
             if point_in_node(overlay, x, y) {
                 // Click is inside this overlay — check for inputs/selects/click handlers within it
-                if let Some((bind_var, node_id, current_value, input_type, change_handlers, validate_prop)) = find_input_at_point(&overlay.children, x, y, &app.state_store) {
+                if let Some((
+                    bind_var,
+                    node_id,
+                    current_value,
+                    input_type,
+                    change_handlers,
+                    validate_prop,
+                )) = find_input_at_point(&overlay.children, x, y, &app.state_store)
+                {
                     app.open_select_id = None;
                     if input_type == "file" {
                         let accept = find_input_prop_at_point(&overlay.children, x, y, "accept");
-                        let max_size = parse_max_size(&find_input_prop_at_point(&overlay.children, x, y, "max-size"));
+                        let max_size = parse_max_size(&find_input_prop_at_point(
+                            &overlay.children,
+                            x,
+                            y,
+                            "max-size",
+                        ));
                         drop(borrow);
                         open_file_picker(&bind_var, &accept, max_size, change_handlers);
                     } else {
                         drop(borrow);
-                        focus_input(&bind_var, &node_id, &current_value, &input_type, change_handlers, validate_prop);
+                        focus_input(
+                            &bind_var,
+                            &node_id,
+                            &current_value,
+                            &input_type,
+                            change_handlers,
+                            validate_prop,
+                        );
                     }
                     return true;
                 }
@@ -1454,7 +1640,9 @@ fn handle_click(x: f32, y: f32) -> bool {
                 break;
             } else {
                 // Click is outside this overlay — fire click-outside handlers
-                let outside_handlers: Vec<_> = overlay.handlers.iter()
+                let outside_handlers: Vec<_> = overlay
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "click-outside")
                     .cloned()
                     .collect();
@@ -1476,25 +1664,43 @@ fn handle_click(x: f32, y: f32) -> bool {
         }
 
         // Check if clicking on an input element first
-        if let Some((bind_var, node_id, current_value, input_type, change_handlers, validate_prop)) = find_input_at_point(&layout.root, x, y, &app.state_store) {
+        if let Some((
+            bind_var,
+            node_id,
+            current_value,
+            input_type,
+            change_handlers,
+            validate_prop,
+        )) = find_input_at_point(&layout.root, x, y, &app.state_store)
+        {
             // Close any open select when clicking an input
             app.open_select_id = None;
             if input_type == "file" {
                 let accept = find_input_prop_at_point(&layout.root, x, y, "accept");
-                let max_size = parse_max_size(&find_input_prop_at_point(&layout.root, x, y, "max-size"));
+                let max_size =
+                    parse_max_size(&find_input_prop_at_point(&layout.root, x, y, "max-size"));
                 drop(borrow);
                 open_file_picker(&bind_var, &accept, max_size, change_handlers);
             } else {
                 // Drop borrow before calling focus_input which needs to borrow again
                 drop(borrow);
-                focus_input(&bind_var, &node_id, &current_value, &input_type, change_handlers, validate_prop);
+                focus_input(
+                    &bind_var,
+                    &node_id,
+                    &current_value,
+                    &input_type,
+                    change_handlers,
+                    validate_prop,
+                );
             }
             return true; // Needs re-render to show focus
         }
 
         // Check if clicking on a select dropdown option (when dropdown is open)
         if let Some(open_id) = &app.open_select_id.clone() {
-            if let Some((bind_var, value, change_handlers)) = find_option_at_point(&layout.root, x, y, open_id) {
+            if let Some((bind_var, value, change_handlers)) =
+                find_option_at_point(&layout.root, x, y, open_id)
+            {
                 // Set the value and close the dropdown
                 app.state_store.insert(bind_var, RenderValue::Str(value));
                 app.open_select_id = None;
@@ -1574,11 +1780,7 @@ fn hit_test_any_handler_with_overlays(layout: &LayoutTree, x: f32, y: f32, event
 
 /// Find click handlers on the deepest node at (x, y).
 /// For form elements (checkbox, radio), also includes change handlers.
-fn find_click_handlers(
-    nodes: &[PositionedNode],
-    x: f32,
-    y: f32,
-) -> Vec<naze_ir::IrEventHandler> {
+fn find_click_handlers(nodes: &[PositionedNode], x: f32, y: f32) -> Vec<naze_ir::IrEventHandler> {
     // Walk depth-first; deepest match wins
     for node in nodes.iter().rev() {
         if !point_in_node(node, x, y) {
@@ -1599,9 +1801,10 @@ fn find_click_handlers(
         // For form elements, also include change handlers (clicking triggers change)
         if node.kind == "checkbox" || node.kind == "radio" {
             handlers.extend(
-                node.handlers.iter()
+                node.handlers
+                    .iter()
                     .filter(|h| h.event == "change")
-                    .cloned()
+                    .cloned(),
             );
         }
         if !handlers.is_empty() {
@@ -1664,7 +1867,9 @@ fn find_event_handlers_at_point(
         if !child_handlers.is_empty() {
             return child_handlers;
         }
-        let handlers: Vec<_> = node.handlers.iter()
+        let handlers: Vec<_> = node
+            .handlers
+            .iter()
             .filter(|h| h.event == event)
             .cloned()
             .collect();
@@ -1691,7 +1896,8 @@ fn handle_contextmenu(x: f32, y: f32) -> bool {
         // Check overlays first
         for overlay in layout.overlays.iter().rev() {
             if point_in_node(overlay, x, y) {
-                let handlers = find_event_handlers_at_point(&overlay.children, x, y, "context-menu");
+                let handlers =
+                    find_event_handlers_at_point(&overlay.children, x, y, "context-menu");
                 if !handlers.is_empty() {
                     let mut changed = false;
                     for handler in &handlers {
@@ -1748,10 +1954,7 @@ fn find_handlers_in_layout(
 // ─── Action execution ────────────────────────────────────────────────────────
 
 /// Execute an action, mutating the state store. Returns true if state was changed.
-fn execute_action(
-    action: &IrAction,
-    state: &mut HashMap<String, RenderValue>,
-) -> bool {
+fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -> bool {
     match action {
         IrAction::Set { target, expr } => {
             let value = evaluate_expr(expr, state);
@@ -1810,12 +2013,13 @@ fn log_to_console(value: &RenderValue) {
         }
         RenderValue::Bool(b) => (if *b { "true" } else { "false" }).to_string(),
         RenderValue::Color(c) => format!("#{:06x}", c),
-        RenderValue::InterpolatedStr(parts) => {
-            parts.iter().map(|p| match p {
+        RenderValue::InterpolatedStr(parts) => parts
+            .iter()
+            .map(|p| match p {
                 naze_ir::TextPart::Literal(s) => s.clone(),
                 naze_ir::TextPart::StateRef(name) => format!("{{{}}}", name),
-            }).collect()
-        }
+            })
+            .collect(),
         RenderValue::List(items) => format!("[{} items]", items.len()),
         RenderValue::Object(entries) => format!("{{{}...}}", entries.len()),
         RenderValue::Bind(name) => format!("bind:{}", name),
@@ -1865,10 +2069,7 @@ fn setup_popstate_handler() -> Result<(), JsValue> {
 /// Initialize storage-backed state variables by reading from web storage.
 /// Falls back to the declared default value if storage is empty or unreadable.
 /// Initialize URL parameter state from query string, falling back to defaults.
-fn init_params(
-    param_decls: &[ParamDecl],
-    state: &mut HashMap<String, RenderValue>,
-) {
+fn init_params(param_decls: &[ParamDecl], state: &mut HashMap<String, RenderValue>) {
     if param_decls.is_empty() {
         return;
     }
@@ -1877,12 +2078,17 @@ fn init_params(
     let query_params: HashMap<String, String> = if let Some(window) = web_sys::window() {
         if let Ok(search) = window.location().search() {
             let search = search.trim_start_matches('?');
-            search.split('&')
+            search
+                .split('&')
                 .filter_map(|pair| {
                     let mut parts = pair.splitn(2, '=');
                     let key = parts.next()?;
                     let val = parts.next().unwrap_or("");
-                    if key.is_empty() { None } else { Some((key.to_string(), val.to_string())) }
+                    if key.is_empty() {
+                        None
+                    } else {
+                        Some((key.to_string(), val.to_string()))
+                    }
                 })
                 .collect()
         } else {
@@ -1903,9 +2109,7 @@ fn init_params(
                         decl.default.clone()
                     }
                 }
-                "bool" => {
-                    RenderValue::Bool(raw == "true" || raw == "1")
-                }
+                "bool" => RenderValue::Bool(raw == "true" || raw == "1"),
                 _ => RenderValue::Str(raw.clone()),
             }
         } else {
@@ -1915,10 +2119,7 @@ fn init_params(
     }
 }
 
-fn init_storage(
-    storage_decls: &[StorageDecl],
-    state: &mut HashMap<String, RenderValue>,
-) {
+fn init_storage(storage_decls: &[StorageDecl], state: &mut HashMap<String, RenderValue>) {
     let window = match web_sys::window() {
         Some(w) => w,
         None => return,
@@ -1938,10 +2139,7 @@ fn init_storage(
 }
 
 /// Persist storage-backed state variables after a state change.
-fn persist_storage(
-    storage_decls: &[StorageDecl],
-    state: &HashMap<String, RenderValue>,
-) {
+fn persist_storage(storage_decls: &[StorageDecl], state: &HashMap<String, RenderValue>) {
     let window = match web_sys::window() {
         Some(w) => w,
         None => return,
@@ -1995,7 +2193,10 @@ fn storage_value_to_string(value: &RenderValue) -> String {
 fn setup_timers() {
     let timer_decls: Vec<TimerDecl> = APP.with(|cell| {
         let borrow = cell.borrow();
-        borrow.as_ref().map(|app| app.render_tree.timers.clone()).unwrap_or_default()
+        borrow
+            .as_ref()
+            .map(|app| app.render_tree.timers.clone())
+            .unwrap_or_default()
     });
 
     let window = match web_sys::window() {
@@ -2041,10 +2242,7 @@ fn setup_timers() {
 /// Re-evaluate all computed declarations and update the state store.
 /// Computed values are evaluated in declaration order; a computed value
 /// can reference state variables and earlier computed values.
-fn recompute_computed(
-    computed: &[ComputedDecl],
-    state: &mut HashMap<String, RenderValue>,
-) {
+fn recompute_computed(computed: &[ComputedDecl], state: &mut HashMap<String, RenderValue>) {
     for decl in computed {
         let value = evaluate_expr(&decl.expr, state);
         state.insert(decl.name.clone(), value);
@@ -2054,22 +2252,239 @@ fn recompute_computed(
 // ─── Expression evaluation ───────────────────────────────────────────────────
 
 /// Evaluate an expression against the current state.
-fn evaluate_expr(
-    expr: &IrExpression,
-    state: &HashMap<String, RenderValue>,
-) -> RenderValue {
+fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> RenderValue {
     match expr {
         IrExpression::Num(n) => RenderValue::Num(*n, None),
         IrExpression::Str(s) => RenderValue::Str(s.clone()),
         IrExpression::Bool(b) => RenderValue::Bool(*b),
         IrExpression::StateRef(name) => {
-            state.get(name).cloned().unwrap_or(RenderValue::Num(0.0, None))
+            if let Some(val) = state.get(name) {
+                return val.clone();
+            }
+            // Dotted field access: "obj.field" -> lookup obj, extract field
+            if let Some(dot) = name.find('.') {
+                let root = &name[..dot];
+                let field = &name[dot + 1..];
+                if let Some(RenderValue::Object(entries)) = state.get(root) {
+                    for (k, v) in entries {
+                        if k == field {
+                            return v.clone();
+                        }
+                    }
+                }
+            }
+            RenderValue::Num(0.0, None)
         }
         IrExpression::BinOp { left, op, right } => {
             let lval = evaluate_expr(left, state);
             let rval = evaluate_expr(right, state);
             eval_binop(&lval, op, &rval)
         }
+        IrExpression::Pipeline { source, stages } => {
+            let source_val = evaluate_expr(source, state);
+            eval_pipeline(source_val, stages, state)
+        }
+    }
+}
+
+/// Evaluate a pipeline by applying stages sequentially to a source value.
+fn eval_pipeline(
+    source: RenderValue,
+    stages: &[IrPipelineStage],
+    state: &HashMap<String, RenderValue>,
+) -> RenderValue {
+    let mut current = source;
+    for stage in stages {
+        current = eval_pipeline_stage(current, stage, state);
+    }
+    current
+}
+
+/// Evaluate a single pipeline stage.
+fn eval_pipeline_stage(
+    input: RenderValue,
+    stage: &IrPipelineStage,
+    state: &HashMap<String, RenderValue>,
+) -> RenderValue {
+    let items = match &input {
+        RenderValue::List(items) => items.clone(),
+        _ => return input,
+    };
+
+    match stage.function {
+        0 => {
+            // filter: keep items where predicate is true
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let filtered: Vec<RenderValue> = items
+                .into_iter()
+                .filter(|item| {
+                    let item_state = build_item_state(item, state);
+                    matches!(evaluate_expr(arg, &item_state), RenderValue::Bool(true))
+                })
+                .collect();
+            RenderValue::List(filtered)
+        }
+        1 => {
+            // map: transform each item
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let mapped: Vec<RenderValue> = items
+                .into_iter()
+                .map(|item| {
+                    let item_state = build_item_state(&item, state);
+                    evaluate_expr(arg, &item_state)
+                })
+                .collect();
+            RenderValue::List(mapped)
+        }
+        2 => {
+            // sort-by: sort items by key expression
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let mut sorted = items;
+            sorted.sort_by(|a, b| {
+                let a_state = build_item_state(a, state);
+                let b_state = build_item_state(b, state);
+                let a_key = evaluate_expr(arg, &a_state);
+                let b_key = evaluate_expr(arg, &b_state);
+                compare_render_values(&a_key, &b_key)
+            });
+            RenderValue::List(sorted)
+        }
+        3 => {
+            // take: keep first N items
+            let n = match &stage.argument {
+                Some(a) => match evaluate_expr(a, state) {
+                    RenderValue::Num(n, _) => n as usize,
+                    _ => items.len(),
+                },
+                None => items.len(),
+            };
+            RenderValue::List(items.into_iter().take(n).collect())
+        }
+        4 => {
+            // sum: reduce to numeric total
+            let mut total = 0.0f64;
+            for item in &items {
+                match item {
+                    RenderValue::Num(n, _) => total += n,
+                    _ => {}
+                }
+            }
+            RenderValue::Num(total, None)
+        }
+        5 => {
+            // count: return list length
+            RenderValue::Num(items.len() as f64, None)
+        }
+        6 => {
+            // reduce: fold list with accumulator expression and initial value
+            let acc_expr = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let initial = match &stage.argument2 {
+                Some(init) => evaluate_expr(init, state),
+                None => RenderValue::Num(0.0, None),
+            };
+            let mut acc = initial;
+            for item in &items {
+                let mut item_state = build_item_state(item, state);
+                item_state.insert("acc".to_string(), acc.clone());
+                acc = evaluate_expr(acc_expr, &item_state);
+            }
+            acc
+        }
+        7 => {
+            // group-by: group items into object of lists keyed by field value
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let mut groups: Vec<(String, Vec<RenderValue>)> = Vec::new();
+            for item in items {
+                let item_state = build_item_state(&item, state);
+                let key = render_value_to_string(&evaluate_expr(arg, &item_state));
+                if let Some(group) = groups.iter_mut().find(|(k, _)| k == &key) {
+                    group.1.push(item);
+                } else {
+                    groups.push((key, vec![item]));
+                }
+            }
+            RenderValue::Object(
+                groups
+                    .into_iter()
+                    .map(|(k, v)| (k, RenderValue::List(v)))
+                    .collect(),
+            )
+        }
+        8 => {
+            // flatten: flatten nested lists one level
+            let mut flattened = Vec::new();
+            for item in items {
+                match item {
+                    RenderValue::List(inner) => flattened.extend(inner),
+                    other => flattened.push(other),
+                }
+            }
+            RenderValue::List(flattened)
+        }
+        9 => {
+            // distinct: unique items, optionally by field
+            let mut seen = Vec::new();
+            let mut result = Vec::new();
+            for item in items {
+                let key = match &stage.argument {
+                    Some(arg) => {
+                        let item_state = build_item_state(&item, state);
+                        render_value_to_string(&evaluate_expr(arg, &item_state))
+                    }
+                    None => render_value_to_string(&item),
+                };
+                if !seen.contains(&key) {
+                    seen.push(key);
+                    result.push(item);
+                }
+            }
+            RenderValue::List(result)
+        }
+        _ => RenderValue::List(items),
+    }
+}
+
+/// Build a state map for evaluating expressions within a pipeline stage.
+/// Object fields are injected as top-level keys so `score` resolves to `item.score`.
+fn build_item_state(
+    item: &RenderValue,
+    parent_state: &HashMap<String, RenderValue>,
+) -> HashMap<String, RenderValue> {
+    let mut item_state = parent_state.clone();
+    item_state.insert("__it".to_string(), item.clone());
+    if let RenderValue::Object(entries) = item {
+        for (k, v) in entries {
+            item_state.insert(k.clone(), v.clone());
+        }
+    }
+    // For non-object items, also make __it accessible as the value
+    item_state
+}
+
+/// Compare two RenderValues for sorting purposes.
+fn compare_render_values(a: &RenderValue, b: &RenderValue) -> std::cmp::Ordering {
+    match (a, b) {
+        (RenderValue::Num(an, _), RenderValue::Num(bn, _)) => {
+            an.partial_cmp(bn).unwrap_or(std::cmp::Ordering::Equal)
+        }
+        (RenderValue::Str(as_), RenderValue::Str(bs)) => as_.cmp(bs),
+        (RenderValue::Bool(ab), RenderValue::Bool(bb)) => ab.cmp(bb),
+        _ => std::cmp::Ordering::Equal,
     }
 }
 
@@ -2099,14 +2514,8 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
                 RenderValue::Str(format!("{}{}", ls, rs))
             }
         }
-        IrBinOp::Sub => RenderValue::Num(
-            left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0),
-            None,
-        ),
-        IrBinOp::Mul => RenderValue::Num(
-            left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0),
-            None,
-        ),
+        IrBinOp::Sub => RenderValue::Num(left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0), None),
+        IrBinOp::Mul => RenderValue::Num(left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0), None),
         IrBinOp::Div => {
             let r = right_num.unwrap_or(1.0);
             let r = if r == 0.0 { 1.0 } else { r };
@@ -2121,13 +2530,25 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
         IrBinOp::Lte => RenderValue::Bool(left_num.unwrap_or(0.0) <= right_num.unwrap_or(0.0)),
         // Boolean ops — produce Bool
         IrBinOp::And => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l && r)
         }
         IrBinOp::Or => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l || r)
         }
     }
@@ -2430,7 +2851,14 @@ fn blur_hidden_input() {
 }
 
 /// Focus an input element, setting up the hidden input with its current value.
-fn focus_input(bind_var: &str, node_id: &str, current_value: &str, input_type: &str, change_handlers: Vec<naze_ir::IrEventHandler>, validate_prop: Option<RenderValue>) {
+fn focus_input(
+    bind_var: &str,
+    node_id: &str,
+    current_value: &str,
+    input_type: &str,
+    change_handlers: Vec<naze_ir::IrEventHandler>,
+    validate_prop: Option<RenderValue>,
+) {
     // Update focus state and start caret blink timer
     APP.with(|cell| {
         let mut borrow = cell.borrow_mut();
@@ -2495,7 +2923,12 @@ fn focus_input(bind_var: &str, node_id: &str, current_value: &str, input_type: &
 }
 
 /// Open a native file picker for file-type inputs.
-fn open_file_picker(bind_var: &str, accept: &str, max_size_bytes: u64, change_handlers: Vec<naze_ir::IrEventHandler>) {
+fn open_file_picker(
+    bind_var: &str,
+    accept: &str,
+    max_size_bytes: u64,
+    change_handlers: Vec<naze_ir::IrEventHandler>,
+) {
     let window = match web_sys::window() {
         Some(w) => w,
         None => return,
@@ -2541,7 +2974,9 @@ fn open_file_picker(bind_var: &str, accept: &str, max_size_bytes: u64, change_ha
 
         // Check max-size
         if max_size_bytes > 0 && size > max_size_bytes {
-            web_sys::console::log_1(&format!("File too large: {} bytes (max {})", size, max_size_bytes).into());
+            web_sys::console::log_1(
+                &format!("File too large: {} bytes (max {})", size, max_size_bytes).into(),
+            );
             return;
         }
 
@@ -2557,7 +2992,8 @@ fn open_file_picker(bind_var: &str, accept: &str, max_size_bytes: u64, change_ha
                     ("size".to_string(), RenderValue::Num(size as f64, None)),
                     ("type".to_string(), RenderValue::Str(file_type)),
                 ];
-                app.state_store.insert(bind.clone(), RenderValue::Object(obj));
+                app.state_store
+                    .insert(bind.clone(), RenderValue::Object(obj));
                 // Execute change handlers
                 for handler in &change_h {
                     execute_action(&handler.action, &mut app.state_store);
@@ -2580,7 +3016,19 @@ fn open_file_picker(bind_var: &str, accept: &str, max_size_bytes: u64, change_ha
 }
 
 /// Find an input node at the given point. Returns (bind_var, node_id, current_value, input_type, change_handlers, validate_prop) if found.
-fn find_input_at_point(nodes: &[PositionedNode], x: f32, y: f32, state: &HashMap<String, RenderValue>) -> Option<(String, String, String, String, Vec<naze_ir::IrEventHandler>, Option<RenderValue>)> {
+fn find_input_at_point(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+    state: &HashMap<String, RenderValue>,
+) -> Option<(
+    String,
+    String,
+    String,
+    String,
+    Vec<naze_ir::IrEventHandler>,
+    Option<RenderValue>,
+)> {
     for node in nodes.iter().rev() {
         if !point_in_node(node, x, y) {
             continue;
@@ -2599,13 +3047,22 @@ fn find_input_at_point(nodes: &[PositionedNode], x: f32, y: f32, state: &HashMap
                 };
                 let input_type = naze_renderer::get_str_prop(&node.props, "type", "text");
                 // Extract change handlers
-                let change_handlers: Vec<_> = node.handlers.iter()
+                let change_handlers: Vec<_> = node
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "change")
                     .cloned()
                     .collect();
                 // Extract validate prop
                 let validate_prop = node.props.get("validate").cloned();
-                return Some((bind_var.clone(), node_id, current_value, input_type, change_handlers, validate_prop));
+                return Some((
+                    bind_var.clone(),
+                    node_id,
+                    current_value,
+                    input_type,
+                    change_handlers,
+                    validate_prop,
+                ));
             }
         }
     }
@@ -2628,7 +3085,12 @@ fn find_input_prop_at_point(nodes: &[PositionedNode], x: f32, y: f32, prop: &str
     String::new()
 }
 
-fn find_input_prop_at_point_inner(nodes: &[PositionedNode], x: f32, y: f32, prop: &str) -> Option<String> {
+fn find_input_prop_at_point_inner(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+    prop: &str,
+) -> Option<String> {
     for node in nodes.iter().rev() {
         if !point_in_node(node, x, y) {
             continue;
@@ -2687,7 +3149,12 @@ fn find_select_at_point(nodes: &[PositionedNode], x: f32, y: f32) -> Option<(Str
 /// Find an option in an open select's dropdown at the given point.
 /// Returns (bind_var, value) if found.
 /// Find an option in an open select's dropdown. Returns (bind_var, value, change_handlers) if found.
-fn find_option_at_point(nodes: &[PositionedNode], x: f32, y: f32, open_select_id: &str) -> Option<(String, String, Vec<naze_ir::IrEventHandler>)> {
+fn find_option_at_point(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+    open_select_id: &str,
+) -> Option<(String, String, Vec<naze_ir::IrEventHandler>)> {
     for node in nodes.iter().rev() {
         // Recurse into children
         if let Some(result) = find_option_at_point(&node.children, x, y, open_select_id) {
@@ -2703,7 +3170,9 @@ fn find_option_at_point(nodes: &[PositionedNode], x: f32, y: f32, open_select_id
                     _ => continue,
                 };
                 // Get change handlers from the select element
-                let change_handlers: Vec<_> = node.handlers.iter()
+                let change_handlers: Vec<_> = node
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "change")
                     .cloned()
                     .collect();
@@ -2713,8 +3182,11 @@ fn find_option_at_point(nodes: &[PositionedNode], x: f32, y: f32, open_select_id
                 for (i, child) in node.children.iter().enumerate() {
                     if child.kind == "option" {
                         let opt_y = dropdown_y + (i as f32 * option_height);
-                        if x >= node.x && x <= node.x + node.width &&
-                           y >= opt_y && y <= opt_y + option_height {
+                        if x >= node.x
+                            && x <= node.x + node.width
+                            && y >= opt_y
+                            && y <= opt_y + option_height
+                        {
                             let label = naze_renderer::get_text_content(&child.props);
                             let value = naze_renderer::get_str_prop(&child.props, "value", &label);
                             return Some((bind_var, value, change_handlers));
@@ -2837,7 +3309,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
             }
             if found_in_overlay {
                 // For pointer-move in overlays, search overlay children
-                &[]  // handled below per-overlay
+                &[] // handled below per-overlay
             } else {
                 &layout.root
             }
@@ -2845,7 +3317,8 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
         // Fire pointer-move on overlay children if applicable
         for overlay in layout.overlays.iter().rev() {
             if point_in_node(overlay, x, y) {
-                let pm_handlers = find_event_handlers_at_point(&overlay.children, x, y, "pointer-move");
+                let pm_handlers =
+                    find_event_handlers_at_point(&overlay.children, x, y, "pointer-move");
                 for handler in &pm_handlers {
                     if execute_action(&handler.action, &mut app.state_store) {
                         needs_render = true;
@@ -2980,10 +3453,14 @@ fn find_draggable_at_point(nodes: &[PositionedNode], x: f32, y: f32) -> Option<D
         if is_draggable {
             let node_id = format!("drag_{}_{}", node.x as i32, node.y as i32);
             let color = naze_renderer::get_color_prop(&node.props, "color", "#888888");
-            let drag_data = node.props.get("drag-data")
+            let drag_data = node
+                .props
+                .get("drag-data")
                 .cloned()
                 .unwrap_or(RenderValue::Str(String::new()));
-            let drag_start_handlers: Vec<_> = node.handlers.iter()
+            let drag_start_handlers: Vec<_> = node
+                .handlers
+                .iter()
                 .filter(|h| h.event == "drag-start")
                 .cloned()
                 .collect();
@@ -3017,11 +3494,15 @@ fn find_drop_target_at_point(nodes: &[PositionedNode], x: f32, y: f32) -> Option
         };
         if is_drop_target {
             let node_id = format!("drop_{}_{}", node.x as i32, node.y as i32);
-            let drag_over_handlers: Vec<_> = node.handlers.iter()
+            let drag_over_handlers: Vec<_> = node
+                .handlers
+                .iter()
                 .filter(|h| h.event == "drag-over")
                 .cloned()
                 .collect();
-            let drop_handlers: Vec<_> = node.handlers.iter()
+            let drop_handlers: Vec<_> = node
+                .handlers
+                .iter()
                 .filter(|h| h.event == "drop")
                 .cloned()
                 .collect();
@@ -3059,7 +3540,11 @@ fn set_cursor(cursor: &str) {
     APP.with(|cell| {
         let borrow = cell.borrow();
         if let Some(app) = borrow.as_ref() {
-            let _ = app.renderer.canvas_element().style().set_property("cursor", cursor);
+            let _ = app
+                .renderer
+                .canvas_element()
+                .style()
+                .set_property("cursor", cursor);
         }
     });
 }
@@ -3137,13 +3622,18 @@ fn handle_wheel(x: f32, y: f32, delta_x: f32, delta_y: f32) -> bool {
 }
 
 /// Find scroll handlers for a scroll container by its ID.
-fn find_scroll_handlers(nodes: &[PositionedNode], scroll_id: &str) -> Option<Vec<naze_ir::IrEventHandler>> {
+fn find_scroll_handlers(
+    nodes: &[PositionedNode],
+    scroll_id: &str,
+) -> Option<Vec<naze_ir::IrEventHandler>> {
     for node in nodes {
         // Check if this is the scroll container
         if node.kind == "scroll" {
             let this_id = format!("scroll_{}_{}", node.x as i32, node.y as i32);
             if this_id == scroll_id {
-                let handlers: Vec<_> = node.handlers.iter()
+                let handlers: Vec<_> = node
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "scroll")
                     .cloned()
                     .collect();
@@ -3181,7 +3671,11 @@ fn find_scroll_at_point(
         if node.kind == "scroll" {
             if let Some(ref info) = node.scroll_info {
                 let scroll_id = format!("scroll_{}_{}", node.x as i32, node.y as i32);
-                return Some((scroll_id, info.clone(), (node.x, node.y, node.width, node.height)));
+                return Some((
+                    scroll_id,
+                    info.clone(),
+                    (node.x, node.y, node.width, node.height),
+                ));
             }
         }
     }
@@ -3204,7 +3698,8 @@ fn scroll_to_element(element_id: &str) {
 
         // Find the element by ID and its containing scroll container
         if let Some((element_y, scroll_id, scroll_info, container_y, container_h)) =
-            find_element_and_scroll_container(&layout.root, element_id, None) {
+            find_element_and_scroll_container(&layout.root, element_id, None)
+        {
             // Calculate the scroll offset to bring element into view
             let relative_y = element_y - container_y;
 
@@ -3248,7 +3743,9 @@ fn find_element_and_scroll_container(
         }
 
         // Recurse into children
-        if let Some(result) = find_element_and_scroll_container(&node.children, element_id, scroll_context.clone()) {
+        if let Some(result) =
+            find_element_and_scroll_container(&node.children, element_id, scroll_context.clone())
+        {
             return Some(result);
         }
     }
@@ -3284,9 +3781,10 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
             }
 
             // Find current focus index
-            let current_idx = app.focused_element_id.as_ref().and_then(|id| {
-                focusable.iter().position(|(fid, _, _)| fid == id)
-            });
+            let current_idx = app
+                .focused_element_id
+                .as_ref()
+                .and_then(|id| focusable.iter().position(|(fid, _, _)| fid == id));
 
             // Calculate next focus index
             let next_idx = if shift {
@@ -3312,7 +3810,8 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
             if node_kind == "input" {
                 // Find the input node and focus it
                 if let Some((bind_var, node_id, value, input_type, handlers, validate)) =
-                    find_input_by_id(&layout.root, new_id, &app.state_store) {
+                    find_input_by_id(&layout.root, new_id, &app.state_store)
+                {
                     // Drop borrow before calling focus_input
                     let bind_var = bind_var.clone();
                     let node_id = node_id.clone();
@@ -3335,7 +3834,9 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
         if key == "Enter" {
             if let Some(ref focused_id) = app.focused_element_id.clone() {
                 // Find the focused node and execute its click handlers
-                if let Some(handlers) = find_handlers_by_element_id(&layout.root, focused_id, "click") {
+                if let Some(handlers) =
+                    find_handlers_by_element_id(&layout.root, focused_id, "click")
+                {
                     let mut changed = false;
                     for handler in &handlers {
                         if execute_action(&handler.action, &mut app.state_store) {
@@ -3358,7 +3859,9 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
                 };
                 if dismiss {
                     // Fire click-outside handlers to dismiss the overlay
-                    let outside_handlers: Vec<_> = overlay.handlers.iter()
+                    let outside_handlers: Vec<_> = overlay
+                        .handlers
+                        .iter()
                         .filter(|h| h.event == "click-outside")
                         .cloned()
                         .collect();
@@ -3408,7 +3911,9 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
 
         // Execute keypress handlers on focused element
         if let Some(ref focused_id) = app.focused_element_id.clone() {
-            if let Some(handlers) = find_handlers_by_element_id(&layout.root, focused_id, "keypress") {
+            if let Some(handlers) =
+                find_handlers_by_element_id(&layout.root, focused_id, "keypress")
+            {
                 let mut changed = false;
                 for handler in &handlers {
                     if execute_action(&handler.action, &mut app.state_store) {
@@ -3447,7 +3952,7 @@ fn collect_focusable_recursive(nodes: &[PositionedNode], out: &mut Vec<(String, 
             node.kind.as_str(),
             "input" | "checkbox" | "radio" | "select" | "link"
         ) || node.handlers.iter().any(|h| h.event == "click")
-          || node.props.get("tab-index").is_some();
+            || node.props.get("tab-index").is_some();
 
         if is_focusable {
             let element_id = format!("focus_{}_{}_{}", node.kind, node.x as i32, node.y as i32);
@@ -3468,7 +3973,14 @@ fn find_input_by_id(
     nodes: &[PositionedNode],
     element_id: &str,
     state: &HashMap<String, RenderValue>,
-) -> Option<(String, String, String, String, Vec<naze_ir::IrEventHandler>, Option<RenderValue>)> {
+) -> Option<(
+    String,
+    String,
+    String,
+    String,
+    Vec<naze_ir::IrEventHandler>,
+    Option<RenderValue>,
+)> {
     for node in nodes {
         let this_id = format!("focus_{}_{}_{}", node.kind, node.x as i32, node.y as i32);
         if node.kind == "input" && this_id == element_id {
@@ -3479,12 +3991,21 @@ fn find_input_by_id(
                     _ => String::new(),
                 };
                 let input_type = naze_renderer::get_str_prop(&node.props, "type", "text");
-                let handlers: Vec<_> = node.handlers.iter()
+                let handlers: Vec<_> = node
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "change")
                     .cloned()
                     .collect();
                 let validate = node.props.get("validate").cloned();
-                return Some((bind_var.clone(), node_id, value, input_type, handlers, validate));
+                return Some((
+                    bind_var.clone(),
+                    node_id,
+                    value,
+                    input_type,
+                    handlers,
+                    validate,
+                ));
             }
         }
         // Recurse
@@ -3504,7 +4025,9 @@ fn find_handlers_by_element_id(
     for node in nodes {
         let this_id = format!("focus_{}_{}_{}", node.kind, node.x as i32, node.y as i32);
         if this_id == element_id {
-            let handlers: Vec<_> = node.handlers.iter()
+            let handlers: Vec<_> = node
+                .handlers
+                .iter()
                 .filter(|h| h.event == event)
                 .cloned()
                 .collect();
@@ -3513,7 +4036,9 @@ fn find_handlers_by_element_id(
             }
             // For form elements, clicking also triggers change
             if event == "click" && matches!(node.kind.as_str(), "checkbox" | "radio") {
-                let change_handlers: Vec<_> = node.handlers.iter()
+                let change_handlers: Vec<_> = node
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "change")
                     .cloned()
                     .collect();
@@ -3749,8 +4274,16 @@ fn create_a11y_element(
     let tag = match node.kind.as_str() {
         "heading" => {
             // Use h1-h6 based on font size or level prop
-            let level = node.props.get("level")
-                .and_then(|v| if let RenderValue::Num(n, _) = v { Some(*n as i32) } else { None })
+            let level = node
+                .props
+                .get("level")
+                .and_then(|v| {
+                    if let RenderValue::Num(n, _) = v {
+                        Some(*n as i32)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or(1)
                 .clamp(1, 6);
             format!("h{}", level)
@@ -3771,7 +4304,9 @@ fn create_a11y_element(
         // Don't set role if it matches the implicit role
         let needs_explicit = !matches!(
             (tag.as_str(), r),
-            ("a", "link") | ("select", "listbox") | ("h1" | "h2" | "h3" | "h4" | "h5" | "h6", "heading")
+            ("a", "link")
+                | ("select", "listbox")
+                | ("h1" | "h2" | "h3" | "h4" | "h5" | "h6", "heading")
         );
         if needs_explicit {
             el.set_attribute("role", r)?;
@@ -3799,29 +4334,20 @@ fn fetch_data(name: &str, url: &str, method: &str) {
             let mut borrow = cell.borrow_mut();
             if let Some(app) = borrow.as_mut() {
                 // Set loading to false
-                app.state_store.insert(
-                    format!("{}.loading", name),
-                    RenderValue::Bool(false),
-                );
+                app.state_store
+                    .insert(format!("{}.loading", name), RenderValue::Bool(false));
 
                 match result {
                     Ok(data) => {
                         // Success: populate data, clear error
-                        app.state_store.insert(
-                            format!("{}.data", name),
-                            data,
-                        );
-                        app.state_store.insert(
-                            format!("{}.error", name),
-                            RenderValue::Str(String::new()),
-                        );
+                        app.state_store.insert(format!("{}.data", name), data);
+                        app.state_store
+                            .insert(format!("{}.error", name), RenderValue::Str(String::new()));
                     }
                     Err(err) => {
                         // Error: set error message, keep data empty
-                        app.state_store.insert(
-                            format!("{}.error", name),
-                            RenderValue::Str(err),
-                        );
+                        app.state_store
+                            .insert(format!("{}.error", name), RenderValue::Str(err));
                     }
                 }
             }
@@ -3853,10 +4379,8 @@ fn connect_stream(name: &str, url: &str) {
         APP.with(|cell| {
             let mut borrow = cell.borrow_mut();
             if let Some(app) = borrow.as_mut() {
-                app.state_store.insert(
-                    format!("{}.loading", name_open),
-                    RenderValue::Bool(false),
-                );
+                app.state_store
+                    .insert(format!("{}.loading", name_open), RenderValue::Bool(false));
             }
         });
         schedule_render();
@@ -3872,7 +4396,11 @@ fn connect_stream(name: &str, url: &str) {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
                     let key = format!("{}.data", name_msg);
-                    let current = app.state_store.get(&key).cloned().unwrap_or(RenderValue::List(vec![]));
+                    let current = app
+                        .state_store
+                        .get(&key)
+                        .cloned()
+                        .unwrap_or(RenderValue::List(vec![]));
                     let mut items = match current {
                         RenderValue::List(items) => items,
                         _ => vec![],
@@ -3897,10 +4425,8 @@ fn connect_stream(name: &str, url: &str) {
                     format!("{}.error", name_err),
                     RenderValue::Str("WebSocket error".to_string()),
                 );
-                app.state_store.insert(
-                    format!("{}.loading", name_err),
-                    RenderValue::Bool(false),
-                );
+                app.state_store
+                    .insert(format!("{}.loading", name_err), RenderValue::Bool(false));
             }
         });
         schedule_render();
@@ -3976,10 +4502,7 @@ fn js_to_render_value(value: &JsValue) -> RenderValue {
     // Check if it's an array
     if js_sys::Array::is_array(value) {
         let arr: js_sys::Array = value.clone().unchecked_into();
-        let items: Vec<RenderValue> = arr
-            .iter()
-            .map(|item| js_to_render_value(&item))
-            .collect();
+        let items: Vec<RenderValue> = arr.iter().map(|item| js_to_render_value(&item)).collect();
         return RenderValue::List(items);
     }
 

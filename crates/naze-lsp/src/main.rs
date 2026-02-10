@@ -16,8 +16,8 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 use capabilities::{
-    get_code_actions, get_completions, get_definition, get_diagnostics,
-    get_document_symbols, get_hover, get_references, get_rename_edits, prepare_rename,
+    get_code_actions, get_completions, get_definition, get_diagnostics, get_document_symbols,
+    get_hover, get_references, get_rename_edits, prepare_rename,
 };
 
 /// Document state tracked by the server.
@@ -104,13 +104,8 @@ impl LanguageServer for NazeLsp {
         let content = params.text_document.text;
         let version = params.text_document.version;
 
-        self.documents.insert(
-            uri.clone(),
-            DocumentState {
-                content,
-                version,
-            },
-        );
+        self.documents
+            .insert(uri.clone(), DocumentState { content, version });
 
         self.validate_document(&uri).await;
     }
@@ -177,10 +172,7 @@ impl LanguageServer for NazeLsp {
         Ok(get_definition(&content, uri.path(), position, uri))
     }
 
-    async fn references(
-        &self,
-        params: ReferenceParams,
-    ) -> Result<Option<Vec<Location>>> {
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
         let uri = &params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
         let include_declaration = params.context.include_declaration;
@@ -213,10 +205,7 @@ impl LanguageServer for NazeLsp {
         Ok(Some(DocumentSymbolResponse::Nested(symbols)))
     }
 
-    async fn code_action(
-        &self,
-        params: CodeActionParams,
-    ) -> Result<Option<CodeActionResponse>> {
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let uri = &params.text_document.uri;
         let range = params.range;
 
@@ -248,10 +237,7 @@ impl LanguageServer for NazeLsp {
         Ok(prepare_rename(&content, position))
     }
 
-    async fn rename(
-        &self,
-        params: RenameParams,
-    ) -> Result<Option<WorkspaceEdit>> {
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         let uri = &params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
         let new_name = &params.new_name;

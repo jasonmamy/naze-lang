@@ -11,7 +11,7 @@ NEWLINE_CHAR = _{ "\n" }
 
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
-statement = _{ comment | use_stmt | component_def | app_block | page_block | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | data_stmt | timer_stmt | param_stmt | if_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
+statement = _{ comment | use_stmt | function_def | component_def | app_block | page_block | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | data_stmt | timer_stmt | param_stmt | if_stmt | match_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
 
 // -- Comments
 comment = @{ "--" ~ (!NEWLINE_CHAR ~ ANY)* }
@@ -52,7 +52,8 @@ state_stmt = { "state" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 shared_state_stmt = { "shared" ~ "state" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 
 // -- Computed declaration (read-only derived state): computed total = count * price
-computed_stmt = { "computed" ~ ident ~ "=" ~ expression ~ NEWLINE_CHAR }
+// -- or with pipeline: computed total = cart | map price | sum
+computed_stmt = { "computed" ~ ident ~ "=" ~ pipe_expression ~ NEWLINE_CHAR }
 
 // -- Storage declaration (persistent state): storage theme: local "theme-pref" default: "light"
 storage_stmt = { "storage" ~ ident ~ ":" ~ storage_type ~ string_lit ~ "default" ~ ":" ~ value ~ NEWLINE_CHAR }
@@ -92,7 +93,19 @@ if_stmt = { "if" ~ expression ~ block ~ else_clause? }
 else_clause = _{ "else" ~ (if_stmt | block) }
 
 // -- Iteration: each item in list { ... }
-each_stmt = { "each" ~ ident ~ "in" ~ (ref_path | ident) ~ block }
+// -- or with pipeline: each item in items | filter score > 80 | sort-by name { ... }
+each_stmt = { "each" ~ ident ~ "in" ~ pipe_expression ~ block }
+
+// -- Pure function definition: function name(param: type, ...) -> return_type { expression }
+function_def = { "function" ~ ident ~ func_param_list ~ "->" ~ type_name ~ "{" ~ NEWLINE_CHAR* ~ pipe_expression ~ NEWLINE_CHAR* ~ "}" }
+func_param_list = { "(" ~ func_param ~ ("," ~ func_param)* ~ ")" }
+func_param = { ident ~ ":" ~ type_name }
+
+// -- Pattern matching: match expr { pattern: children, ... }
+match_stmt = { "match" ~ expression ~ "{" ~ (NEWLINE_CHAR | match_arm)+ ~ "}" }
+match_arm = { match_pattern ~ ":" ~ (match_arm_body | element) ~ NEWLINE_CHAR? }
+match_pattern = { "_" | string_lit | number_lit | bool_lit | ident }
+match_arm_body = { "{" ~ (NEWLINE_CHAR | statement)* ~ "}" }
 
 // -- Slot: marks where caller content is inserted (inside component definitions)
 slot_stmt = { "slot" ~ string_lit? ~ (block | NEWLINE_CHAR) }
@@ -100,10 +113,20 @@ slot_stmt = { "slot" ~ string_lit? ~ (block | NEWLINE_CHAR) }
 // -- Fill: provides content for a named slot at call sites
 fill_stmt = { "fill" ~ string_lit ~ block }
 
+// -- Pipeline expressions: source | stage | stage ...
+pipe_expression = { expression ~ ("|" ~ pipe_stage)+ | expression }
+pipe_stage = { pipe_fn ~ pipe_arg? ~ pipe_arg? }
+pipe_fn = { "sort-by" | "group-by" | "filter" | "map" | "take" | "reduce" | "flatten" | "distinct" | "sum" | "count" }
+pipe_arg = { expression }
+
 // -- Expressions (for event handler actions)
 expression = { expr_atom ~ (bin_op ~ expr_atom)* }
-expr_atom = { number_lit | bool_lit | string_lit | "(" ~ expression ~ ")" | ref_path | ident }
+expr_atom = { number_lit | bool_lit | string_lit | "(" ~ expression ~ ")" | function_call | ref_path | ident }
 bin_op = { "==" | "!=" | ">=" | "<=" | ">" | "<" | "&&" | "||" | "+" | "-" | "*" | "/" }
+
+// -- Function call: name(arg1, arg2)
+function_call = { ident ~ "(" ~ call_args? ~ ")" }
+call_args = { expression ~ ("," ~ expression)* }
 
 // -- Elements
 // An element is a name optionally followed by:

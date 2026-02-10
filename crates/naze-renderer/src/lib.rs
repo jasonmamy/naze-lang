@@ -46,9 +46,7 @@ pub fn get_str_prop(
 
 /// Extract text content from a `__text` prop.
 /// Handles both plain strings and interpolated strings (fallback: joins parts).
-pub fn get_text_content(
-    props: &std::collections::HashMap<String, RenderValue>,
-) -> String {
+pub fn get_text_content(props: &std::collections::HashMap<String, RenderValue>) -> String {
     match props.get("__text") {
         Some(RenderValue::Str(s)) => s.clone(),
         Some(RenderValue::InterpolatedStr(parts)) => {
@@ -232,7 +230,11 @@ pub mod canvas {
         ) {
             let font = font_string(font_size, bold);
             self.ctx.set_font(&font);
-            let full_width = self.ctx.measure_text(text).map(|m| m.width()).unwrap_or(0.0);
+            let full_width = self
+                .ctx
+                .measure_text(text)
+                .map(|m| m.width())
+                .unwrap_or(0.0);
             if full_width <= max_width {
                 self.ctx.set_fill_style_str(color);
                 let baseline_y = y + font_size * 0.8;
@@ -240,7 +242,11 @@ pub mod canvas {
                 return;
             }
             // Truncate and add ellipsis
-            let ellipsis_w = self.ctx.measure_text("...").map(|m| m.width()).unwrap_or(0.0);
+            let ellipsis_w = self
+                .ctx
+                .measure_text("...")
+                .map(|m| m.width())
+                .unwrap_or(0.0);
             let target = max_width - ellipsis_w;
             let mut end = text.len();
             for (i, _) in text.char_indices().rev() {
@@ -289,11 +295,19 @@ pub mod canvas {
             let baseline_y = y + font_size * 0.8;
             let draw_x = match text_align {
                 "center" => {
-                    let tw = self.ctx.measure_text(text).map(|m| m.width()).unwrap_or(0.0);
+                    let tw = self
+                        .ctx
+                        .measure_text(text)
+                        .map(|m| m.width())
+                        .unwrap_or(0.0);
                     x + (container_width - tw) / 2.0
                 }
                 "right" | "end" => {
-                    let tw = self.ctx.measure_text(text).map(|m| m.width()).unwrap_or(0.0);
+                    let tw = self
+                        .ctx
+                        .measure_text(text)
+                        .map(|m| m.width())
+                        .unwrap_or(0.0);
                     x + container_width - tw
                 }
                 _ => x, // "left" / "start" / default
@@ -354,21 +368,13 @@ pub mod canvas {
             self.ctx.begin_path();
             self.ctx.move_to(x + r, y);
             self.ctx.line_to(x + w - r, y);
-            self.ctx
-                .arc_to(x + w, y, x + w, y + r, r)
-                .unwrap();
+            self.ctx.arc_to(x + w, y, x + w, y + r, r).unwrap();
             self.ctx.line_to(x + w, y + h - r);
-            self.ctx
-                .arc_to(x + w, y + h, x + w - r, y + h, r)
-                .unwrap();
+            self.ctx.arc_to(x + w, y + h, x + w - r, y + h, r).unwrap();
             self.ctx.line_to(x + r, y + h);
-            self.ctx
-                .arc_to(x, y + h, x, y + h - r, r)
-                .unwrap();
+            self.ctx.arc_to(x, y + h, x, y + h - r, r).unwrap();
             self.ctx.line_to(x, y + r);
-            self.ctx
-                .arc_to(x, y, x + r, y, r)
-                .unwrap();
+            self.ctx.arc_to(x, y, x + r, y, r).unwrap();
             self.ctx.close_path();
         }
 
@@ -472,9 +478,9 @@ pub mod canvas {
                 match fit {
                     "fill" => {
                         // Stretch to fill
-                        let _ = self.ctx.draw_image_with_html_image_element_and_dw_and_dh(
-                            img, x, y, w, h,
-                        );
+                        let _ = self
+                            .ctx
+                            .draw_image_with_html_image_element_and_dw_and_dh(img, x, y, w, h);
                     }
                     "cover" => {
                         // Scale to cover, crop overflow
@@ -494,9 +500,9 @@ pub mod canvas {
                         let dh = img_h * scale;
                         let dx = x + (w - dw) / 2.0;
                         let dy = y + (h - dh) / 2.0;
-                        let _ = self.ctx.draw_image_with_html_image_element_and_dw_and_dh(
-                            img, dx, dy, dw, dh,
-                        );
+                        let _ = self
+                            .ctx
+                            .draw_image_with_html_image_element_and_dw_and_dh(img, dx, dy, dw, dh);
                     }
                 }
                 true
@@ -575,7 +581,18 @@ pub mod canvas {
         }
 
         /// Draw a text input field.
-        pub fn draw_input(&self, x: f64, y: f64, w: f64, h: f64, value: &str, placeholder: &str, focused: bool, input_type: &str, show_caret: bool) {
+        pub fn draw_input(
+            &self,
+            x: f64,
+            y: f64,
+            w: f64,
+            h: f64,
+            value: &str,
+            placeholder: &str,
+            focused: bool,
+            input_type: &str,
+            show_caret: bool,
+        ) {
             // File input: draw as a button with file name
             if input_type == "file" {
                 // Button area
@@ -587,7 +604,11 @@ pub mod canvas {
 
                 // File name area
                 let name_x = x + btn_w + 8.0;
-                let display = if !value.is_empty() { value } else { "No file chosen" };
+                let display = if !value.is_empty() {
+                    value
+                } else {
+                    "No file chosen"
+                };
                 self.draw_text(display, name_x, y + 4.0, 14.0, false, "#6b7280");
                 return;
             }
@@ -741,7 +762,10 @@ pub mod canvas {
                 let inner = &transform_str[10..transform_str.len().saturating_sub(1)];
                 let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
                 let tx: f64 = parts[0].trim_end_matches("px").parse().unwrap_or(0.0);
-                let ty: f64 = parts.get(1).map(|s| s.trim_end_matches("px").parse().unwrap_or(0.0)).unwrap_or(0.0);
+                let ty: f64 = parts
+                    .get(1)
+                    .map(|s| s.trim_end_matches("px").parse().unwrap_or(0.0))
+                    .unwrap_or(0.0);
                 let _ = self.ctx.translate(tx, ty);
             }
             let _ = self.ctx.translate(-cx, -cy);
@@ -791,7 +815,10 @@ pub mod canvas {
                 let cx = x + w / 2.0;
                 let cy = y + h / 2.0;
                 let r = w.max(h) / 2.0;
-                let grad = self.ctx.create_radial_gradient(cx, cy, 0.0, cx, cy, r).unwrap();
+                let grad = self
+                    .ctx
+                    .create_radial_gradient(cx, cy, 0.0, cx, cy, r)
+                    .unwrap();
                 for (i, color) in parts.iter().enumerate() {
                     let stop = i as f32 / (parts.len() as f32 - 1.0);
                     let _ = grad.add_color_stop(stop, color);
@@ -821,9 +848,18 @@ pub mod canvas {
                     // Parse: "offsetX offsetY blur color"
                     let parts: Vec<&str> = custom.splitn(4, ' ').collect();
                     if parts.len() >= 4 {
-                        let ox = parts[0].trim_end_matches("px").parse::<f64>().unwrap_or(0.0);
-                        let oy = parts[1].trim_end_matches("px").parse::<f64>().unwrap_or(0.0);
-                        let bl = parts[2].trim_end_matches("px").parse::<f64>().unwrap_or(0.0);
+                        let ox = parts[0]
+                            .trim_end_matches("px")
+                            .parse::<f64>()
+                            .unwrap_or(0.0);
+                        let oy = parts[1]
+                            .trim_end_matches("px")
+                            .parse::<f64>()
+                            .unwrap_or(0.0);
+                        let bl = parts[2]
+                            .trim_end_matches("px")
+                            .parse::<f64>()
+                            .unwrap_or(0.0);
                         self.ctx.set_shadow_offset_x(ox);
                         self.ctx.set_shadow_offset_y(oy);
                         self.ctx.set_shadow_blur(bl);
@@ -941,7 +977,14 @@ pub mod canvas {
         }
 
         /// Draw a vertical scrollbar.
-        pub fn draw_scrollbar_vertical(&self, x: f64, y: f64, height: f64, thumb_pos: f64, thumb_size: f64) {
+        pub fn draw_scrollbar_vertical(
+            &self,
+            x: f64,
+            y: f64,
+            height: f64,
+            thumb_pos: f64,
+            thumb_size: f64,
+        ) {
             let bar_width = 8.0;
             let bar_x = x - bar_width - 2.0; // 2px margin from edge
 
@@ -957,7 +1000,14 @@ pub mod canvas {
         }
 
         /// Draw a horizontal scrollbar.
-        pub fn draw_scrollbar_horizontal(&self, x: f64, y: f64, width: f64, thumb_pos: f64, thumb_size: f64) {
+        pub fn draw_scrollbar_horizontal(
+            &self,
+            x: f64,
+            y: f64,
+            width: f64,
+            thumb_pos: f64,
+            thumb_size: f64,
+        ) {
             let bar_height = 8.0;
             let bar_y = y - bar_height - 2.0; // 2px margin from edge
 
@@ -993,7 +1043,13 @@ pub mod canvas {
             self.set_global_alpha(0.3);
             self.ctx.set_stroke_style_str("#3b82f6");
             self.ctx.set_line_width(4.0);
-            self.draw_rounded_rect_path(ring_x - 1.0, ring_y - 1.0, ring_w + 2.0, ring_h + 2.0, ring_radius + 1.0);
+            self.draw_rounded_rect_path(
+                ring_x - 1.0,
+                ring_y - 1.0,
+                ring_w + 2.0,
+                ring_h + 2.0,
+                ring_radius + 1.0,
+            );
             self.ctx.stroke();
 
             self.restore();

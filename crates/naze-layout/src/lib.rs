@@ -49,11 +49,7 @@ fn default_text_measure(text: &str, font_size: f32) -> (f32, f32) {
 
 /// Compute layout for a render tree using the given viewport size.
 /// Uses a rough character-width estimate for text measurement.
-pub fn compute_layout(
-    tree: &RenderTree,
-    viewport_width: f32,
-    viewport_height: f32,
-) -> LayoutTree {
+pub fn compute_layout(tree: &RenderTree, viewport_width: f32, viewport_height: f32) -> LayoutTree {
     compute_layout_with_measure(tree, viewport_width, viewport_height, default_text_measure)
 }
 
@@ -156,7 +152,16 @@ fn layout_children_column<F: Fn(&str, f32) -> (f32, f32)>(
             child_sizes[i]
         };
 
-        let positioned = layout_node(node, x, cursor_y, w, h, available_w, available_h, text_measure);
+        let positioned = layout_node(
+            node,
+            x,
+            cursor_y,
+            w,
+            h,
+            available_w,
+            available_h,
+            text_measure,
+        );
         cursor_y += positioned.height;
         out.push(positioned);
     }
@@ -198,12 +203,12 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             let text = get_text_content(node);
             let font_size = get_font_size(node);
             let (tw, th) = text_measure(&text, font_size);
-            let line_height = get_num_prop(node, "line-height").map(|lh| lh as f32 * font_size).unwrap_or(th);
+            let line_height = get_num_prop(node, "line-height")
+                .map(|lh| lh as f32 * font_size)
+                .unwrap_or(th);
             (explicit_w.unwrap_or(tw), explicit_h.unwrap_or(line_height))
         }
-        "rect" => {
-            (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0))
-        }
+        "rect" => (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0)),
         "image" => {
             // Images default to 100x100 if no explicit size
             (explicit_w.unwrap_or(100.0), explicit_h.unwrap_or(100.0))
@@ -244,9 +249,7 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             // Overlays don't consume space in normal flow — positioned separately
             (0.0, 0.0)
         }
-        "spacer" => {
-            (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0))
-        }
+        "spacer" => (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0)),
         "row" => {
             let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
             let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
@@ -372,7 +375,10 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
     };
 
     // Apply min/max constraints
-    (apply_constraints(w, min_w, max_w), apply_constraints(h, min_h, max_h))
+    (
+        apply_constraints(w, min_w, max_w),
+        apply_constraints(h, min_h, max_h),
+    )
 }
 
 /// Layout a single node at the given position with the given size.
@@ -393,11 +399,23 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
 
     // Handle scroll containers specially
     if node.kind == "scroll" {
-        return layout_scroll_node(node, x, y, width, height, padding, gap, align, justify, text_measure);
+        return layout_scroll_node(
+            node,
+            x,
+            y,
+            width,
+            height,
+            padding,
+            gap,
+            align,
+            justify,
+            text_measure,
+        );
     }
 
     let children = match node.kind.as_str() {
-        "text" | "heading" | "rect" | "spacer" | "image" | "checkbox" | "radio" | "input" | "select" | "option" => Vec::new(),
+        "text" | "heading" | "rect" | "spacer" | "image" | "checkbox" | "radio" | "input"
+        | "select" | "option" => Vec::new(),
         "row" => {
             let inner_x = x + padding;
             let inner_y = y + padding;
@@ -405,9 +423,28 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
             let inner_h = height - padding * 2.0;
             let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
             if wrap {
-                layout_row_wrap(&node.children, inner_x, inner_y, inner_w, inner_h, gap, align, text_measure)
+                layout_row_wrap(
+                    &node.children,
+                    inner_x,
+                    inner_y,
+                    inner_w,
+                    inner_h,
+                    gap,
+                    align,
+                    text_measure,
+                )
             } else {
-                layout_row(&node.children, inner_x, inner_y, inner_w, inner_h, gap, align, justify, text_measure)
+                layout_row(
+                    &node.children,
+                    inner_x,
+                    inner_y,
+                    inner_w,
+                    inner_h,
+                    gap,
+                    align,
+                    justify,
+                    text_measure,
+                )
             }
         }
         "grid" => {
@@ -415,7 +452,16 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
             let inner_y = y + padding;
             let inner_w = width - padding * 2.0;
             let cols = get_num_prop(node, "columns").unwrap_or(2.0) as usize;
-            layout_grid(&node.children, inner_x, inner_y, inner_w, available_h, cols, gap, text_measure)
+            layout_grid(
+                &node.children,
+                inner_x,
+                inner_y,
+                inner_w,
+                available_h,
+                cols,
+                gap,
+                text_measure,
+            )
         }
         _ => {
             // column, container, stack, unknown — vertical stacking
@@ -423,7 +469,17 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
             let inner_y = y + padding;
             let inner_w = width - padding * 2.0;
             let inner_h = height - padding * 2.0;
-            layout_column(&node.children, inner_x, inner_y, inner_w, inner_h, gap, align, justify, text_measure)
+            layout_column(
+                &node.children,
+                inner_x,
+                inner_y,
+                inner_w,
+                inner_h,
+                gap,
+                align,
+                justify,
+                text_measure,
+            )
         }
     };
 
@@ -471,10 +527,30 @@ fn layout_scroll_node<F: Fn(&str, f32) -> (f32, f32)>(
     // Use column layout for vertical scroll, row layout for horizontal
     let children = if overflow_x && !overflow_y {
         // Horizontal scroll - use row layout
-        layout_row(&node.children, inner_x, inner_y, child_available_w, inner_h, gap, align, justify, text_measure)
+        layout_row(
+            &node.children,
+            inner_x,
+            inner_y,
+            child_available_w,
+            inner_h,
+            gap,
+            align,
+            justify,
+            text_measure,
+        )
     } else {
         // Vertical scroll (default) or both - use column layout
-        layout_column(&node.children, inner_x, inner_y, inner_w, child_available_h, gap, align, justify, text_measure)
+        layout_column(
+            &node.children,
+            inner_x,
+            inner_y,
+            inner_w,
+            child_available_h,
+            gap,
+            align,
+            justify,
+            text_measure,
+        )
     };
 
     // Calculate content bounds from children
@@ -517,8 +593,8 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
     available_w: f32,
     available_h: f32,
     gap: f32,
-    align: &str,    // cross-axis: "start", "center", "end", "stretch" (default)
-    justify: &str,  // main-axis: "start" (default), "center", "end", "space-between", "space-around", "space-evenly"
+    align: &str,   // cross-axis: "start", "center", "end", "stretch" (default)
+    justify: &str, // main-axis: "start" (default), "center", "end", "space-between", "space-around", "space-evenly"
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     if nodes.is_empty() {
@@ -560,42 +636,62 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
         }
     }
 
-    let total_gaps = if nodes.len() > 1 { gap * (nodes.len() as f32 - 1.0) } else { 0.0 };
+    let total_gaps = if nodes.len() > 1 {
+        gap * (nodes.len() as f32 - 1.0)
+    } else {
+        0.0
+    };
     let space_diff = available_h - total_fixed_h - total_gaps;
 
     // Determine if we're growing or shrinking
     let (start_offset, between_gap, final_sizes) = if space_diff >= 0.0 {
         // Positive space: distribute with flex-grow
         let (start, gap) = calculate_justify_spacing(
-            justify, space_diff.max(0.0), nodes.len(), gap, total_flex_grow > 0.0
+            justify,
+            space_diff.max(0.0),
+            nodes.len(),
+            gap,
+            total_flex_grow > 0.0,
         );
 
-        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, node)| {
-            let (_, measured_h) = child_sizes[i];
-            let flex = flex_grows[i];
-            if flex > 0.0 && total_flex_grow > 0.0 {
-                let flex_share = space_diff * (flex / total_flex_grow);
-                if node.kind == "spacer" { flex_share } else { measured_h + flex_share }
-            } else {
-                measured_h
-            }
-        }).collect();
+        let sizes: Vec<f32> = nodes
+            .iter()
+            .enumerate()
+            .map(|(i, node)| {
+                let (_, measured_h) = child_sizes[i];
+                let flex = flex_grows[i];
+                if flex > 0.0 && total_flex_grow > 0.0 {
+                    let flex_share = space_diff * (flex / total_flex_grow);
+                    if node.kind == "spacer" {
+                        flex_share
+                    } else {
+                        measured_h + flex_share
+                    }
+                } else {
+                    measured_h
+                }
+            })
+            .collect();
 
         (start, gap, sizes)
     } else {
         // Negative space: shrink with flex-shrink
         let overflow = -space_diff;
 
-        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, _node)| {
-            let (_, measured_h) = child_sizes[i];
-            let shrink = flex_shrinks[i];
-            if shrink > 0.0 && total_flex_shrink > 0.0 {
-                let shrink_amount = overflow * (shrink * measured_h) / total_flex_shrink;
-                (measured_h - shrink_amount).max(0.0)
-            } else {
-                measured_h
-            }
-        }).collect();
+        let sizes: Vec<f32> = nodes
+            .iter()
+            .enumerate()
+            .map(|(i, _node)| {
+                let (_, measured_h) = child_sizes[i];
+                let shrink = flex_shrinks[i];
+                if shrink > 0.0 && total_flex_shrink > 0.0 {
+                    let shrink_amount = overflow * (shrink * measured_h) / total_flex_shrink;
+                    (measured_h - shrink_amount).max(0.0)
+                } else {
+                    measured_h
+                }
+            })
+            .collect();
 
         (0.0, gap, sizes)
     };
@@ -621,7 +717,16 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
             _ => x, // start, stretch
         };
 
-        let positioned = layout_node(node, child_x, cursor_y, w, h, available_w, available_h, text_measure);
+        let positioned = layout_node(
+            node,
+            child_x,
+            cursor_y,
+            w,
+            h,
+            available_w,
+            available_h,
+            text_measure,
+        );
         cursor_y += positioned.height;
         out.push(positioned);
     }
@@ -670,8 +775,8 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
     available_w: f32,
     available_h: f32,
     gap: f32,
-    align: &str,    // cross-axis: "start", "center", "end", "stretch" (default)
-    justify: &str,  // main-axis: "start" (default), "center", "end", "space-between", etc.
+    align: &str,   // cross-axis: "start", "center", "end", "stretch" (default)
+    justify: &str, // main-axis: "start" (default), "center", "end", "space-between", etc.
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     if nodes.is_empty() {
@@ -711,42 +816,62 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
         }
     }
 
-    let total_gaps = if nodes.len() > 1 { gap * (nodes.len() as f32 - 1.0) } else { 0.0 };
+    let total_gaps = if nodes.len() > 1 {
+        gap * (nodes.len() as f32 - 1.0)
+    } else {
+        0.0
+    };
     let space_diff = available_w - total_fixed_w - total_gaps;
 
     // Determine if we're growing or shrinking
     let (start_offset, between_gap, final_sizes) = if space_diff >= 0.0 {
         // Positive space: distribute with flex-grow
         let (start, gap) = calculate_justify_spacing(
-            justify, space_diff.max(0.0), nodes.len(), gap, total_flex_grow > 0.0
+            justify,
+            space_diff.max(0.0),
+            nodes.len(),
+            gap,
+            total_flex_grow > 0.0,
         );
 
-        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, node)| {
-            let (measured_w, _) = child_sizes[i];
-            let flex = flex_grows[i];
-            if flex > 0.0 && total_flex_grow > 0.0 {
-                let flex_share = space_diff * (flex / total_flex_grow);
-                if node.kind == "spacer" { flex_share } else { measured_w + flex_share }
-            } else {
-                measured_w
-            }
-        }).collect();
+        let sizes: Vec<f32> = nodes
+            .iter()
+            .enumerate()
+            .map(|(i, node)| {
+                let (measured_w, _) = child_sizes[i];
+                let flex = flex_grows[i];
+                if flex > 0.0 && total_flex_grow > 0.0 {
+                    let flex_share = space_diff * (flex / total_flex_grow);
+                    if node.kind == "spacer" {
+                        flex_share
+                    } else {
+                        measured_w + flex_share
+                    }
+                } else {
+                    measured_w
+                }
+            })
+            .collect();
 
         (start, gap, sizes)
     } else {
         // Negative space: shrink with flex-shrink
         let overflow = -space_diff;
 
-        let sizes: Vec<f32> = nodes.iter().enumerate().map(|(i, _node)| {
-            let (measured_w, _) = child_sizes[i];
-            let shrink = flex_shrinks[i];
-            if shrink > 0.0 && total_flex_shrink > 0.0 {
-                let shrink_amount = overflow * (shrink * measured_w) / total_flex_shrink;
-                (measured_w - shrink_amount).max(0.0)
-            } else {
-                measured_w
-            }
-        }).collect();
+        let sizes: Vec<f32> = nodes
+            .iter()
+            .enumerate()
+            .map(|(i, _node)| {
+                let (measured_w, _) = child_sizes[i];
+                let shrink = flex_shrinks[i];
+                if shrink > 0.0 && total_flex_shrink > 0.0 {
+                    let shrink_amount = overflow * (shrink * measured_w) / total_flex_shrink;
+                    (measured_w - shrink_amount).max(0.0)
+                } else {
+                    measured_w
+                }
+            })
+            .collect();
 
         (0.0, gap, sizes)
     };
@@ -772,7 +897,16 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
             _ => y, // start, stretch
         };
 
-        let positioned = layout_node(node, cursor_x, child_y, w, h, available_w, available_h, text_measure);
+        let positioned = layout_node(
+            node,
+            cursor_x,
+            child_y,
+            w,
+            h,
+            available_w,
+            available_h,
+            text_measure,
+        );
         cursor_x += positioned.width;
         out.push(positioned);
     }
@@ -828,9 +962,20 @@ fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
                 let child_x = if *idx == row_start_idx {
                     x
                 } else {
-                    out.last().map(|n: &PositionedNode| n.x + n.width + gap).unwrap_or(x)
+                    out.last()
+                        .map(|n: &PositionedNode| n.x + n.width + gap)
+                        .unwrap_or(x)
                 };
-                let positioned = layout_node(&nodes[*idx], child_x, child_y, item_w, *item_h, available_w, available_h, text_measure);
+                let positioned = layout_node(
+                    &nodes[*idx],
+                    child_x,
+                    child_y,
+                    item_w,
+                    *item_h,
+                    available_w,
+                    available_h,
+                    text_measure,
+                );
                 out.push(positioned);
             }
 
@@ -855,7 +1000,16 @@ fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
             "end" => cursor_y + row_height - item_h,
             _ => cursor_y,
         };
-        let positioned = layout_node(&nodes[*idx], item_x, child_y, *item_w, *item_h, available_w, available_h, text_measure);
+        let positioned = layout_node(
+            &nodes[*idx],
+            item_x,
+            child_y,
+            *item_w,
+            *item_h,
+            available_w,
+            available_h,
+            text_measure,
+        );
         item_x += item_w + gap;
         out.push(positioned);
     }
@@ -1028,23 +1182,27 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
         if let Some(ref anchor) = anchor_id {
             if let Some((ax, ay, aw, ah)) = find_node_by_id(positioned_root, anchor) {
                 // Measure overlay content to determine its size
-                let content_w = resolve_dimension(node, "width", viewport_width)
-                    .unwrap_or_else(|| {
+                let content_w =
+                    resolve_dimension(node, "width", viewport_width).unwrap_or_else(|| {
                         // Measure children to determine intrinsic width
                         let mut max_w: f32 = 0.0;
                         for child in &node.children {
-                            let (cw, _) = measure_node(child, viewport_width, viewport_height, text_measure);
+                            let (cw, _) =
+                                measure_node(child, viewport_width, viewport_height, text_measure);
                             max_w = max_w.max(cw);
                         }
                         max_w + padding * 2.0
                     });
-                let content_h = resolve_dimension(node, "height", viewport_height)
-                    .unwrap_or_else(|| {
+                let content_h =
+                    resolve_dimension(node, "height", viewport_height).unwrap_or_else(|| {
                         let mut total_h: f32 = 0.0;
                         for (i, child) in node.children.iter().enumerate() {
-                            let (_, ch) = measure_node(child, content_w, viewport_height, text_measure);
+                            let (_, ch) =
+                                measure_node(child, content_w, viewport_height, text_measure);
                             total_h += ch;
-                            if i > 0 { total_h += gap; }
+                            if i > 0 {
+                                total_h += gap;
+                            }
                         }
                         total_h + padding * 2.0
                     });
@@ -1081,7 +1239,10 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                     oy + padding,
                     content_w - padding * 2.0,
                     content_h - padding * 2.0,
-                    gap, align, justify, text_measure,
+                    gap,
+                    align,
+                    justify,
+                    text_measure,
                 );
 
                 overlays.push(PositionedNode {
@@ -1105,7 +1266,10 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                 padding,
                 viewport_width - padding * 2.0,
                 viewport_height - padding * 2.0,
-                gap, align, justify, text_measure,
+                gap,
+                align,
+                justify,
+                text_measure,
             );
 
             overlays.push(PositionedNode {
@@ -1209,13 +1373,12 @@ mod tests {
         let r1 = &col.children[0];
         let r2 = &col.children[1];
         // Second rect should be below the first
+        assert!(r2.y > r1.y, "r2.y ({}) should be > r1.y ({})", r2.y, r1.y);
         assert!(
-            r2.y > r1.y,
-            "r2.y ({}) should be > r1.y ({})",
-            r2.y,
-            r1.y
+            (r2.y - r1.y - 30.0).abs() < 1.0,
+            "gap between rects: expected 30, got {}",
+            r2.y - r1.y
         );
-        assert!((r2.y - r1.y - 30.0).abs() < 1.0, "gap between rects: expected 30, got {}", r2.y - r1.y);
     }
 
     #[test]
@@ -1238,12 +1401,7 @@ mod tests {
         let r1 = &row.children[0];
         let r2 = &row.children[1];
         // Second rect should be to the right of the first
-        assert!(
-            r2.x > r1.x,
-            "r2.x ({}) should be > r1.x ({})",
-            r2.x,
-            r1.x
-        );
+        assert!(r2.x > r1.x, "r2.x ({}) should be > r1.x ({})", r2.x, r1.x);
         // Same y position
         assert!(
             (r2.y - r1.y).abs() < 1.0,
@@ -1436,8 +1594,14 @@ mod tests {
                     kind: "rect".to_string(),
                     props: {
                         let mut m = HashMap::new();
-                        m.insert("width".to_string(), RenderValue::Num(100.0, Some("px".to_string())));
-                        m.insert("height".to_string(), RenderValue::Num(50.0, Some("px".to_string())));
+                        m.insert(
+                            "width".to_string(),
+                            RenderValue::Num(100.0, Some("px".to_string())),
+                        );
+                        m.insert(
+                            "height".to_string(),
+                            RenderValue::Num(50.0, Some("px".to_string())),
+                        );
                         m
                     },
                     children: vec![],
@@ -1453,8 +1617,14 @@ mod tests {
                         kind: "rect".to_string(),
                         props: {
                             let mut m = HashMap::new();
-                            m.insert("width".to_string(), RenderValue::Num(300.0, Some("px".to_string())));
-                            m.insert("height".to_string(), RenderValue::Num(200.0, Some("px".to_string())));
+                            m.insert(
+                                "width".to_string(),
+                                RenderValue::Num(300.0, Some("px".to_string())),
+                            );
+                            m.insert(
+                                "height".to_string(),
+                                RenderValue::Num(200.0, Some("px".to_string())),
+                            );
                             m
                         },
                         children: vec![],
@@ -1472,8 +1642,14 @@ mod tests {
                     kind: "rect".to_string(),
                     props: {
                         let mut m = HashMap::new();
-                        m.insert("width".to_string(), RenderValue::Num(100.0, Some("px".to_string())));
-                        m.insert("height".to_string(), RenderValue::Num(50.0, Some("px".to_string())));
+                        m.insert(
+                            "width".to_string(),
+                            RenderValue::Num(100.0, Some("px".to_string())),
+                        );
+                        m.insert(
+                            "height".to_string(),
+                            RenderValue::Num(50.0, Some("px".to_string())),
+                        );
                         m
                     },
                     children: vec![],
@@ -1488,13 +1664,20 @@ mod tests {
         let layout = compute_layout(&tree, 800.0, 600.0);
 
         // Root should have 2 rects (overlay extracted)
-        assert_eq!(layout.root.len(), 2, "overlay should be extracted from root");
+        assert_eq!(
+            layout.root.len(),
+            2,
+            "overlay should be extracted from root"
+        );
         // Second rect should be directly below the first (no gap from overlay)
         let r1 = &layout.root[0];
         let r2 = &layout.root[1];
-        assert!((r2.y - r1.y - 50.0).abs() < 1.0,
+        assert!(
+            (r2.y - r1.y - 50.0).abs() < 1.0,
             "second rect y ({}) should be first.y + first.height ({})",
-            r2.y, r1.y + r1.height);
+            r2.y,
+            r1.y + r1.height
+        );
 
         // Overlay should be in overlays vec
         assert_eq!(layout.overlays.len(), 1);
@@ -1537,7 +1720,10 @@ mod tests {
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 
-        assert!(layout.root.is_empty(), "root should be empty (only overlay)");
+        assert!(
+            layout.root.is_empty(),
+            "root should be empty (only overlay)"
+        );
         assert_eq!(layout.overlays.len(), 1);
 
         let overlay = &layout.overlays[0];
@@ -1564,8 +1750,14 @@ mod tests {
                     props: {
                         let mut m = HashMap::new();
                         m.insert("id".to_string(), RenderValue::Str("btn".to_string()));
-                        m.insert("width".to_string(), RenderValue::Num(120.0, Some("px".to_string())));
-                        m.insert("height".to_string(), RenderValue::Num(40.0, Some("px".to_string())));
+                        m.insert(
+                            "width".to_string(),
+                            RenderValue::Num(120.0, Some("px".to_string())),
+                        );
+                        m.insert(
+                            "height".to_string(),
+                            RenderValue::Num(40.0, Some("px".to_string())),
+                        );
                         m
                     },
                     children: vec![],
@@ -1579,8 +1771,14 @@ mod tests {
                     props: {
                         let mut m = HashMap::new();
                         m.insert("anchor".to_string(), RenderValue::Str("btn".to_string()));
-                        m.insert("width".to_string(), RenderValue::Num(200.0, Some("px".to_string())));
-                        m.insert("height".to_string(), RenderValue::Num(100.0, Some("px".to_string())));
+                        m.insert(
+                            "width".to_string(),
+                            RenderValue::Num(200.0, Some("px".to_string())),
+                        );
+                        m.insert(
+                            "height".to_string(),
+                            RenderValue::Num(100.0, Some("px".to_string())),
+                        );
                         m
                     },
                     children: vec![],
@@ -1601,11 +1799,18 @@ mod tests {
         let overlay = &layout.overlays[0];
 
         // Overlay should be positioned below the button (default placement = bottom)
-        assert!((overlay.x - btn.x).abs() < 1.0,
-            "overlay.x ({}) should equal btn.x ({})", overlay.x, btn.x);
-        assert!((overlay.y - (btn.y + btn.height)).abs() < 1.0,
+        assert!(
+            (overlay.x - btn.x).abs() < 1.0,
+            "overlay.x ({}) should equal btn.x ({})",
+            overlay.x,
+            btn.x
+        );
+        assert!(
+            (overlay.y - (btn.y + btn.height)).abs() < 1.0,
             "overlay.y ({}) should equal btn.y + btn.height ({})",
-            overlay.y, btn.y + btn.height);
+            overlay.y,
+            btn.y + btn.height
+        );
     }
 
     #[test]
@@ -1625,7 +1830,10 @@ mod tests {
                     kind: "spacer".to_string(),
                     props: {
                         let mut m = HashMap::new();
-                        m.insert("height".to_string(), RenderValue::Num(500.0, Some("px".to_string())));
+                        m.insert(
+                            "height".to_string(),
+                            RenderValue::Num(500.0, Some("px".to_string())),
+                        );
                         m
                     },
                     children: vec![],
@@ -1639,8 +1847,14 @@ mod tests {
                     props: {
                         let mut m = HashMap::new();
                         m.insert("id".to_string(), RenderValue::Str("btn-bottom".to_string()));
-                        m.insert("width".to_string(), RenderValue::Num(120.0, Some("px".to_string())));
-                        m.insert("height".to_string(), RenderValue::Num(40.0, Some("px".to_string())));
+                        m.insert(
+                            "width".to_string(),
+                            RenderValue::Num(120.0, Some("px".to_string())),
+                        );
+                        m.insert(
+                            "height".to_string(),
+                            RenderValue::Num(40.0, Some("px".to_string())),
+                        );
                         m
                     },
                     children: vec![],
@@ -1653,10 +1867,22 @@ mod tests {
                     kind: "overlay".to_string(),
                     props: {
                         let mut m = HashMap::new();
-                        m.insert("anchor".to_string(), RenderValue::Str("btn-bottom".to_string()));
-                        m.insert("anchor-placement".to_string(), RenderValue::Str("bottom".to_string()));
-                        m.insert("width".to_string(), RenderValue::Num(200.0, Some("px".to_string())));
-                        m.insert("height".to_string(), RenderValue::Num(150.0, Some("px".to_string())));
+                        m.insert(
+                            "anchor".to_string(),
+                            RenderValue::Str("btn-bottom".to_string()),
+                        );
+                        m.insert(
+                            "anchor-placement".to_string(),
+                            RenderValue::Str("bottom".to_string()),
+                        );
+                        m.insert(
+                            "width".to_string(),
+                            RenderValue::Num(200.0, Some("px".to_string())),
+                        );
+                        m.insert(
+                            "height".to_string(),
+                            RenderValue::Num(150.0, Some("px".to_string())),
+                        );
                         m
                     },
                     children: vec![],
@@ -1676,12 +1902,18 @@ mod tests {
         // Button is at y=500, height=40 → bottom edge at 540
         // Overlay height=150 → would extend to 690 (past viewport 600)
         // Should auto-flip to top: overlay.y = btn.y - overlay.height = 500 - 150 = 350
-        assert!(overlay.y < btn.y,
+        assert!(
+            overlay.y < btn.y,
             "overlay.y ({}) should be above btn.y ({}) due to auto-flip",
-            overlay.y, btn.y);
-        assert!((overlay.y - (btn.y - 150.0)).abs() < 1.0,
+            overlay.y,
+            btn.y
+        );
+        assert!(
+            (overlay.y - (btn.y - 150.0)).abs() < 1.0,
             "overlay.y ({}) should be btn.y - height ({})",
-            overlay.y, btn.y - 150.0);
+            overlay.y,
+            btn.y - 150.0
+        );
     }
 
     #[test]

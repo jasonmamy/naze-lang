@@ -91,29 +91,41 @@ pub enum Node {
         span: Span,
     },
     Slot {
-        name: Option<String>,       // None = default slot, Some("x") = named slot
+        name: Option<String>,        // None = default slot, Some("x") = named slot
         default_children: Vec<Node>, // fallback content if caller provides nothing
         span: Span,
     },
     Fill {
-        name: String,      // slot name to fill
+        name: String, // slot name to fill
         children: Vec<Node>,
         span: Span,
     },
     Theme {
-        colors: Vec<(String, u32)>,            // "primary" -> 0x2563eb
+        colors: Vec<(String, u32)>,                // "primary" -> 0x2563eb
         spacing: Vec<(String, f64, Option<Unit>)>, // "md" -> (16.0, Some(Px))
         span: Span,
     },
     Page {
-        path: String,           // URL path like "/" or "/about"
+        path: String, // URL path like "/" or "/about"
         children: Vec<Node>,
         span: Span,
     },
     Link {
-        text: Value,            // Link text (may be interpolated)
-        to: String,             // Target path
-        children: Vec<Node>,    // Optional nested elements
+        text: Value,         // Link text (may be interpolated)
+        to: String,          // Target path
+        children: Vec<Node>, // Optional nested elements
+        span: Span,
+    },
+    Function {
+        name: String,
+        params: Vec<FuncParam>,
+        return_type: Type,
+        body: Expression,
+        span: Span,
+    },
+    Match {
+        subject: Expression,
+        arms: Vec<MatchArm>,
         span: Span,
     },
     Comment(String),
@@ -145,13 +157,13 @@ pub enum ModifierKind {
 /// Configuration for enhanced data fetch declarations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataConfig {
-    pub method: Option<String>,         // "get", "post", "put", "delete", "patch"
+    pub method: Option<String>, // "get", "post", "put", "delete", "patch"
     pub headers: Vec<(String, String)>, // static headers
-    pub body: Option<Value>,            // request body
-    pub cache_ms: Option<u64>,          // cache TTL in milliseconds
-    pub retry: Option<u32>,             // retry count
-    pub trigger: Option<String>,        // "auto" (default) or "manual"
-    pub content_type: Option<String>,   // e.g. "application/json"
+    pub body: Option<Value>,    // request body
+    pub cache_ms: Option<u64>,  // cache TTL in milliseconds
+    pub retry: Option<u32>,     // retry count
+    pub trigger: Option<String>, // "auto" (default) or "manual"
+    pub content_type: Option<String>, // e.g. "application/json"
 }
 
 impl Default for DataConfig {
@@ -224,6 +236,29 @@ pub enum Action {
     },
 }
 
+/// Pipeline function identifiers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PipelineFn {
+    Filter,
+    Map,
+    SortBy,
+    Take,
+    Sum,
+    Count,
+    Reduce,
+    GroupBy,
+    Flatten,
+    Distinct,
+}
+
+/// A single stage in a pipeline expression.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineStage {
+    pub function: PipelineFn,
+    pub argument: Option<Expression>,
+    pub argument2: Option<Expression>,
+}
+
 /// An expression used in event handler actions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expression {
@@ -233,6 +268,14 @@ pub enum Expression {
         left: Box<Expression>,
         op: BinOp,
         right: Box<Expression>,
+    },
+    Pipeline {
+        source: Box<Expression>,
+        stages: Vec<PipelineStage>,
+    },
+    FunctionCall {
+        name: String,
+        args: Vec<Expression>,
     },
 }
 
@@ -258,6 +301,30 @@ pub enum BinOp {
 pub enum StringPart {
     Literal(String),
     Interpolation(Vec<String>), // ref path segments, e.g. ["count"] or ["theme", "primary"]
+}
+
+/// Function parameter (name: type).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FuncParam {
+    pub name: String,
+    pub ty: Type,
+}
+
+/// A single arm in a match expression.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchArm {
+    pub pattern: MatchPattern,
+    pub children: Vec<Node>,
+}
+
+/// Pattern in a match arm.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MatchPattern {
+    Wildcard,
+    StringLit(String),
+    NumberLit(f64),
+    BoolLit(bool),
+    Ident(String),
 }
 
 /// Component parameter declaration.
@@ -286,7 +353,7 @@ pub enum Value {
     Ref(Vec<String>),
     List(Vec<Value>),
     Object(Vec<(String, Value)>), // Object literal: { key: value, ... }
-    Bind(String), // Two-way state binding for form elements
+    Bind(String),                 // Two-way state binding for form elements
 }
 
 /// Dimension units.

@@ -143,28 +143,82 @@ fn analyze_completion_context(content: &str, offset: usize) -> CompletionContext
 fn is_keyword(word: &str) -> bool {
     matches!(
         word,
-        "app" | "component" | "use" | "state" | "let" | "if" | "else"
-        | "each" | "in" | "on" | "slot" | "fill" | "page" | "link" | "theme" | "data"
+        "app"
+            | "component"
+            | "use"
+            | "state"
+            | "let"
+            | "if"
+            | "else"
+            | "each"
+            | "in"
+            | "on"
+            | "slot"
+            | "fill"
+            | "page"
+            | "link"
+            | "theme"
+            | "data"
     )
 }
 
 fn element_completions() -> Vec<CompletionItem> {
     let elements = [
-        ("column", "Vertical layout container", "column gap: 16px {\n\t$0\n}"),
-        ("row", "Horizontal layout container", "row gap: 8px {\n\t$0\n}"),
+        (
+            "column",
+            "Vertical layout container",
+            "column gap: 16px {\n\t$0\n}",
+        ),
+        (
+            "row",
+            "Horizontal layout container",
+            "row gap: 8px {\n\t$0\n}",
+        ),
         ("stack", "Overlapping layout container", "stack {\n\t$0\n}"),
-        ("grid", "Grid layout container", "grid columns: 3, gap: 8px {\n\t$0\n}"),
-        ("container", "Styled box container", "container padding: 16px, color: #f5f5f5 {\n\t$0\n}"),
-        ("rect", "Colored rectangle", "rect width: 100px, height: 50px, color: #3b82f6"),
+        (
+            "grid",
+            "Grid layout container",
+            "grid columns: 3, gap: 8px {\n\t$0\n}",
+        ),
+        (
+            "container",
+            "Styled box container",
+            "container padding: 16px, color: #f5f5f5 {\n\t$0\n}",
+        ),
+        (
+            "rect",
+            "Colored rectangle",
+            "rect width: 100px, height: 50px, color: #3b82f6",
+        ),
         ("text", "Body text", "text \"$0\""),
         ("heading", "Heading text", "heading \"$0\""),
-        ("image", "Image element", "image src: \"$0\", width: 200px, height: 150px"),
+        (
+            "image",
+            "Image element",
+            "image src: \"$0\", width: 200px, height: 150px",
+        ),
         ("spacer", "Invisible spacer", "spacer"),
-        ("input", "Text input field", "input bind: $0, placeholder: \"Enter text\""),
-        ("checkbox", "Checkbox input", "checkbox bind: $0, label: \"Option\""),
-        ("radio", "Radio button", "radio bind: $0, value: \"option\", label: \"Option\""),
+        (
+            "input",
+            "Text input field",
+            "input bind: $0, placeholder: \"Enter text\"",
+        ),
+        (
+            "checkbox",
+            "Checkbox input",
+            "checkbox bind: $0, label: \"Option\"",
+        ),
+        (
+            "radio",
+            "Radio button",
+            "radio bind: $0, value: \"option\", label: \"Option\"",
+        ),
         ("select", "Dropdown select", "select bind: $0 {\n\t$1\n}"),
-        ("scroll", "Scrollable container", "scroll height: 400px {\n\t$0\n}"),
+        (
+            "scroll",
+            "Scrollable container",
+            "scroll height: 400px {\n\t$0\n}",
+        ),
     ];
 
     elements
@@ -183,13 +237,21 @@ fn element_completions() -> Vec<CompletionItem> {
 fn keyword_completions() -> Vec<CompletionItem> {
     let keywords = [
         ("app", "Application entry point", "app \"$1\" {\n\t$0\n}"),
-        ("component", "Reusable component definition", "component $1() {\n\t$0\n}"),
+        (
+            "component",
+            "Reusable component definition",
+            "component $1() {\n\t$0\n}",
+        ),
         ("state", "Reactive state variable", "state $1 = $0"),
         ("let", "Immutable binding", "let $1 = $0"),
         ("if", "Conditional rendering", "if $1 {\n\t$0\n}"),
         ("each", "List iteration", "each $1 in $2 {\n\t$0\n}"),
         ("page", "Route page definition", "page \"/$1\" {\n\t$0\n}"),
-        ("theme", "Theme definition", "theme {\n\tcolors {\n\t\t$0\n\t}\n}"),
+        (
+            "theme",
+            "Theme definition",
+            "theme {\n\tcolors {\n\t\t$0\n\t}\n}",
+        ),
         ("data", "Async data fetch", "data $1: fetch \"$0\""),
         ("use", "Import component", "use $0"),
     ];
@@ -443,7 +505,11 @@ pub fn get_document_symbols(content: &str, file_path: &str) -> Vec<DocumentSymbo
 #[allow(deprecated)]
 fn node_to_symbol(node: &Node, content: &str) -> Option<DocumentSymbol> {
     match node {
-        Node::App { title, children, span } => {
+        Node::App {
+            title,
+            children,
+            span,
+        } => {
             let range = span_to_range(span, content);
             let name_range = Range {
                 start: range.start,
@@ -470,7 +536,12 @@ fn node_to_symbol(node: &Node, content: &str) -> Option<DocumentSymbol> {
             })
         }
 
-        Node::Component { name, params, children, span } => {
+        Node::Component {
+            name,
+            params,
+            children,
+            span,
+        } => {
             let range = span_to_range(span, content);
             let param_str = params
                 .iter()
@@ -495,7 +566,11 @@ fn node_to_symbol(node: &Node, content: &str) -> Option<DocumentSymbol> {
             })
         }
 
-        Node::Page { path, children, span } => {
+        Node::Page {
+            path,
+            children,
+            span,
+        } => {
             let range = span_to_range(span, content);
 
             Some(DocumentSymbol {
@@ -575,7 +650,12 @@ fn node_to_symbol(node: &Node, content: &str) -> Option<DocumentSymbol> {
             })
         }
 
-        Node::Element { name, children, span, .. } => {
+        Node::Element {
+            name,
+            children,
+            span,
+            ..
+        } => {
             let range = span_to_range(span, content);
 
             let child_symbols: Vec<DocumentSymbol> = children
@@ -599,7 +679,12 @@ fn node_to_symbol(node: &Node, content: &str) -> Option<DocumentSymbol> {
             })
         }
 
-        Node::If { then_children, else_children, span, .. } => {
+        Node::If {
+            then_children,
+            else_children,
+            span,
+            ..
+        } => {
             let range = span_to_range(span, content);
 
             let mut child_symbols: Vec<DocumentSymbol> = then_children
@@ -629,7 +714,12 @@ fn node_to_symbol(node: &Node, content: &str) -> Option<DocumentSymbol> {
             })
         }
 
-        Node::Each { variable, children, span, .. } => {
+        Node::Each {
+            variable,
+            children,
+            span,
+            ..
+        } => {
             let range = span_to_range(span, content);
 
             Some(DocumentSymbol {
@@ -735,7 +825,11 @@ fn find_definition_in_nodes(
                     return Some(loc);
                 }
             }
-            Node::If { then_children, else_children, .. } => {
+            Node::If {
+                then_children,
+                else_children,
+                ..
+            } => {
                 if let Some(loc) = find_definition_in_nodes(then_children, name, content, uri) {
                     return Some(loc);
                 }
@@ -941,10 +1035,7 @@ fn is_element_type(name: &str) -> bool {
 // ─── Rename ──────────────────────────────────────────────────────────────────
 
 /// Prepare rename at the given position.
-pub fn prepare_rename(
-    content: &str,
-    position: Position,
-) -> Option<PrepareRenameResponse> {
+pub fn prepare_rename(content: &str, position: Position) -> Option<PrepareRenameResponse> {
     let offset = position_to_offset(position, content);
     let word = get_word_at_offset(content, offset)?;
 

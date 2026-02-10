@@ -1,0 +1,27 @@
+-- Pipeline operators: transform data declaratively
+app "Student Scores" {
+  state students = [{name: "Alice", score: 92}, {name: "Bob", score: 67}, {name: "Carol", score: 85}, {name: "Dave", score: 45}, {name: "Eve", score: 78}]
+
+  computed passing = students | filter score > 60
+  computed top-scores = students | filter score > 80 | sort-by name
+  computed total-score = students | map score | sum
+  computed student-count = students | count
+  computed top-3 = students | sort-by score | take 3
+
+  column padding: 20px, gap: 16px {
+    heading "Student Scores"
+
+    text "Total students: {student-count}"
+    text "Total score: {total-score}"
+
+    heading "Passing (score > 60):"
+    each student in students | filter score > 60 | sort-by name {
+      text "{student.name}: {student.score}"
+    }
+
+    heading "Top 3 by score:"
+    each student in students | sort-by score | take 3 {
+      text "{student.name}: {student.score}"
+    }
+  }
+}

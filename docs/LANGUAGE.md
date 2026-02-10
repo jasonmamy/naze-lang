@@ -11,14 +11,16 @@ A `.naze` file contains any combination of:
 - `app` blocks (entry files)
 - `page` blocks (routing)
 - `component` definitions (component files)
+- `function` definitions (pure, compile-time inlined)
 - `theme` definitions
 - `let` bindings and `state` declarations
-- `computed` declarations
+- `computed` declarations (with pipeline expressions)
 - `shared state` declarations
 - `storage` declarations
 - `data` declarations (async fetch, streams)
 - `param` declarations
 - `timer` declarations
+- `match` statements (pattern matching)
 - Elements
 
 ```naze
@@ -377,7 +379,7 @@ computed total = count * price
 - Dependencies tracked at compile time (scans expression for state/computed refs)
 - Re-evaluates only when a dependency changes
 - Can reference other `computed` values (compiler validates no cycles)
-- Pipeline syntax (M15, not yet implemented) will work naturally: `computed x = list | filter | sort | take 5`
+- Pipeline syntax works naturally: `computed x = list | filter score > 80 | sort-by name | take 5`
 
 **Grammar:** Mirrors `state` exactly — `computed name = expression`
 
@@ -569,6 +571,144 @@ each post in posts.data {
   }
 }
 ```
+
+## Pipeline Operators
+
+Pipeline operators transform data declaratively using the `|` (pipe) syntax. Pipelines can be used in `computed` declarations, `each` bindings, and function bodies.
+
+```naze
+state items = [{name: "Alice", score: 92}, {name: "Bob", score: 67}, {name: "Carol", score: 85}]
+
+computed passing = items | filter score > 60
+computed top-scores = items | filter score > 80 | sort-by name
+computed total = items | map score | sum
+computed count = items | count
+computed top-3 = items | sort-by score | take 3
+```
+
+Pipelines can also be used inline in `each` statements:
+
+```naze
+each student in items | filter score > 80 | sort-by name {
+  text "{student.name}: {student.score}"
+}
+```
+
+### Built-in Pipeline Functions
+
+| Function | Argument | Description |
+|----------|----------|-------------|
+| `filter` | condition expression | Keep items where condition is true |
+| `map` | field or expression | Extract a field or transform each item |
+| `sort-by` | field name | Sort items by field value |
+| `take` | number | Keep only the first N items |
+| `sum` | *(none)* | Sum all numeric values |
+| `count` | *(none)* | Count the number of items |
+| `reduce` | accumulator expression, initial value | Fold items into a single value using `acc` and `it` |
+| `group-by` | field name | Group items into an object keyed by field value |
+| `flatten` | *(none)* | Flatten nested lists one level |
+| `distinct` | optional field name | Remove duplicate items (optionally by field) |
+
+### Reduce
+
+`reduce` takes two arguments: an accumulator expression and an initial value. Inside the expression, `acc` refers to the accumulator and `it` (or field names) refers to the current item.
+
+```naze
+computed total = items | map score | reduce acc + it 0
+```
+
+### Group By
+
+`group-by` groups items into an object keyed by the specified field value.
+
+```naze
+computed by-dept = employees | group-by dept
+```
+
+### Flatten and Distinct
+
+```naze
+state nested = [[1, 2, 3], [4, 5], [6]]
+computed flat = nested | flatten
+
+state tags = ["rust", "wasm", "rust", "js", "wasm"]
+computed unique = tags | distinct
+```
+
+## Pure Functions
+
+Functions define reusable expressions that are inlined at compile time. Function bodies are single pipeline expressions — no side effects, no state mutation.
+
+```naze
+function area(w: number, h: number) -> number {
+  w * h
+}
+
+function double(x: number) -> number {
+  x + x
+}
+```
+
+Call functions in any expression context:
+
+```naze
+computed surface = area(width, height)
+computed big = double(width)
+```
+
+**Semantics:**
+- Functions are **pure** — no side effects, no access to state
+- Bodies are single expressions (including pipeline expressions)
+- **Compile-time inlined** — the function body is substituted with argument values at compile time; no runtime function call overhead
+- Parameters are typed; return type is declared after `->`
+
+**Grammar:** `function name(param: type, ...) -> type { expression }`
+
+## Pattern Matching
+
+`match` renders different UI based on a value. It desugars to nested if/else chains at compile time — no runtime overhead.
+
+```naze
+match status {
+  "loading": text "Please wait..."
+  "error": text "Something went wrong" color: #dc2626
+  "success": text "Done!" color: #16a34a
+  _: text "Unknown state"
+}
+```
+
+Each arm has a pattern and either a single element or a block of children:
+
+```naze
+match theme {
+  "dark": {
+    rect width: 200px, height: 100px, color: #333333 {
+      text "Dark Mode" color: #ffffff
+    }
+  }
+  "light": {
+    rect width: 200px, height: 100px, color: #eeeeee {
+      text "Light Mode" color: #000000
+    }
+  }
+  _: text "Unknown theme"
+}
+```
+
+**Patterns:**
+- String literals: `"active"`, `"error"`
+- Number literals: `0`, `42`
+- Boolean literals: `true`, `false`
+- Identifiers: variable references
+- Wildcard: `_` (matches anything)
+
+**Semantics:**
+- The compiler warns if no `_` (wildcard) arm is present (exhaustiveness check)
+- Duplicate patterns produce a warning
+- Arms are evaluated top to bottom; the first match wins
+- **Compile-time desugared** to nested `__if` nodes — no new runtime construct needed
+
+**Grammar:** `match expression { (pattern: element | pattern: { statements })+ }`
 
 ## Theming
 
@@ -1134,6 +1274,33 @@ on_handler      = "on" event_name event_modifier? ":" action
 event_modifier  = ("debounce" | "throttle") duration
 ```
 
+### Pipeline, Function & Match Additions (M15-M16 — Implemented)
+
+```
+statement  += function_def | match_stmt
+
+-- Pipeline expressions (used in computed, each, function bodies)
+pipe_expression = expression ("|" pipe_stage)+ | expression
+pipe_stage      = pipe_fn pipe_arg? pipe_arg?
+pipe_fn         = "filter" | "map" | "sort-by" | "take" | "sum" | "count"
+                | "reduce" | "group-by" | "flatten" | "distinct"
+pipe_arg        = expression
+
+-- Pure function definitions (compile-time inlined)
+function_def    = "function" name func_param_list "->" type "{" pipe_expression "}"
+func_param_list = "(" func_param ("," func_param)* ")"
+func_param      = name ":" type
+
+-- Function calls (in expressions)
+function_call   = name "(" (expression ("," expression)*)? ")"
+
+-- Pattern matching (desugars to if/else at compile time)
+match_stmt      = "match" expression "{" match_arm+ "}"
+match_arm       = match_pattern ":" (match_arm_body | element)
+match_pattern   = "_" | string_lit | number_lit | bool_lit | name
+match_arm_body  = "{" statement* "}"
+```
+
 ### Planned Grammar Additions (M19e — not yet implemented)
 
 ```
@@ -1154,7 +1321,7 @@ textarea_stmt   = "textarea" props
 
 ## Future Ideas
 
-For upcoming language features (pipeline operators, pattern matching, layout templates, server functions, etc.), see:
+For upcoming language features (layout templates, server functions, etc.), see:
 
 - [PHASE3.md](PHASE3.md) — Language completion and developer experience
 - [PHASE4.md](PHASE4.md) — Ecosystem and external integration

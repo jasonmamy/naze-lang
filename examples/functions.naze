@@ -1,0 +1,24 @@
+-- Pure functions: compile-time inlined helpers
+app "Functions" {
+  state width = 200
+  state height = 100
+
+  function area(w: number, h: number) -> number {
+    w * h
+  }
+
+  function double(x: number) -> number {
+    x + x
+  }
+
+  computed surface = area(width, height)
+  computed big-width = double(width)
+
+  column padding: 20px, gap: 16px {
+    heading "Pure Functions"
+    text "Width: {width}"
+    text "Height: {height}"
+    text "Area: {surface}"
+    text "Double width: {big-width}"
+  }
+}

@@ -4,13 +4,15 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
-use naze_ir::{IrAction, IrBinOp, IrExpression, RenderNode, RenderTree, RenderValue, TextPart};
+use naze_ir::{
+    IrAction, IrBinOp, IrExpression, IrPipelineStage, RenderNode, RenderTree, RenderValue, TextPart,
+};
 use naze_layout::{LayoutTree, PositionedNode};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
-use winit::keyboard::{Key, NamedKey};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::keyboard::{Key, NamedKey};
 use winit::window::{CursorIcon, Window, WindowId};
 
 struct App {
@@ -88,7 +90,12 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::KeyboardInput {
-                event: KeyEvent { logical_key, state: ElementState::Pressed, .. },
+                event:
+                    KeyEvent {
+                        logical_key,
+                        state: ElementState::Pressed,
+                        ..
+                    },
                 ..
             } => {
                 if logical_key == Key::Named(NamedKey::Escape) {
@@ -136,10 +143,7 @@ impl App {
             None => return,
         };
         surface
-            .resize(
-                NonZeroU32::new(w).unwrap(),
-                NonZeroU32::new(h).unwrap(),
-            )
+            .resize(NonZeroU32::new(w).unwrap(), NonZeroU32::new(h).unwrap())
             .unwrap();
         let mut buffer = surface.buffer_mut().unwrap();
 
@@ -177,7 +181,9 @@ impl App {
                 return false; // Inside overlay but no handler — block click-through
             } else {
                 // Click outside overlay — fire click-outside handlers
-                let outside_handlers: Vec<_> = overlay.handlers.iter()
+                let outside_handlers: Vec<_> = overlay
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "click-outside")
                     .cloned()
                     .collect();
@@ -218,7 +224,9 @@ impl App {
                 _ => true,
             };
             if dismiss {
-                let outside_handlers: Vec<_> = overlay.handlers.iter()
+                let outside_handlers: Vec<_> = overlay
+                    .handlers
+                    .iter()
                     .filter(|h| h.event == "click-outside")
                     .cloned()
                     .collect();
@@ -396,11 +404,7 @@ fn hit_test_any_handler(nodes: &[PositionedNode], x: f32, y: f32, event: &str) -
     false
 }
 
-fn find_click_handlers(
-    nodes: &[PositionedNode],
-    x: f32,
-    y: f32,
-) -> Vec<naze_ir::IrEventHandler> {
+fn find_click_handlers(nodes: &[PositionedNode], x: f32, y: f32) -> Vec<naze_ir::IrEventHandler> {
     for node in nodes.iter().rev() {
         if !point_in_node(node, x, y) {
             continue;
@@ -428,10 +432,7 @@ fn point_in_node(node: &PositionedNode, x: f32, y: f32) -> bool {
 
 // ─── Action execution ────────────────────────────────────────────────────────
 
-fn execute_action(
-    action: &IrAction,
-    state: &mut HashMap<String, RenderValue>,
-) -> bool {
+fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -> bool {
     match action {
         IrAction::Set { target, expr } => {
             let value = evaluate_expr(expr, state);
@@ -465,22 +466,232 @@ fn execute_action(
     }
 }
 
-fn evaluate_expr(
-    expr: &IrExpression,
-    state: &HashMap<String, RenderValue>,
-) -> RenderValue {
+fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> RenderValue {
     match expr {
         IrExpression::Num(n) => RenderValue::Num(*n, None),
         IrExpression::Str(s) => RenderValue::Str(s.clone()),
         IrExpression::Bool(b) => RenderValue::Bool(*b),
         IrExpression::StateRef(name) => {
-            state.get(name).cloned().unwrap_or(RenderValue::Num(0.0, None))
+            if let Some(val) = state.get(name) {
+                return val.clone();
+            }
+            // Dotted field access: "obj.field" -> lookup obj, extract field
+            if let Some(dot) = name.find('.') {
+                let root = &name[..dot];
+                let field = &name[dot + 1..];
+                if let Some(RenderValue::Object(entries)) = state.get(root) {
+                    for (k, v) in entries {
+                        if k == field {
+                            return v.clone();
+                        }
+                    }
+                }
+            }
+            RenderValue::Num(0.0, None)
         }
         IrExpression::BinOp { left, op, right } => {
             let lval = evaluate_expr(left, state);
             let rval = evaluate_expr(right, state);
             eval_binop(&lval, op, &rval)
         }
+        IrExpression::Pipeline { source, stages } => {
+            let source_val = evaluate_expr(source, state);
+            eval_pipeline(source_val, stages, state)
+        }
+    }
+}
+
+fn eval_pipeline(
+    source: RenderValue,
+    stages: &[IrPipelineStage],
+    state: &HashMap<String, RenderValue>,
+) -> RenderValue {
+    let mut current = source;
+    for stage in stages {
+        current = eval_pipeline_stage(current, stage, state);
+    }
+    current
+}
+
+fn eval_pipeline_stage(
+    input: RenderValue,
+    stage: &IrPipelineStage,
+    state: &HashMap<String, RenderValue>,
+) -> RenderValue {
+    let items = match &input {
+        RenderValue::List(items) => items.clone(),
+        _ => return input,
+    };
+
+    match stage.function {
+        0 => {
+            // filter
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let filtered: Vec<RenderValue> = items
+                .into_iter()
+                .filter(|item| {
+                    let item_state = build_item_state(item, state);
+                    matches!(evaluate_expr(arg, &item_state), RenderValue::Bool(true))
+                })
+                .collect();
+            RenderValue::List(filtered)
+        }
+        1 => {
+            // map
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let mapped: Vec<RenderValue> = items
+                .into_iter()
+                .map(|item| {
+                    let item_state = build_item_state(&item, state);
+                    evaluate_expr(arg, &item_state)
+                })
+                .collect();
+            RenderValue::List(mapped)
+        }
+        2 => {
+            // sort-by
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let mut sorted = items;
+            sorted.sort_by(|a, b| {
+                let a_state = build_item_state(a, state);
+                let b_state = build_item_state(b, state);
+                let a_key = evaluate_expr(arg, &a_state);
+                let b_key = evaluate_expr(arg, &b_state);
+                compare_render_values(&a_key, &b_key)
+            });
+            RenderValue::List(sorted)
+        }
+        3 => {
+            // take
+            let n = match &stage.argument {
+                Some(a) => match evaluate_expr(a, state) {
+                    RenderValue::Num(n, _) => n as usize,
+                    _ => items.len(),
+                },
+                None => items.len(),
+            };
+            RenderValue::List(items.into_iter().take(n).collect())
+        }
+        4 => {
+            // sum
+            let mut total = 0.0f64;
+            for item in &items {
+                if let RenderValue::Num(n, _) = item {
+                    total += n;
+                }
+            }
+            RenderValue::Num(total, None)
+        }
+        5 => {
+            // count
+            RenderValue::Num(items.len() as f64, None)
+        }
+        6 => {
+            // reduce
+            let acc_expr = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let initial = match &stage.argument2 {
+                Some(init) => evaluate_expr(init, state),
+                None => RenderValue::Num(0.0, None),
+            };
+            let mut acc = initial;
+            for item in &items {
+                let mut item_state = build_item_state(item, state);
+                item_state.insert("acc".to_string(), acc.clone());
+                acc = evaluate_expr(acc_expr, &item_state);
+            }
+            acc
+        }
+        7 => {
+            // group-by
+            let arg = match &stage.argument {
+                Some(a) => a,
+                None => return RenderValue::List(items),
+            };
+            let mut groups: Vec<(String, Vec<RenderValue>)> = Vec::new();
+            for item in items {
+                let item_state = build_item_state(&item, state);
+                let key = render_value_to_string(&evaluate_expr(arg, &item_state));
+                if let Some(group) = groups.iter_mut().find(|(k, _)| k == &key) {
+                    group.1.push(item);
+                } else {
+                    groups.push((key, vec![item]));
+                }
+            }
+            RenderValue::Object(
+                groups
+                    .into_iter()
+                    .map(|(k, v)| (k, RenderValue::List(v)))
+                    .collect(),
+            )
+        }
+        8 => {
+            // flatten
+            let mut flattened = Vec::new();
+            for item in items {
+                match item {
+                    RenderValue::List(inner) => flattened.extend(inner),
+                    other => flattened.push(other),
+                }
+            }
+            RenderValue::List(flattened)
+        }
+        9 => {
+            // distinct
+            let mut seen = Vec::new();
+            let mut result = Vec::new();
+            for item in items {
+                let key = match &stage.argument {
+                    Some(arg) => {
+                        let s = build_item_state(&item, state);
+                        render_value_to_string(&evaluate_expr(arg, &s))
+                    }
+                    None => render_value_to_string(&item),
+                };
+                if !seen.contains(&key) {
+                    seen.push(key);
+                    result.push(item);
+                }
+            }
+            RenderValue::List(result)
+        }
+        _ => RenderValue::List(items),
+    }
+}
+
+fn build_item_state(
+    item: &RenderValue,
+    parent_state: &HashMap<String, RenderValue>,
+) -> HashMap<String, RenderValue> {
+    let mut item_state = parent_state.clone();
+    item_state.insert("__it".to_string(), item.clone());
+    if let RenderValue::Object(entries) = item {
+        for (k, v) in entries {
+            item_state.insert(k.clone(), v.clone());
+        }
+    }
+    item_state
+}
+
+fn compare_render_values(a: &RenderValue, b: &RenderValue) -> std::cmp::Ordering {
+    match (a, b) {
+        (RenderValue::Num(an, _), RenderValue::Num(bn, _)) => {
+            an.partial_cmp(bn).unwrap_or(std::cmp::Ordering::Equal)
+        }
+        (RenderValue::Str(as_), RenderValue::Str(bs)) => as_.cmp(bs),
+        (RenderValue::Bool(ab), RenderValue::Bool(bb)) => ab.cmp(bb),
+        _ => std::cmp::Ordering::Equal,
     }
 }
 
@@ -508,14 +719,8 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
                 ))
             }
         }
-        IrBinOp::Sub => RenderValue::Num(
-            left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0),
-            None,
-        ),
-        IrBinOp::Mul => RenderValue::Num(
-            left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0),
-            None,
-        ),
+        IrBinOp::Sub => RenderValue::Num(left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0), None),
+        IrBinOp::Mul => RenderValue::Num(left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0), None),
         IrBinOp::Div => {
             let r = right_num.unwrap_or(1.0);
             let r = if r == 0.0 { 1.0 } else { r };
@@ -528,13 +733,25 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
         IrBinOp::Gte => RenderValue::Bool(left_num.unwrap_or(0.0) >= right_num.unwrap_or(0.0)),
         IrBinOp::Lte => RenderValue::Bool(left_num.unwrap_or(0.0) <= right_num.unwrap_or(0.0)),
         IrBinOp::And => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l && r)
         }
         IrBinOp::Or => {
-            let l = match left { RenderValue::Bool(b) => *b, _ => left_num.unwrap_or(0.0) != 0.0 };
-            let r = match right { RenderValue::Bool(b) => *b, _ => right_num.unwrap_or(0.0) != 0.0 };
+            let l = match left {
+                RenderValue::Bool(b) => *b,
+                _ => left_num.unwrap_or(0.0) != 0.0,
+            };
+            let r = match right {
+                RenderValue::Bool(b) => *b,
+                _ => right_num.unwrap_or(0.0) != 0.0,
+            };
             RenderValue::Bool(l || r)
         }
     }
@@ -544,7 +761,11 @@ fn render_value_to_string(v: &RenderValue) -> String {
     match v {
         RenderValue::Str(s) => s.clone(),
         RenderValue::Num(n, _) => {
-            if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+            if n.fract() == 0.0 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{}", n)
+            }
         }
         RenderValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
         RenderValue::Color(c) => format!("#{:06x}", c),

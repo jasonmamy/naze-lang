@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use naze_parser::ast::{Action, EventHandler, Expression, Node, Param, Prop, Span, Type, Value};
+use naze_parser::ast::{
+    Action, EventHandler, Expression, MatchPattern, Node, Param, Prop, Span, Type, Value,
+};
 
 use crate::error::{CompileError, Severity};
 use crate::resolve::{ComponentDef, ResolvedProject};
@@ -49,31 +51,43 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
             _ => None,
         },
         "rect" => match prop {
-            "width" | "height" | "radius" | "border" | "opacity" | "tab-index" => Some(Expected::Number),
+            "width" | "height" | "radius" | "border" | "opacity" | "tab-index" => {
+                Some(Expected::Number)
+            }
             "color" | "border-color" => Some(Expected::Color),
             "cursor" | "shadow" | "gradient" | "transform" => Some(Expected::Text),
             _ => None,
         },
         "text" => match prop {
             "color" => Some(Expected::Color),
-            "font-size" | "opacity" | "tab-index" | "line-height" | "letter-spacing" => Some(Expected::Number),
-            "__text" | "cursor" | "text-decoration" | "text-align" | "text-overflow" | "transform" => Some(Expected::Text),
+            "font-size" | "opacity" | "tab-index" | "line-height" | "letter-spacing" => {
+                Some(Expected::Number)
+            }
+            "__text" | "cursor" | "text-decoration" | "text-align" | "text-overflow"
+            | "transform" => Some(Expected::Text),
             _ => None,
         },
         "heading" => match prop {
             "color" => Some(Expected::Color),
-            "font-size" | "opacity" | "tab-index" | "line-height" | "letter-spacing" => Some(Expected::Number),
-            "__text" | "cursor" | "text-decoration" | "text-align" | "text-overflow" | "transform" => Some(Expected::Text),
+            "font-size" | "opacity" | "tab-index" | "line-height" | "letter-spacing" => {
+                Some(Expected::Number)
+            }
+            "__text" | "cursor" | "text-decoration" | "text-align" | "text-overflow"
+            | "transform" => Some(Expected::Text),
             _ => None,
         },
         "container" => match prop {
-            "padding" | "width" | "height" | "radius" | "border" | "opacity" => Some(Expected::Number),
+            "padding" | "width" | "height" | "radius" | "border" | "opacity" => {
+                Some(Expected::Number)
+            }
             "color" | "border-color" => Some(Expected::Color),
             "cursor" | "shadow" | "overflow" | "gradient" | "transform" => Some(Expected::Text),
             _ => None,
         },
         "scroll" => match prop {
-            "padding" | "width" | "height" | "radius" | "border" | "opacity" => Some(Expected::Number),
+            "padding" | "width" | "height" | "radius" | "border" | "opacity" => {
+                Some(Expected::Number)
+            }
             "color" | "border-color" => Some(Expected::Color),
             "overflow" | "cursor" => Some(Expected::Text),
             _ => None,
@@ -90,7 +104,9 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
             _ => None,
         },
         "overlay" => match prop {
-            "padding" | "width" | "height" | "radius" | "border" | "opacity" => Some(Expected::Number),
+            "padding" | "width" | "height" | "radius" | "border" | "opacity" => {
+                Some(Expected::Number)
+            }
             "color" | "border-color" => Some(Expected::Color),
             "focus-trap" | "scroll-lock" | "dismiss-on-escape" => Some(Expected::Bool),
             "anchor" | "anchor-placement" | "cursor" | "shadow" => Some(Expected::Text),
@@ -156,11 +172,27 @@ pub fn typecheck(project: &ResolvedProject) -> Vec<CompileError> {
     let data_names: HashSet<String> = collect_data_names(&project.entry.nodes);
 
     // Check entry file
-    check_nodes(&project.entry.nodes, &by_name, &[], &state_names, &computed_names, &data_names, &mut errors);
+    check_nodes(
+        &project.entry.nodes,
+        &by_name,
+        &[],
+        &state_names,
+        &computed_names,
+        &data_names,
+        &mut errors,
+    );
 
     // Check component bodies (each component's body is checked with its own params in scope)
     for comp in project.components.values() {
-        check_nodes(&comp.children, &by_name, &comp.params, &state_names, &computed_names, &data_names, &mut errors);
+        check_nodes(
+            &comp.children,
+            &by_name,
+            &comp.params,
+            &state_names,
+            &computed_names,
+            &data_names,
+            &mut errors,
+        );
     }
 
     errors
@@ -196,7 +228,12 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
             Node::App { children, .. } | Node::Component { children, .. } => {
                 names.extend(collect_state_names(children));
             }
-            Node::Element { name, props, children, .. } => {
+            Node::Element {
+                name,
+                props,
+                children,
+                ..
+            } => {
                 // Check if this is an input with both bind and validate props
                 if name == "input" {
                     let has_validate = props.iter().any(|p| p.key == "validate");
@@ -237,6 +274,11 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
             }
             Node::Link { children, .. } => {
                 names.extend(collect_state_names(children));
+            }
+            Node::Match { arms, .. } => {
+                for arm in arms {
+                    names.extend(collect_state_names(&arm.children));
+                }
             }
             _ => {}
         }
@@ -354,16 +396,40 @@ fn check_nodes(
                 for handler in handlers {
                     check_handler(handler, state_names, computed_names, data_names, errors);
                 }
-                check_nodes(children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::App { children, .. } => {
-                check_nodes(children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::Component {
                 children, params, ..
             } => {
                 // Inside a component definition, its own params are in scope
-                check_nodes(children, components, params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    children,
+                    components,
+                    params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::If {
                 condition,
@@ -372,8 +438,24 @@ fn check_nodes(
                 span,
             } => {
                 check_expression(condition, state_names, span, errors);
-                check_nodes(then_children, components, in_scope_params, state_names, computed_names, data_names, errors);
-                check_nodes(else_children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    then_children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
+                check_nodes(
+                    else_children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::Each {
                 iterable,
@@ -382,24 +464,105 @@ fn check_nodes(
                 ..
             } => {
                 check_expression(iterable, state_names, span, errors);
-                check_nodes(children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::Slot {
                 default_children, ..
             } => {
-                check_nodes(default_children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    default_children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::Fill { children, .. } => {
-                check_nodes(children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::Page { children, .. } => {
-                check_nodes(children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
             Node::Link { children, .. } => {
                 // Link element — children are optional nested content
-                check_nodes(children, components, in_scope_params, state_names, computed_names, data_names, errors);
+                check_nodes(
+                    children,
+                    components,
+                    in_scope_params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
             }
-            Node::Let { .. } | Node::State { .. } | Node::Computed { .. } | Node::Storage { .. } | Node::Timer { .. } | Node::Param { .. } => {
+            Node::Match {
+                subject,
+                arms,
+                span,
+            } => {
+                check_expression(subject, state_names, span, errors);
+                // Warn if no wildcard arm
+                let has_wildcard = arms
+                    .iter()
+                    .any(|a| matches!(a.pattern, MatchPattern::Wildcard));
+                if !has_wildcard {
+                    errors.push(CompileError {
+                        message:
+                            "match expression should have a wildcard '_' arm for exhaustiveness"
+                                .to_string(),
+                        file: span.file.clone(),
+                        line: span.line,
+                        column: span.col,
+                        severity: Severity::Warning,
+                    });
+                }
+                for arm in arms {
+                    check_nodes(
+                        &arm.children,
+                        components,
+                        in_scope_params,
+                        state_names,
+                        computed_names,
+                        data_names,
+                        errors,
+                    );
+                }
+            }
+            Node::Function { .. } => {
+                // Function definitions — validated during collection
+            }
+            Node::Let { .. }
+            | Node::State { .. }
+            | Node::Computed { .. }
+            | Node::Storage { .. }
+            | Node::Timer { .. }
+            | Node::Param { .. } => {
                 // Declarations — no type-checking needed beyond name collection
             }
             _ => {}
@@ -467,10 +630,7 @@ fn check_handler(
         Action::Set { target, expr, span } => {
             if computed_names.contains(target) {
                 errors.push(CompileError {
-                    message: format!(
-                        "cannot set '{}': computed values are read-only",
-                        target
-                    ),
+                    message: format!("cannot set '{}': computed values are read-only", target),
                     file: span.file.clone(),
                     line: span.line,
                     column: span.col,
@@ -478,10 +638,7 @@ fn check_handler(
                 });
             } else if !state_names.contains(target) {
                 errors.push(CompileError {
-                    message: format!(
-                        "cannot set '{}': not a declared state variable",
-                        target
-                    ),
+                    message: format!("cannot set '{}': not a declared state variable", target),
                     file: span.file.clone(),
                     line: span.line,
                     column: span.col,
@@ -498,10 +655,7 @@ fn check_handler(
         Action::Trigger { data_name, span } => {
             if !data_names.contains(data_name) {
                 errors.push(CompileError {
-                    message: format!(
-                        "cannot trigger '{}': not a declared data source",
-                        data_name
-                    ),
+                    message: format!("cannot trigger '{}': not a declared data source", data_name),
                     file: span.file.clone(),
                     line: span.line,
                     column: span.col,
@@ -525,14 +679,23 @@ fn check_expression(
     span: &Span,
     errors: &mut Vec<CompileError>,
 ) {
+    check_expression_inner(expr, state_names, span, errors, false);
+}
+
+fn check_expression_inner(
+    expr: &Expression,
+    state_names: &HashSet<String>,
+    span: &Span,
+    errors: &mut Vec<CompileError>,
+    in_pipeline_stage: bool,
+) {
     match expr {
         Expression::StateRef(name) => {
-            if !state_names.contains(name) {
+            // Inside pipeline stages, bare identifiers may refer to item fields
+            // rather than state variables, so skip strict validation there
+            if !in_pipeline_stage && !state_names.contains(name) {
                 errors.push(CompileError {
-                    message: format!(
-                        "unknown state variable '{}' in expression",
-                        name
-                    ),
+                    message: format!("unknown state variable '{}' in expression", name),
                     file: span.file.clone(),
                     line: span.line,
                     column: span.col,
@@ -541,10 +704,88 @@ fn check_expression(
             }
         }
         Expression::BinOp { left, right, .. } => {
-            check_expression(left, state_names, span, errors);
-            check_expression(right, state_names, span, errors);
+            check_expression_inner(left, state_names, span, errors, in_pipeline_stage);
+            check_expression_inner(right, state_names, span, errors, in_pipeline_stage);
         }
         Expression::Literal(_) => {}
+        Expression::Pipeline { source, stages } => {
+            // Source must be a valid state reference
+            check_expression_inner(source, state_names, span, errors, false);
+            // Stage arguments refer to item fields, not state — skip strict validation
+            for stage in stages {
+                // Validate required arguments
+                use naze_parser::ast::PipelineFn;
+                match stage.function {
+                    PipelineFn::Filter
+                    | PipelineFn::Map
+                    | PipelineFn::SortBy
+                    | PipelineFn::Take
+                    | PipelineFn::GroupBy => {
+                        if stage.argument.is_none() {
+                            let fn_name = match stage.function {
+                                PipelineFn::Filter => "filter",
+                                PipelineFn::Map => "map",
+                                PipelineFn::SortBy => "sort-by",
+                                PipelineFn::Take => "take",
+                                PipelineFn::GroupBy => "group-by",
+                                _ => unreachable!(),
+                            };
+                            errors.push(CompileError {
+                                message: format!(
+                                    "pipeline function '{}' requires an argument",
+                                    fn_name
+                                ),
+                                file: span.file.clone(),
+                                line: span.line,
+                                column: span.col,
+                                severity: Severity::Error,
+                            });
+                        }
+                    }
+                    PipelineFn::Reduce => {
+                        if stage.argument.is_none() {
+                            errors.push(CompileError {
+                                message:
+                                    "pipeline function 'reduce' requires an accumulator expression"
+                                        .to_string(),
+                                file: span.file.clone(),
+                                line: span.line,
+                                column: span.col,
+                                severity: Severity::Error,
+                            });
+                        }
+                        if stage.argument2.is_none() {
+                            errors.push(CompileError {
+                                message: "pipeline function 'reduce' requires an initial value"
+                                    .to_string(),
+                                file: span.file.clone(),
+                                line: span.line,
+                                column: span.col,
+                                severity: Severity::Error,
+                            });
+                        }
+                    }
+                    PipelineFn::Sum | PipelineFn::Count | PipelineFn::Flatten => {
+                        // No argument required
+                    }
+                    PipelineFn::Distinct => {
+                        // Optional argument (field name for object lists)
+                    }
+                }
+                if let Some(arg) = &stage.argument {
+                    check_expression_inner(arg, state_names, span, errors, true);
+                }
+                if let Some(arg2) = &stage.argument2 {
+                    check_expression_inner(arg2, state_names, span, errors, in_pipeline_stage);
+                }
+            }
+        }
+        Expression::FunctionCall { args, .. } => {
+            // Validate argument expressions
+            for arg in args {
+                check_expression_inner(arg, state_names, span, errors, in_pipeline_stage);
+            }
+        }
     }
 }
 
@@ -557,7 +798,8 @@ fn check_component_call(
     _in_scope_params: &[Param],
     errors: &mut Vec<CompileError>,
 ) {
-    let param_map: HashMap<&str, &Param> = comp.params.iter().map(|p| (p.name.as_str(), p)).collect();
+    let param_map: HashMap<&str, &Param> =
+        comp.params.iter().map(|p| (p.name.as_str(), p)).collect();
 
     // Check each provided prop
     for prop in props {
@@ -659,10 +901,7 @@ fn check_component_call(
             if let Node::Fill { name, span, .. } = child {
                 if !declared_slots.contains(name.as_str()) {
                     errors.push(CompileError {
-                        message: format!(
-                            "component '{}' has no slot named '{}'",
-                            comp.name, name
-                        ),
+                        message: format!("component '{}' has no slot named '{}'", comp.name, name),
                         file: span.file.clone(),
                         line: span.line,
                         column: span.col,
@@ -683,23 +922,28 @@ fn check_accessibility_props(
     errors: &mut Vec<CompileError>,
 ) {
     // Elements that should have explicit roles or labels for screen readers
-    let needs_label = matches!(element, "rect" | "image" | "input" | "checkbox" | "radio" | "select");
+    let needs_label = matches!(
+        element,
+        "rect" | "image" | "input" | "checkbox" | "radio" | "select"
+    );
     let is_interactive = matches!(element, "rect" | "input" | "checkbox" | "radio" | "select")
         || props.iter().any(|p| p.key == "on");
 
     let has_label = props.iter().any(|p| p.key == "label");
     let has_role = props.iter().any(|p| p.key == "role");
     let has_text = props.iter().any(|p| p.key == "__text");
-    let has_handlers = !props.is_empty() && props.iter().any(|p|
-        matches!(p.key.as_str(), "draggable" | "drop-target")
-    );
+    let has_handlers = !props.is_empty()
+        && props
+            .iter()
+            .any(|p| matches!(p.key.as_str(), "draggable" | "drop-target"));
 
     // Image elements should always have alt text (mapped to label)
     if element == "image" && !has_label {
         let has_alt = props.iter().any(|p| p.key == "alt");
         if !has_alt {
             errors.push(CompileError {
-                message: "image element should have 'alt' or 'label' prop for accessibility".to_string(),
+                message: "image element should have 'alt' or 'label' prop for accessibility"
+                    .to_string(),
                 file: span.file.clone(),
                 line: span.line,
                 column: span.col,
@@ -738,9 +982,9 @@ fn check_accessibility_props(
 
     // Overlay with focus-trap should have a role (e.g., "dialog")
     if element == "overlay" {
-        let has_focus_trap = props.iter().any(|p| {
-            p.key == "focus-trap" && matches!(p.value, Value::Bool(true))
-        });
+        let has_focus_trap = props
+            .iter()
+            .any(|p| p.key == "focus-trap" && matches!(p.value, Value::Bool(true)));
         if has_focus_trap && !has_role {
             errors.push(CompileError {
                 message: "overlay with focus-trap should have 'role' prop (e.g., role: \"dialog\") for accessibility".to_string(),
@@ -887,9 +1131,7 @@ fn collect_slot_names(nodes: &[Node]) -> HashSet<&str> {
     let mut names = HashSet::new();
     for node in nodes {
         match node {
-            Node::Slot {
-                name: Some(n), ..
-            } => {
+            Node::Slot { name: Some(n), .. } => {
                 names.insert(n.as_str());
             }
             Node::Element { children, .. } => {
@@ -988,7 +1230,8 @@ mod tests {
         ]);
         let errs = errors_only(&errors);
         assert!(
-            errs.iter().any(|e| e.message.contains("missing required prop 'color'")),
+            errs.iter()
+                .any(|e| e.message.contains("missing required prop 'color'")),
             "expected missing prop error, got: {:?}",
             errs
         );
@@ -1008,7 +1251,8 @@ mod tests {
         ]);
         let errs = errors_only(&errors);
         assert!(
-            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("color")),
+            errs.iter()
+                .any(|e| e.message.contains("type mismatch") && e.message.contains("color")),
             "expected type mismatch, got: {:?}",
             errs
         );
@@ -1028,7 +1272,8 @@ mod tests {
         ]);
         let errs = errors_only(&errors);
         assert!(
-            errs.iter().any(|e| e.message.contains("unknown prop 'bogus'")),
+            errs.iter()
+                .any(|e| e.message.contains("unknown prop 'bogus'")),
             "expected unknown prop error, got: {:?}",
             errs
         );
@@ -1042,7 +1287,8 @@ mod tests {
         )]);
         let errs = errors_only(&errors);
         assert!(
-            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("width")),
+            errs.iter()
+                .any(|e| e.message.contains("type mismatch") && e.message.contains("width")),
             "expected type mismatch on width, got: {:?}",
             errs
         );
@@ -1056,7 +1302,8 @@ mod tests {
         )]);
         let errs = errors_only(&errors);
         assert!(
-            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("width")),
+            errs.iter()
+                .any(|e| e.message.contains("type mismatch") && e.message.contains("width")),
             "expected type mismatch, got: {:?}",
             errs
         );
@@ -1090,7 +1337,9 @@ mod tests {
             "use components/box\n\napp \"Test\" {\n  box color: #ff0000\n}\n",
         )]);
         assert!(
-            errors.iter().any(|e| e.message.contains("unknown reference 'bogus'")),
+            errors
+                .iter()
+                .any(|e| e.message.contains("unknown reference 'bogus'")),
             "expected unknown ref warning, got: {:?}",
             errors
         );
@@ -1111,7 +1360,8 @@ mod tests {
         )]);
         let errs = errors_only(&errors);
         assert!(
-            errs.iter().any(|e| e.message.contains("type mismatch") && e.message.contains("gap")),
+            errs.iter()
+                .any(|e| e.message.contains("type mismatch") && e.message.contains("gap")),
             "expected gap type error, got: {:?}",
             errs
         );

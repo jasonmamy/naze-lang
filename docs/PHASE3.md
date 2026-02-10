@@ -2,7 +2,7 @@
 
 **Goal:** Complete the language with Tier 1 computation features (pipeline operators, pattern matching, pure functions), finalize developer tooling (testing, incremental compilation), and polish cross-platform builds. Target: sub-second hot reload, testing in CI, AI generates correct Naze >80% for common patterns.
 
-**Architecture shift:** Phase 2's runtime handles state, events, and rendering. Phase 3 adds a computation layer (pipeline operators, pattern matching) and an application logic layer (shared state, computed values, full HTTP, WebSocket streams, browser storage, timers, URL parameters). Together these let apps express data transformations and application behavior declaratively, without escaping to JavaScript. The compiler gains fusion optimizations (multi-stage pipelines compiled to single-pass iteration).
+**Architecture shift:** Phase 2's runtime handles state, events, and rendering. Phase 3 adds a computation layer (pipeline operators, pattern matching, pure functions) and an application logic layer (shared state, computed values, full HTTP, WebSocket streams, browser storage, timers, URL parameters). Together these let apps express data transformations and application behavior declaratively, without escaping to JavaScript. Key design: pipeline operators execute at runtime (10 built-in functions), while pure functions inline at compile time (AST-level substitution) and pattern matching desugars to if/else chains at compile time (no new IR/runtime constructs).
 
 **Prerequisite:** Phase 2 milestones M1-M14 complete. See [PHASE2.md](PHASE2.md).
 
@@ -31,28 +31,29 @@ These items were tracked in Phase 2 but deferred to Phase 3 milestones:
 
 ## Phase 3a: Language Completion
 
-### M15: Pipeline Operators & Pure Functions
+### M15: Pipeline Operators & Pure Functions ✅
 **Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`
 
 Tier 1 computation: the missing piece that makes Naze more than a layout DSL. Pipeline operators let apps transform data declaratively without escaping to JavaScript or WASM imports.
 
-- [ ] Grammar: pipeline expression rule (`expression ("|" pipe_stage)*`)
-- [ ] Grammar: `function` definition rule (`function name(args) -> type { expression }`)
-- [ ] AST: `Node::PipeExpr`, `Node::Function` variants
-- [ ] IR: pipeline operation nodes, function call nodes
-- [ ] Built-in pipeline functions: `filter`, `map`, `sort-by`, `take`, `sum`
-- [ ] Built-in pipeline functions: `reduce`, `group-by`, `flatten`, `distinct`, `zip`
-- [ ] Compiler: type-check pipeline chains (input/output type compatibility)
-- [ ] Compiler: pipeline fusion optimization (`filter` → `map` → `take` compiles to single-pass iteration)
-- [ ] Compiler: pure function inlining for small expression bodies
-- [ ] Compiler: constant folding for pure function calls with literal arguments
-- [ ] Runtime: pipeline operator execution (WASM)
-- [ ] Runtime: function call dispatch
+- [x] Grammar: pipeline expression rule (`expression ("|" pipe_stage)*`)
+- [x] Grammar: `function` definition rule (`function name(args) -> type { expression }`)
+- [x] AST: `Expression::Pipeline`, `Node::Function`, `Expression::FunctionCall` variants
+- [x] IR: pipeline stage nodes with function IDs and arguments
+- [x] Built-in pipeline functions: `filter`, `map`, `sort-by`, `take`, `sum`, `count`
+- [x] Built-in pipeline functions: `reduce`, `group-by`, `flatten`, `distinct`
+- [ ] Built-in pipeline function: `zip` *(deferred — needs two source operands)*
+- [x] Compiler: type-check pipeline stages (validate required arguments per function)
+- [ ] Compiler: pipeline fusion optimization (`filter` → `map` → `take` compiles to single-pass iteration) *(deferred)*
+- [x] Compiler: pure function inlining (AST-level parameter substitution at compile time)
+- [ ] Compiler: constant folding for pure function calls with literal arguments *(deferred)*
+- [x] Runtime: pipeline operator execution (WASM + native + gallery + run + native-build — all 5 eval sites)
+- [x] Runtime: function calls resolved at compile time (inlined, no runtime dispatch needed)
 
 **Example syntax:**
 ```naze
-function full-name(first: text, last: text) -> text {
-  "{first} {last}"
+function area(w: number, h: number) -> number {
+  w * h
 }
 
 state items = [
@@ -61,25 +62,27 @@ state items = [
   { name: "Carol", score: 78 }
 ]
 
+computed total = items | map score | reduce acc + it 0
+computed top = items | filter score > 80 | sort-by score
+
 each item in items | filter score > 80 | sort-by score {
   text "{item.name}: {item.score}"
 }
 ```
 
-### M16: Pattern Matching & List Comprehensions
-**Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`
+### M16: Pattern Matching ✅
+**Crates:** `naze-parser`, `naze-compiler`
 
-Depends on M15 (shares expression infrastructure).
+Depends on M15 (shares expression infrastructure). Pattern matching desugars to nested if/else chains at compile time — no IR or runtime changes needed.
 
-- [ ] Grammar: `match` expression with pattern arms
-- [ ] Grammar: list comprehension syntax (`[expr for item in list if condition]`)
-- [ ] AST: `Node::Match`, `Node::ListComprehension` variants
-- [ ] IR: match nodes with pattern arms, list comprehension nodes
-- [ ] Compiler: exhaustiveness checking for match arms (all cases covered)
-- [ ] Compiler: wildcard `_` pattern support
-- [ ] Compiler: destructuring in match patterns (e.g., `{ name, score }`)
-- [ ] Runtime: match evaluation
-- [ ] Runtime: list comprehension execution
+- [x] Grammar: `match` statement with pattern arms
+- [x] AST: `Node::Match`, `MatchArm`, `MatchPattern` types
+- [x] Compiler: exhaustiveness checking (warns if no wildcard `_` arm)
+- [x] Compiler: wildcard `_` pattern support
+- [x] Compiler: desugaring to nested `__if` RenderNodes (no new IR/runtime constructs)
+- [x] Compiler: duplicate pattern detection (warning)
+- [ ] Grammar: list comprehension syntax (`[expr for item in list if condition]`) *(deferred — syntactic sugar for pipelines)*
+- [ ] Compiler: destructuring in match patterns (e.g., `{ name, score }`) *(deferred)*
 
 **Example syntax:**
 ```naze
@@ -89,8 +92,6 @@ match status {
   "success": text "Done!" color: #16a34a
   _: text "Unknown state"
 }
-
-let high-scores = [item.name for item in items if item.score > 80]
 ```
 
 ### M17: Layout Templates & Responsive Design
@@ -558,8 +559,8 @@ Carried from Phase 2 M10-M12. Dev server and cross-platform builds exist. This m
 ## Build Order
 
 ```
-Track A (language):    M15 → M16 (M16 depends on M15 expression infrastructure)
-Track B (layout):      M17 (independent, parallel with Track A)
+Track A (language):    M15 ✅ → M16 ✅
+Track B (layout):      M17 (independent)
 Track C (animation):   M18 (independent, builds on M14)
 Track D (components):  M19 → M19b ✅ (overlay builds on M19 component events)
 Track E (visual):      M19c ✅
@@ -568,16 +569,16 @@ Track G (testing):     M20 (independent, can start immediately)
 Track H (tooling):     M21, M22 (parallel with everything)
 ```
 
-All tracks can run in parallel except M15 → M16, M19 → M19b, and M19d → M19e. M19d's state/data extensions are independent of other milestones. M19e extends M19d's data source and action infrastructure with JS interop and device APIs. The `computed` feature benefits from M15 pipeline syntax but can ship with simple expressions first.
+M19d's state/data extensions are independent of other milestones. M19e extends M19d's data source and action infrastructure with JS interop and device APIs.
 
 **Suggested priority order:**
 1. ~~M19b (overlay system)~~ — **Complete**
 2. ~~M19d (app logic primitives)~~ — **Complete**
 3. ~~M19c (visual properties)~~ — **Complete**
-4. M15 (pipeline operators) — highest-impact language feature; unlocks full `computed` expressions
-5. M19e (remaining gap closures) — textarea, JS interop, browser device APIs
-6. M20 (testing framework) — enables CI/CD, validates other milestones
-7. M16 (pattern matching) — completes Tier 1 computation
+4. ~~M15 (pipeline operators + pure functions)~~ — **Complete**
+5. ~~M16 (pattern matching)~~ — **Complete**
+6. M19e (remaining gap closures) — textarea, JS interop, browser device APIs
+7. M20 (testing framework) — enables CI/CD, validates other milestones
 8. M17 (templates/responsive) — production layout quality
 9. M19 (component events, theme inheritance) — component model completion
 10. M18 (advanced animation) — UI polish

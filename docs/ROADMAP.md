@@ -64,19 +64,19 @@ See [PHASE3.md](PHASE3.md) for the detailed milestone tracker (M15-M22).
 - **Overlay system** -- `overlay` element, focus trapping, outside-click, scroll-lock, anchor positioning (**M19b**)
 - **Visual properties** -- shadows, text-align, text-overflow, text-decoration, line-height, letter-spacing, gradients, transforms, cursor styles, overflow clipping (**M19c**)
 - **Application logic primitives** -- `computed` state, `shared state`, `storage` (localStorage), enhanced `data` (full HTTP), `data: stream` (WebSocket/SSE), `param` (URL query params), `timer`, `debounce`/`throttle`, `copy` (clipboard), file input (**M19d**)
+- **Pipeline operators** -- `|` chains for `filter`, `map`, `sort-by`, `take`, `sum`, `count`, `reduce`, `group-by`, `flatten`, `distinct`; used in `computed`, `each`, and function bodies (**M15**)
+- **Pure functions** -- `function name(params) -> type { expression }`, compile-time inlined via AST-level parameter substitution (**M15**)
+- **Pattern matching** -- `match` with string/number/bool/wildcard patterns, exhaustiveness warnings, compile-time desugaring to if/else chains (**M16**)
 
-### Remaining — Language Completion (M15-M19e)
+### Remaining — Language Completion (M17-M19e)
 
-- **Pipeline operators** -- `|` chains for `filter`, `map`, `sort-by`, `take`, `sum`, `reduce`, etc.
-- **Pure functions** -- expression-body functions with no side effects, inlining and constant folding
-- **Pattern matching** -- `match` with exhaustive checking, destructuring, wildcard `_`
-- **List comprehensions** -- `[expr for item in list if condition]`
 - **Layout templates** -- `template` keyword, built-in template library (app-shell, dashboard, sidebar-layout)
 - **Responsive breakpoints** -- `responsive: stack below 768px`, `collapsible`
 - **Advanced animation** -- spring physics, keyframes, GPU fast path, custom `cubic-bezier()`
 - **Component events** -- `emit` from child, `on event` in parent
 - **Theme inheritance** -- `extends`, runtime switching
 - **Remaining gap closures** -- `textarea` element, `js` interop (third-party JS SDK calls), browser device APIs (`device geolocation`, `device camera`, `notify`) (see [PARITY.md](PARITY.md))
+- **Deferred from M15-M16** -- `zip` pipeline function, list comprehensions, match destructuring, pipeline fusion optimization, constant folding
 
 ### Remaining — Testing & Tooling (M20-M22)
 
@@ -86,7 +86,7 @@ See [PHASE3.md](PHASE3.md) for the detailed milestone tracker (M15-M22).
 
 **Parity targets:**
 - **Component UI parity:** M19b (overlay) + M19c (visual properties) → ~92% of shadcn/ui-equivalent components buildable. **Both complete.**
-- **Application logic parity:** M19d (app logic primitives) + M19e (JS interop, device APIs, textarea) → ~85%. Combined with M15 (pipelines) + M23 (WASM imports) + M24 (server functions), reaches **~99%**. **M19d complete.**
+- **Application logic parity:** M19d (app logic primitives) + M15 (pipelines + functions) + M16 (pattern matching) → ~90%. Combined with M19e (JS interop, device APIs, textarea) + M23 (WASM imports) + M24 (server functions), reaches **~99%**. **M19d, M15, M16 complete.**
 - See [PARITY.md](PARITY.md) for the full analysis and design rationale.
 
 **Target:** Sub-second hot reload cycle. Testing in CI. AI generates correct Naze >80% for common patterns.

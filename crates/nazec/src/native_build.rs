@@ -160,7 +160,7 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
-use naze_ir::{IrAction, IrBinOp, IrExpression, RenderNode, RenderTree, RenderValue, TextPart};
+use naze_ir::{IrAction, IrBinOp, IrExpression, IrPipelineStage, RenderNode, RenderTree, RenderValue, TextPart};
 use naze_layout::{LayoutTree, PositionedNode};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
@@ -510,13 +510,138 @@ fn evaluate_expr(
         IrExpression::Str(s) => RenderValue::Str(s.clone()),
         IrExpression::Bool(b) => RenderValue::Bool(*b),
         IrExpression::StateRef(name) => {
-            state.get(name).cloned().unwrap_or(RenderValue::Num(0.0, None))
+            if let Some(val) = state.get(name) {
+                return val.clone();
+            }
+            if let Some(dot) = name.find('.') {
+                let root = &name[..dot];
+                let field = &name[dot + 1..];
+                if let Some(RenderValue::Object(entries)) = state.get(root) {
+                    for (k, v) in entries {
+                        if k == field {
+                            return v.clone();
+                        }
+                    }
+                }
+            }
+            RenderValue::Num(0.0, None)
         }
         IrExpression::BinOp { left, op, right } => {
             let lval = evaluate_expr(left, state);
             let rval = evaluate_expr(right, state);
             eval_binop(&lval, op, &rval)
         }
+        IrExpression::Pipeline { source, stages } => {
+            let source_val = evaluate_expr(source, state);
+            eval_pipeline(source_val, stages, state)
+        }
+    }
+}
+
+fn eval_pipeline(source: RenderValue, stages: &[IrPipelineStage], state: &HashMap<String, RenderValue>) -> RenderValue {
+    let mut current = source;
+    for stage in stages {
+        current = eval_pipeline_stage(current, stage, state);
+    }
+    current
+}
+
+fn eval_pipeline_stage(input: RenderValue, stage: &IrPipelineStage, state: &HashMap<String, RenderValue>) -> RenderValue {
+    let items = match &input {
+        RenderValue::List(items) => items.clone(),
+        _ => return input,
+    };
+    match stage.function {
+        0 => { // filter
+            let arg = match &stage.argument { Some(a) => a, None => return RenderValue::List(items) };
+            RenderValue::List(items.into_iter().filter(|item| {
+                let mut s = state.clone();
+                s.insert("__it".to_string(), item.clone());
+                if let RenderValue::Object(entries) = item { for (k, v) in entries { s.insert(k.clone(), v.clone()); } }
+                matches!(evaluate_expr(arg, &s), RenderValue::Bool(true))
+            }).collect())
+        }
+        1 => { // map
+            let arg = match &stage.argument { Some(a) => a, None => return RenderValue::List(items) };
+            RenderValue::List(items.into_iter().map(|item| {
+                let mut s = state.clone();
+                s.insert("__it".to_string(), item.clone());
+                if let RenderValue::Object(entries) = &item { for (k, v) in entries { s.insert(k.clone(), v.clone()); } }
+                evaluate_expr(arg, &s)
+            }).collect())
+        }
+        2 => { // sort-by
+            let arg = match &stage.argument { Some(a) => a, None => return RenderValue::List(items) };
+            let mut sorted = items;
+            sorted.sort_by(|a, b| {
+                let mut sa = state.clone(); sa.insert("__it".to_string(), a.clone());
+                if let RenderValue::Object(e) = a { for (k, v) in e { sa.insert(k.clone(), v.clone()); } }
+                let mut sb = state.clone(); sb.insert("__it".to_string(), b.clone());
+                if let RenderValue::Object(e) = b { for (k, v) in e { sb.insert(k.clone(), v.clone()); } }
+                let ak = evaluate_expr(arg, &sa); let bk = evaluate_expr(arg, &sb);
+                match (&ak, &bk) {
+                    (RenderValue::Num(an, _), RenderValue::Num(bn, _)) => an.partial_cmp(bn).unwrap_or(std::cmp::Ordering::Equal),
+                    (RenderValue::Str(a), RenderValue::Str(b)) => a.cmp(b),
+                    _ => std::cmp::Ordering::Equal,
+                }
+            });
+            RenderValue::List(sorted)
+        }
+        3 => { // take
+            let n = match &stage.argument { Some(a) => match evaluate_expr(a, state) { RenderValue::Num(n, _) => n as usize, _ => items.len() }, None => items.len() };
+            RenderValue::List(items.into_iter().take(n).collect())
+        }
+        4 => { // sum
+            let total: f64 = items.iter().filter_map(|i| if let RenderValue::Num(n, _) = i { Some(n) } else { None }).sum();
+            RenderValue::Num(total, None)
+        }
+        5 => RenderValue::Num(items.len() as f64, None), // count
+        6 => { // reduce
+            let acc_expr = match &stage.argument { Some(a) => a, None => return RenderValue::List(items) };
+            let initial = match &stage.argument2 { Some(init) => evaluate_expr(init, state), None => RenderValue::Num(0.0, None) };
+            let mut acc = initial;
+            for item in &items {
+                let mut s = state.clone(); s.insert("__it".to_string(), item.clone());
+                if let RenderValue::Object(entries) = item { for (k, v) in entries { s.insert(k.clone(), v.clone()); } }
+                s.insert("acc".to_string(), acc.clone());
+                acc = evaluate_expr(acc_expr, &s);
+            }
+            acc
+        }
+        7 => { // group-by
+            let arg = match &stage.argument { Some(a) => a, None => return RenderValue::List(items) };
+            let mut groups: Vec<(String, Vec<RenderValue>)> = Vec::new();
+            for item in items {
+                let mut s = state.clone(); s.insert("__it".to_string(), item.clone());
+                if let RenderValue::Object(entries) = &item { for (k, v) in entries { s.insert(k.clone(), v.clone()); } }
+                let key = render_value_to_string(&evaluate_expr(arg, &s));
+                if let Some(group) = groups.iter_mut().find(|(k, _)| k == &key) { group.1.push(item); }
+                else { groups.push((key, vec![item])); }
+            }
+            RenderValue::Object(groups.into_iter().map(|(k, v)| (k, RenderValue::List(v))).collect())
+        }
+        8 => { // flatten
+            let mut flattened = Vec::new();
+            for item in items { match item { RenderValue::List(inner) => flattened.extend(inner), other => flattened.push(other) } }
+            RenderValue::List(flattened)
+        }
+        9 => { // distinct
+            let mut seen = Vec::new();
+            let mut result = Vec::new();
+            for item in items {
+                let key = match &stage.argument {
+                    Some(arg) => {
+                        let mut s = state.clone(); s.insert("__it".to_string(), item.clone());
+                        if let RenderValue::Object(entries) = &item { for (k, v) in entries { s.insert(k.clone(), v.clone()); } }
+                        render_value_to_string(&evaluate_expr(arg, &s))
+                    }
+                    None => render_value_to_string(&item),
+                };
+                if !seen.contains(&key) { seen.push(key); result.push(item); }
+            }
+            RenderValue::List(result)
+        }
+        _ => RenderValue::List(items),
     }
 }
 

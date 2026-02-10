@@ -203,3 +203,23 @@ fn parse_transform() {
 fn parse_visual_properties() {
     parse_example("visual-properties.naze");
 }
+
+#[test]
+fn parse_pipeline() {
+    parse_example("pipeline.naze");
+}
+
+#[test]
+fn parse_pipeline_advanced() {
+    parse_example("pipeline-advanced.naze");
+}
+
+#[test]
+fn parse_functions() {
+    parse_example("functions.naze");
+}
+
+#[test]
+fn parse_match() {
+    parse_example("match.naze");
+}

@@ -86,7 +86,13 @@ fn fill_rect(pixmap: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, color: u32, ra
 
     if radius > 0.0 {
         if let Some(path) = rounded_rect_path(x, y, w, h, radius) {
-            pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+            pixmap.fill_path(
+                &path,
+                &paint,
+                tiny_skia::FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
         }
     } else if let Some(rect) = Rect::from_xywh(x, y, w, h) {
         pixmap.fill_rect(rect, &paint, Transform::identity(), None);
@@ -245,7 +251,15 @@ fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font) {
                 draw_text(pixmap, &text, draw_x, y, font_size, font, color);
                 let decoration = get_str_prop(&node.props, "text-decoration", "");
                 if !decoration.is_empty() {
-                    draw_text_decoration(pixmap, draw_x, y, text_width, font_size, &decoration, color);
+                    draw_text_decoration(
+                        pixmap,
+                        draw_x,
+                        y,
+                        text_width,
+                        font_size,
+                        &decoration,
+                        color,
+                    );
                 }
             }
         }
@@ -264,7 +278,15 @@ fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font) {
                 draw_text(pixmap, &text, draw_x, y, font_size, font, color);
                 let decoration = get_str_prop(&node.props, "text-decoration", "");
                 if !decoration.is_empty() {
-                    draw_text_decoration(pixmap, draw_x, y, text_width, font_size, &decoration, color);
+                    draw_text_decoration(
+                        pixmap,
+                        draw_x,
+                        y,
+                        text_width,
+                        font_size,
+                        &decoration,
+                        color,
+                    );
                 }
             }
         }

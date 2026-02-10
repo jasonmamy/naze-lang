@@ -302,7 +302,10 @@ fn load_theme(project_dir: &Path, errors: &mut Vec<CompileError>) -> Theme {
 
     // Extract theme from parsed nodes
     for node in nodes {
-        if let Node::Theme { colors, spacing, .. } = node {
+        if let Node::Theme {
+            colors, spacing, ..
+        } = node
+        {
             let mut theme = default_theme();
             // Merge custom colors (override defaults)
             for (name, color) in colors {
@@ -347,10 +350,7 @@ fn discover_naze_files(
             // Build import path: relative to root, without extension
             // e.g., "components/card" for "project/components/card.naze"
             let rel = path.strip_prefix(root).unwrap_or(&path);
-            let import_path = rel
-                .with_extension("")
-                .to_string_lossy()
-                .replace('\\', "/");
+            let import_path = rel.with_extension("").to_string_lossy().replace('\\', "/");
 
             // Skip the entry file — it's handled separately
             if import_path == "app" {
@@ -520,10 +520,7 @@ fn check_circular_deps(files: &HashMap<String, SourceFile>, errors: &mut Vec<Com
                             stack.push((dep.as_str(), false));
                         } else if in_stack.contains(dep.as_str()) {
                             errors.push(CompileError {
-                                message: format!(
-                                    "circular dependency: '{}' -> '{}'",
-                                    node, dep
-                                ),
+                                message: format!("circular dependency: '{}' -> '{}'", node, dep),
                                 file: node.to_string(),
                                 line: 0,
                                 column: 0,
@@ -622,7 +619,10 @@ app "Test" {
 
         let project = resolve(dir.path(), "app.naze");
         assert!(!project.errors.is_empty());
-        assert!(project.errors.iter().any(|e| e.message.contains("unresolved import")));
+        assert!(project
+            .errors
+            .iter()
+            .any(|e| e.message.contains("unresolved import")));
     }
 
     #[test]

@@ -1,0 +1,32 @@
+-- Advanced pipeline operators: reduce, group-by, flatten, distinct
+app "Pipeline Advanced" {
+  state items = [{name: "Alice", dept: "Engineering", score: 92}, {name: "Bob", dept: "Sales", score: 67}, {name: "Carol", dept: "Engineering", score: 85}, {name: "Dave", dept: "Sales", score: 45}, {name: "Eve", dept: "Engineering", score: 78}]
+  state nested = [[1, 2, 3], [4, 5], [6]]
+  state tags = ["rust", "wasm", "rust", "js", "wasm", "rust"]
+
+  computed total = items | map score | reduce acc + it 0
+  computed by-dept = items | group-by dept
+  computed flat = nested | flatten
+  computed unique-tags = tags | distinct
+
+  column padding: 20px, gap: 16px {
+    heading "Advanced Pipelines"
+
+    text "Total score (reduce): {total}"
+
+    heading "Flattened list:"
+    each n in nested | flatten {
+      text "{n}"
+    }
+
+    heading "Unique tags:"
+    each tag in tags | distinct {
+      text "{tag}"
+    }
+
+    heading "Top scorers by department:"
+    each person in items | filter score > 70 | sort-by dept {
+      text "{person.name} ({person.dept}): {person.score}"
+    }
+  }
+}

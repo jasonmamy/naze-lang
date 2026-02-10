@@ -25,7 +25,7 @@ pub enum RenderValue {
     InterpolatedStr(Vec<TextPart>), // string with embedded state references
     List(Vec<RenderValue>),
     Object(Vec<(String, RenderValue)>), // Object literal: { key: value, ... }
-    Bind(String), // Two-way state binding for form elements
+    Bind(String),                       // Two-way state binding for form elements
 }
 
 /// A state variable declaration with its initial value.
@@ -34,7 +34,7 @@ pub enum RenderValue {
 pub struct StateDecl {
     pub name: String,
     pub initial: RenderValue,
-    pub shared: bool,          // true = persists across page navigation
+    pub shared: bool, // true = persists across page navigation
 }
 
 /// An async data fetch declaration.
@@ -76,7 +76,7 @@ pub struct StorageDecl {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TimerDecl {
     pub name: String,
-    pub kind: u8,          // 0 = after (setTimeout), 1 = every (setInterval)
+    pub kind: u8, // 0 = after (setTimeout), 1 = every (setInterval)
     pub duration_ms: u64,
     pub action: IrAction,
 }
@@ -86,7 +86,7 @@ pub struct TimerDecl {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ParamDecl {
     pub name: String,
-    pub param_type: String,     // "text", "number", "bool", "color"
+    pub param_type: String, // "text", "number", "bool", "color"
     pub default: RenderValue,
 }
 
@@ -108,6 +108,15 @@ pub enum IrBinOp {
     Or,
 }
 
+/// A single stage in an IR pipeline expression.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct IrPipelineStage {
+    pub function: u8, // 0=filter, 1=map, 2=sort-by, 3=take, 4=sum, 5=count, 6=reduce, 7=group-by, 8=flatten, 9=distinct
+    pub argument: Option<IrExpression>,
+    pub argument2: Option<IrExpression>, // for reduce: initial value
+}
+
 /// An expression in the IR (used in event handler actions).
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -121,19 +130,39 @@ pub enum IrExpression {
         op: IrBinOp,
         right: Box<IrExpression>,
     },
+    Pipeline {
+        source: Box<IrExpression>,
+        stages: Vec<IrPipelineStage>,
+    },
 }
 
 /// An action triggered by an event handler.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum IrAction {
-    Set { target: String, expr: IrExpression },
-    Navigate { path: String },
-    ScrollTo { element_id: String },
-    Log { expr: IrExpression },
-    Trigger { data_name: String },
-    Copy { expr: IrExpression },
-    Send { stream_name: String, expr: IrExpression },
+    Set {
+        target: String,
+        expr: IrExpression,
+    },
+    Navigate {
+        path: String,
+    },
+    ScrollTo {
+        element_id: String,
+    },
+    Log {
+        expr: IrExpression,
+    },
+    Trigger {
+        data_name: String,
+    },
+    Copy {
+        expr: IrExpression,
+    },
+    Send {
+        stream_name: String,
+        expr: IrExpression,
+    },
 }
 
 /// An event handler on a render node.
@@ -142,8 +171,8 @@ pub enum IrAction {
 pub struct IrEventHandler {
     pub event: String,
     pub action: IrAction,
-    pub modifier_kind: u8,    // 0 = none, 1 = debounce, 2 = throttle
-    pub modifier_ms: u64,     // 0 if no modifier
+    pub modifier_kind: u8, // 0 = none, 1 = debounce, 2 = throttle
+    pub modifier_ms: u64,  // 0 if no modifier
 }
 
 /// A node in the flattened render tree.
@@ -173,14 +202,14 @@ pub struct PageDef {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RenderTree {
     pub title: String,
-    pub root: Vec<RenderNode>,     // Default page content (for single-page apps)
+    pub root: Vec<RenderNode>, // Default page content (for single-page apps)
     pub state: Vec<StateDecl>,
-    pub data: Vec<DataDecl>,       // Async data fetch declarations
+    pub data: Vec<DataDecl>,         // Async data fetch declarations
     pub computed: Vec<ComputedDecl>, // Read-only derived state
-    pub storage: Vec<StorageDecl>, // Persistent state (localStorage/sessionStorage)
-    pub timers: Vec<TimerDecl>,    // setTimeout/setInterval declarations
-    pub params: Vec<ParamDecl>,    // URL parameter declarations
-    pub pages: Vec<PageDef>,       // Named pages for routing
+    pub storage: Vec<StorageDecl>,   // Persistent state (localStorage/sessionStorage)
+    pub timers: Vec<TimerDecl>,      // setTimeout/setInterval declarations
+    pub params: Vec<ParamDecl>,      // URL parameter declarations
+    pub pages: Vec<PageDef>,         // Named pages for routing
 }
 
 // ─── Simple binary encoding ─────────────────────────────────────────────────
@@ -282,7 +311,11 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         let name = cursor.read_string()?;
         let initial = cursor.read_value()?;
         let shared = cursor.read_u8()? != 0;
-        state.push(StateDecl { name, initial, shared });
+        state.push(StateDecl {
+            name,
+            initial,
+            shared,
+        });
     }
     // Data fetch declarations
     let data_count = cursor.read_u32()? as usize;
@@ -296,7 +329,16 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         let retry_count = cursor.read_u32()?;
         let trigger_mode = cursor.read_u8()?;
         let content_type = cursor.read_string()?;
-        data_decls.push(DataDecl { name, url, source_type, method, cache_ms, retry_count, trigger_mode, content_type });
+        data_decls.push(DataDecl {
+            name,
+            url,
+            source_type,
+            method,
+            cache_ms,
+            retry_count,
+            trigger_mode,
+            content_type,
+        });
     }
     // Computed declarations
     let computed_count = cursor.read_u32()? as usize;
@@ -314,7 +356,12 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         let storage_type = cursor.read_u8()?;
         let key = cursor.read_string()?;
         let default = cursor.read_value()?;
-        storage.push(StorageDecl { name, storage_type, key, default });
+        storage.push(StorageDecl {
+            name,
+            storage_type,
+            key,
+            default,
+        });
     }
     // Timer declarations
     let timer_count = cursor.read_u32()? as usize;
@@ -324,7 +371,12 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         let kind = cursor.read_u8()?;
         let duration_ms = cursor.read_u64()?;
         let action = cursor.read_action()?;
-        timers.push(TimerDecl { name, kind, duration_ms, action });
+        timers.push(TimerDecl {
+            name,
+            kind,
+            duration_ms,
+            action,
+        });
     }
     // Param declarations
     let param_count = cursor.read_u32()? as usize;
@@ -333,7 +385,11 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         let name = cursor.read_string()?;
         let param_type = cursor.read_string()?;
         let default = cursor.read_value()?;
-        params.push(ParamDecl { name, param_type, default });
+        params.push(ParamDecl {
+            name,
+            param_type,
+            default,
+        });
     }
     let count = cursor.read_u32()? as usize;
     let mut root = Vec::with_capacity(count);
@@ -351,13 +407,26 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
             for _ in 0..node_count {
                 page_root.push(cursor.read_node()?);
             }
-            pages.push(PageDef { path, root: page_root });
+            pages.push(PageDef {
+                path,
+                root: page_root,
+            });
         }
         pages
     } else {
         vec![]
     };
-    Ok(RenderTree { title, root, state, data: data_decls, computed, storage, timers, params, pages })
+    Ok(RenderTree {
+        title,
+        root,
+        state,
+        data: data_decls,
+        computed,
+        storage,
+        timers,
+        params,
+        pages,
+    })
 }
 
 // ─── Writer ─────────────────────────────────────────────────────────────────
@@ -550,6 +619,28 @@ fn write_expression(buf: &mut Vec<u8>, expr: &IrExpression) {
             write_expression(buf, left);
             write_expression(buf, right);
         }
+        IrExpression::Pipeline { source, stages } => {
+            buf.push(5);
+            write_expression(buf, source);
+            write_u32(buf, stages.len() as u32);
+            for stage in stages {
+                buf.push(stage.function);
+                match &stage.argument {
+                    Some(expr) => {
+                        buf.push(1);
+                        write_expression(buf, expr);
+                    }
+                    None => buf.push(0),
+                }
+                match &stage.argument2 {
+                    Some(expr) => {
+                        buf.push(1);
+                        write_expression(buf, expr);
+                    }
+                    None => buf.push(0),
+                }
+            }
+        }
     }
 }
 
@@ -731,7 +822,12 @@ impl<'a> Cursor<'a> {
         let action = self.read_action()?;
         let modifier_kind = self.read_u8()?;
         let modifier_ms = self.read_u64()?;
-        Ok(IrEventHandler { event, action, modifier_kind, modifier_ms })
+        Ok(IrEventHandler {
+            event,
+            action,
+            modifier_kind,
+            modifier_ms,
+        })
     }
 
     fn read_action(&mut self) -> Result<IrAction, String> {
@@ -786,6 +882,35 @@ impl<'a> Cursor<'a> {
                     left: Box::new(left),
                     op,
                     right: Box::new(right),
+                })
+            }
+            5 => {
+                let source = self.read_expression()?;
+                let stage_count = self.read_u32()? as usize;
+                let mut stages = Vec::with_capacity(stage_count);
+                for _ in 0..stage_count {
+                    let function = self.read_u8()?;
+                    let has_arg = self.read_u8()?;
+                    let argument = if has_arg != 0 {
+                        Some(self.read_expression()?)
+                    } else {
+                        None
+                    };
+                    let has_arg2 = self.read_u8()?;
+                    let argument2 = if has_arg2 != 0 {
+                        Some(self.read_expression()?)
+                    } else {
+                        None
+                    };
+                    stages.push(IrPipelineStage {
+                        function,
+                        argument,
+                        argument2,
+                    });
+                }
+                Ok(IrExpression::Pipeline {
+                    source: Box::new(source),
+                    stages,
                 })
             }
             _ => Err(format!("unknown expression tag: {}", tag)),
@@ -860,7 +985,10 @@ mod tests {
                 kind: "rect".to_string(),
                 props: {
                     let mut m = HashMap::new();
-                    m.insert("width".to_string(), RenderValue::Num(100.0, Some("px".to_string())));
+                    m.insert(
+                        "width".to_string(),
+                        RenderValue::Num(100.0, Some("px".to_string())),
+                    );
                     m.insert("height".to_string(), RenderValue::Num(50.0, None));
                     m.insert("color".to_string(), RenderValue::Color(0xff0000));
                     m.insert("visible".to_string(), RenderValue::Bool(true));
@@ -900,7 +1028,10 @@ mod tests {
                 kind: "checkbox".to_string(),
                 props: {
                     let mut m = HashMap::new();
-                    m.insert("__text".to_string(), RenderValue::Str("I agree".to_string()));
+                    m.insert(
+                        "__text".to_string(),
+                        RenderValue::Str("I agree".to_string()),
+                    );
                     m.insert("bind".to_string(), RenderValue::Bind("agreed".to_string()));
                     m
                 },
@@ -1002,15 +1133,24 @@ mod tests {
                     let mut m = HashMap::new();
                     m.insert("focus-trap".to_string(), RenderValue::Bool(true));
                     m.insert("scroll-lock".to_string(), RenderValue::Bool(true));
-                    m.insert("anchor".to_string(), RenderValue::Str("menu-btn".to_string()));
-                    m.insert("anchor-placement".to_string(), RenderValue::Str("bottom".to_string()));
+                    m.insert(
+                        "anchor".to_string(),
+                        RenderValue::Str("menu-btn".to_string()),
+                    );
+                    m.insert(
+                        "anchor-placement".to_string(),
+                        RenderValue::Str("bottom".to_string()),
+                    );
                     m
                 },
                 children: vec![RenderNode {
                     kind: "rect".to_string(),
                     props: {
                         let mut m = HashMap::new();
-                        m.insert("width".to_string(), RenderValue::Num(480.0, Some("px".to_string())));
+                        m.insert(
+                            "width".to_string(),
+                            RenderValue::Num(480.0, Some("px".to_string())),
+                        );
                         m.insert("color".to_string(), RenderValue::Color(0xffffff));
                         m
                     },
@@ -1181,5 +1321,85 @@ mod tests {
         assert_eq!(restored.storage[0].name, "theme");
         assert_eq!(restored.storage[0].storage_type, 0);
         assert_eq!(restored.storage[1].storage_type, 1);
+    }
+
+    #[test]
+    fn roundtrip_pipeline_expression() {
+        let tree = RenderTree {
+            title: "Pipeline Test".to_string(),
+            state: vec![StateDecl {
+                name: "items".to_string(),
+                initial: RenderValue::List(vec![
+                    RenderValue::Num(1.0, None),
+                    RenderValue::Num(2.0, None),
+                    RenderValue::Num(3.0, None),
+                ]),
+                shared: false,
+            }],
+            data: vec![],
+            computed: vec![
+                ComputedDecl {
+                    name: "total".to_string(),
+                    expr: IrExpression::Pipeline {
+                        source: Box::new(IrExpression::StateRef("items".to_string())),
+                        stages: vec![
+                            IrPipelineStage {
+                                function: 0, // filter
+                                argument: Some(IrExpression::BinOp {
+                                    left: Box::new(IrExpression::StateRef("score".to_string())),
+                                    op: IrBinOp::Gt,
+                                    right: Box::new(IrExpression::Num(60.0)),
+                                }),
+                                argument2: None,
+                            },
+                            IrPipelineStage {
+                                function: 1, // map
+                                argument: Some(IrExpression::StateRef("price".to_string())),
+                                argument2: None,
+                            },
+                            IrPipelineStage {
+                                function: 4, // sum
+                                argument: None,
+                                argument2: None,
+                            },
+                        ],
+                    },
+                },
+                ComputedDecl {
+                    name: "count".to_string(),
+                    expr: IrExpression::Pipeline {
+                        source: Box::new(IrExpression::StateRef("items".to_string())),
+                        stages: vec![IrPipelineStage {
+                            function: 5, // count
+                            argument: None,
+                            argument2: None,
+                        }],
+                    },
+                },
+            ],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
+            root: vec![],
+            pages: vec![],
+        };
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+        assert_eq!(restored.computed.len(), 2);
+        // Verify pipeline structure survived roundtrip
+        match &restored.computed[0].expr {
+            IrExpression::Pipeline { source, stages } => {
+                assert!(matches!(**source, IrExpression::StateRef(ref s) if s == "items"));
+                assert_eq!(stages.len(), 3);
+                assert_eq!(stages[0].function, 0); // filter
+                assert!(stages[0].argument.is_some());
+                assert_eq!(stages[1].function, 1); // map
+                assert!(stages[1].argument.is_some());
+                assert_eq!(stages[2].function, 4); // sum
+                assert!(stages[2].argument.is_none());
+            }
+            other => panic!("expected Pipeline, got {:?}", other),
+        }
     }
 }

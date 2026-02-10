@@ -1,0 +1,30 @@
+-- Pattern matching: declarative conditional rendering
+app "Match Demo" {
+  state status = "active"
+  state theme = "dark"
+
+  column padding: 20px, gap: 16px {
+    heading "Pattern Matching"
+
+    match status {
+      "active": text "Status: Active", color: #00cc00
+      "inactive": text "Status: Inactive", color: #cc0000
+      "pending": text "Status: Pending...", color: #cccc00
+      _: text "Status: Unknown"
+    }
+
+    match theme {
+      "dark": {
+        rect width: 200px, height: 100px, color: #333333 {
+          text "Dark Mode", color: #ffffff
+        }
+      }
+      "light": {
+        rect width: 200px, height: 100px, color: #eeeeee {
+          text "Light Mode", color: #000000
+        }
+      }
+      _: text "Unknown theme"
+    }
+  }
+}
