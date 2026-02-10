@@ -34,6 +34,7 @@ pub enum RenderValue {
 pub struct StateDecl {
     pub name: String,
     pub initial: RenderValue,
+    pub shared: bool,          // true = persists across page navigation
 }
 
 /// An async data fetch declaration.
@@ -43,6 +44,50 @@ pub struct StateDecl {
 pub struct DataDecl {
     pub name: String,
     pub url: String,
+    pub source_type: u8,      // 0 = fetch, 1 = websocket, 2 = sse
+    pub method: String,       // "get", "post", "put", "delete", "patch"
+    pub cache_ms: u64,        // 0 = no cache
+    pub retry_count: u32,     // 0 = no retry
+    pub trigger_mode: u8,     // 0 = auto, 1 = manual
+    pub content_type: String, // e.g. "application/json"
+}
+
+/// A computed (read-only, derived) state declaration.
+/// Value is re-evaluated whenever referenced state variables change.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ComputedDecl {
+    pub name: String,
+    pub expr: IrExpression,
+}
+
+/// A persistent storage declaration backed by localStorage or sessionStorage.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct StorageDecl {
+    pub name: String,
+    pub storage_type: u8, // 0 = local, 1 = session
+    pub key: String,
+    pub default: RenderValue,
+}
+
+/// A timer declaration: one-shot (after) or repeating (every).
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct TimerDecl {
+    pub name: String,
+    pub kind: u8,          // 0 = after (setTimeout), 1 = every (setInterval)
+    pub duration_ms: u64,
+    pub action: IrAction,
+}
+
+/// A URL parameter declaration.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ParamDecl {
+    pub name: String,
+    pub param_type: String,     // "text", "number", "bool", "color"
+    pub default: RenderValue,
 }
 
 /// Binary operators for expressions.
@@ -86,6 +131,9 @@ pub enum IrAction {
     Navigate { path: String },
     ScrollTo { element_id: String },
     Log { expr: IrExpression },
+    Trigger { data_name: String },
+    Copy { expr: IrExpression },
+    Send { stream_name: String, expr: IrExpression },
 }
 
 /// An event handler on a render node.
@@ -94,6 +142,8 @@ pub enum IrAction {
 pub struct IrEventHandler {
     pub event: String,
     pub action: IrAction,
+    pub modifier_kind: u8,    // 0 = none, 1 = debounce, 2 = throttle
+    pub modifier_ms: u64,     // 0 if no modifier
 }
 
 /// A node in the flattened render tree.
@@ -126,6 +176,10 @@ pub struct RenderTree {
     pub root: Vec<RenderNode>,     // Default page content (for single-page apps)
     pub state: Vec<StateDecl>,
     pub data: Vec<DataDecl>,       // Async data fetch declarations
+    pub computed: Vec<ComputedDecl>, // Read-only derived state
+    pub storage: Vec<StorageDecl>, // Persistent state (localStorage/sessionStorage)
+    pub timers: Vec<TimerDecl>,    // setTimeout/setInterval declarations
+    pub params: Vec<ParamDecl>,    // URL parameter declarations
     pub pages: Vec<PageDef>,       // Named pages for routing
 }
 
@@ -159,12 +213,48 @@ pub fn serialize(tree: &RenderTree) -> Vec<u8> {
     for decl in &tree.state {
         write_string(&mut buf, &decl.name);
         write_value(&mut buf, &decl.initial);
+        buf.push(if decl.shared { 1 } else { 0 });
     }
     // Data fetch declarations
     write_u32(&mut buf, tree.data.len() as u32);
     for decl in &tree.data {
         write_string(&mut buf, &decl.name);
         write_string(&mut buf, &decl.url);
+        buf.push(decl.source_type);
+        write_string(&mut buf, &decl.method);
+        write_u64(&mut buf, decl.cache_ms);
+        write_u32(&mut buf, decl.retry_count);
+        buf.push(decl.trigger_mode);
+        write_string(&mut buf, &decl.content_type);
+    }
+    // Computed declarations
+    write_u32(&mut buf, tree.computed.len() as u32);
+    for decl in &tree.computed {
+        write_string(&mut buf, &decl.name);
+        write_expression(&mut buf, &decl.expr);
+    }
+    // Storage declarations
+    write_u32(&mut buf, tree.storage.len() as u32);
+    for decl in &tree.storage {
+        write_string(&mut buf, &decl.name);
+        buf.push(decl.storage_type);
+        write_string(&mut buf, &decl.key);
+        write_value(&mut buf, &decl.default);
+    }
+    // Timer declarations
+    write_u32(&mut buf, tree.timers.len() as u32);
+    for decl in &tree.timers {
+        write_string(&mut buf, &decl.name);
+        buf.push(decl.kind);
+        write_u64(&mut buf, decl.duration_ms);
+        write_action(&mut buf, &decl.action);
+    }
+    // Param declarations
+    write_u32(&mut buf, tree.params.len() as u32);
+    for decl in &tree.params {
+        write_string(&mut buf, &decl.name);
+        write_string(&mut buf, &decl.param_type);
+        write_value(&mut buf, &decl.default);
     }
     write_u32(&mut buf, tree.root.len() as u32);
     for node in &tree.root {
@@ -191,7 +281,8 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
     for _ in 0..state_count {
         let name = cursor.read_string()?;
         let initial = cursor.read_value()?;
-        state.push(StateDecl { name, initial });
+        let shared = cursor.read_u8()? != 0;
+        state.push(StateDecl { name, initial, shared });
     }
     // Data fetch declarations
     let data_count = cursor.read_u32()? as usize;
@@ -199,7 +290,50 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
     for _ in 0..data_count {
         let name = cursor.read_string()?;
         let url = cursor.read_string()?;
-        data_decls.push(DataDecl { name, url });
+        let source_type = cursor.read_u8()?;
+        let method = cursor.read_string()?;
+        let cache_ms = cursor.read_u64()?;
+        let retry_count = cursor.read_u32()?;
+        let trigger_mode = cursor.read_u8()?;
+        let content_type = cursor.read_string()?;
+        data_decls.push(DataDecl { name, url, source_type, method, cache_ms, retry_count, trigger_mode, content_type });
+    }
+    // Computed declarations
+    let computed_count = cursor.read_u32()? as usize;
+    let mut computed = Vec::with_capacity(computed_count);
+    for _ in 0..computed_count {
+        let name = cursor.read_string()?;
+        let expr = cursor.read_expression()?;
+        computed.push(ComputedDecl { name, expr });
+    }
+    // Storage declarations
+    let storage_count = cursor.read_u32()? as usize;
+    let mut storage = Vec::with_capacity(storage_count);
+    for _ in 0..storage_count {
+        let name = cursor.read_string()?;
+        let storage_type = cursor.read_u8()?;
+        let key = cursor.read_string()?;
+        let default = cursor.read_value()?;
+        storage.push(StorageDecl { name, storage_type, key, default });
+    }
+    // Timer declarations
+    let timer_count = cursor.read_u32()? as usize;
+    let mut timers = Vec::with_capacity(timer_count);
+    for _ in 0..timer_count {
+        let name = cursor.read_string()?;
+        let kind = cursor.read_u8()?;
+        let duration_ms = cursor.read_u64()?;
+        let action = cursor.read_action()?;
+        timers.push(TimerDecl { name, kind, duration_ms, action });
+    }
+    // Param declarations
+    let param_count = cursor.read_u32()? as usize;
+    let mut params = Vec::with_capacity(param_count);
+    for _ in 0..param_count {
+        let name = cursor.read_string()?;
+        let param_type = cursor.read_string()?;
+        let default = cursor.read_value()?;
+        params.push(ParamDecl { name, param_type, default });
     }
     let count = cursor.read_u32()? as usize;
     let mut root = Vec::with_capacity(count);
@@ -223,12 +357,16 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
     } else {
         vec![]
     };
-    Ok(RenderTree { title, root, state, data: data_decls, pages })
+    Ok(RenderTree { title, root, state, data: data_decls, computed, storage, timers, params, pages })
 }
 
 // ─── Writer ─────────────────────────────────────────────────────────────────
 
 fn write_u32(buf: &mut Vec<u8>, val: u32) {
+    buf.extend_from_slice(&val.to_le_bytes());
+}
+
+fn write_u64(buf: &mut Vec<u8>, val: u64) {
     buf.extend_from_slice(&val.to_le_bytes());
 }
 
@@ -349,6 +487,8 @@ fn write_node(buf: &mut Vec<u8>, node: &RenderNode) {
 fn write_handler(buf: &mut Vec<u8>, handler: &IrEventHandler) {
     write_string(buf, &handler.event);
     write_action(buf, &handler.action);
+    buf.push(handler.modifier_kind);
+    write_u64(buf, handler.modifier_ms);
 }
 
 fn write_action(buf: &mut Vec<u8>, action: &IrAction) {
@@ -368,6 +508,19 @@ fn write_action(buf: &mut Vec<u8>, action: &IrAction) {
         }
         IrAction::Log { expr } => {
             buf.push(3);
+            write_expression(buf, expr);
+        }
+        IrAction::Trigger { data_name } => {
+            buf.push(4);
+            write_string(buf, data_name);
+        }
+        IrAction::Copy { expr } => {
+            buf.push(5);
+            write_expression(buf, expr);
+        }
+        IrAction::Send { stream_name, expr } => {
+            buf.push(6);
+            write_string(buf, stream_name);
             write_expression(buf, expr);
         }
     }
@@ -445,6 +598,13 @@ impl<'a> Cursor<'a> {
     fn read_u32(&mut self) -> Result<u32, String> {
         let bytes = self.read_bytes(4)?;
         Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+    }
+
+    fn read_u64(&mut self) -> Result<u64, String> {
+        let bytes = self.read_bytes(8)?;
+        Ok(u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]))
     }
 
     fn read_f64(&mut self) -> Result<f64, String> {
@@ -569,7 +729,9 @@ impl<'a> Cursor<'a> {
     fn read_handler(&mut self) -> Result<IrEventHandler, String> {
         let event = self.read_string()?;
         let action = self.read_action()?;
-        Ok(IrEventHandler { event, action })
+        let modifier_kind = self.read_u8()?;
+        let modifier_ms = self.read_u64()?;
+        Ok(IrEventHandler { event, action, modifier_kind, modifier_ms })
     }
 
     fn read_action(&mut self) -> Result<IrAction, String> {
@@ -591,6 +753,19 @@ impl<'a> Cursor<'a> {
             3 => {
                 let expr = self.read_expression()?;
                 Ok(IrAction::Log { expr })
+            }
+            4 => {
+                let data_name = self.read_string()?;
+                Ok(IrAction::Trigger { data_name })
+            }
+            5 => {
+                let expr = self.read_expression()?;
+                Ok(IrAction::Copy { expr })
+            }
+            6 => {
+                let stream_name = self.read_string()?;
+                let expr = self.read_expression()?;
+                Ok(IrAction::Send { stream_name, expr })
             }
             _ => Err(format!("unknown action tag: {}", tag)),
         }
@@ -647,6 +822,10 @@ mod tests {
             title: "Hello".to_string(),
             state: vec![],
             data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
             root: vec![RenderNode {
                 kind: "text".to_string(),
                 props: {
@@ -673,6 +852,10 @@ mod tests {
             title: "Test".to_string(),
             state: vec![],
             data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
             root: vec![RenderNode {
                 kind: "rect".to_string(),
                 props: {
@@ -706,8 +889,13 @@ mod tests {
             state: vec![StateDecl {
                 name: "agreed".to_string(),
                 initial: RenderValue::Bool(false),
+                shared: false,
             }],
             data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
             root: vec![RenderNode {
                 kind: "checkbox".to_string(),
                 props: {
@@ -727,6 +915,8 @@ mod tests {
                             right: Box::new(IrExpression::Bool(false)),
                         },
                     },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
                 }],
                 condition: None,
                 else_children: None,
@@ -745,6 +935,10 @@ mod tests {
             title: "Nested".to_string(),
             state: vec![],
             data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
             root: vec![RenderNode {
                 kind: "column".to_string(),
                 props: HashMap::new(),
@@ -789,11 +983,73 @@ mod tests {
     }
 
     #[test]
+    fn roundtrip_overlay_node() {
+        let tree = RenderTree {
+            title: "Overlay Test".to_string(),
+            state: vec![StateDecl {
+                name: "dialog-open".to_string(),
+                initial: RenderValue::Bool(false),
+                shared: false,
+            }],
+            data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
+            root: vec![RenderNode {
+                kind: "overlay".to_string(),
+                props: {
+                    let mut m = HashMap::new();
+                    m.insert("focus-trap".to_string(), RenderValue::Bool(true));
+                    m.insert("scroll-lock".to_string(), RenderValue::Bool(true));
+                    m.insert("anchor".to_string(), RenderValue::Str("menu-btn".to_string()));
+                    m.insert("anchor-placement".to_string(), RenderValue::Str("bottom".to_string()));
+                    m
+                },
+                children: vec![RenderNode {
+                    kind: "rect".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("width".to_string(), RenderValue::Num(480.0, Some("px".to_string())));
+                        m.insert("color".to_string(), RenderValue::Color(0xffffff));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                }],
+                handlers: vec![IrEventHandler {
+                    event: "click-outside".to_string(),
+                    action: IrAction::Set {
+                        target: "dialog-open".to_string(),
+                        expr: IrExpression::Bool(false),
+                    },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
+                }],
+                condition: None,
+                else_children: None,
+                each_binding: None,
+            }],
+            pages: vec![],
+        };
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+    }
+
+    #[test]
     fn roundtrip_with_pages() {
         let tree = RenderTree {
             title: "Multi-Page App".to_string(),
             state: vec![],
             data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
             root: vec![],
             pages: vec![
                 PageDef {
@@ -833,5 +1089,97 @@ mod tests {
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
         assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn roundtrip_computed_decls() {
+        let tree = RenderTree {
+            title: "Computed Test".to_string(),
+            state: vec![
+                StateDecl {
+                    name: "count".to_string(),
+                    initial: RenderValue::Num(1.0, None),
+                    shared: false,
+                },
+                StateDecl {
+                    name: "price".to_string(),
+                    initial: RenderValue::Num(10.0, None),
+                    shared: false,
+                },
+            ],
+            data: vec![],
+            computed: vec![
+                ComputedDecl {
+                    name: "total".to_string(),
+                    expr: IrExpression::BinOp {
+                        left: Box::new(IrExpression::StateRef("count".to_string())),
+                        op: IrBinOp::Mul,
+                        right: Box::new(IrExpression::StateRef("price".to_string())),
+                    },
+                },
+                ComputedDecl {
+                    name: "doubled".to_string(),
+                    expr: IrExpression::BinOp {
+                        left: Box::new(IrExpression::StateRef("total".to_string())),
+                        op: IrBinOp::Mul,
+                        right: Box::new(IrExpression::Num(2.0)),
+                    },
+                },
+            ],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
+            root: vec![RenderNode {
+                kind: "text".to_string(),
+                props: HashMap::new(),
+                children: vec![],
+                handlers: vec![],
+                condition: None,
+                else_children: None,
+                each_binding: None,
+            }],
+            pages: vec![],
+        };
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+        assert_eq!(restored.computed.len(), 2);
+        assert_eq!(restored.computed[0].name, "total");
+        assert_eq!(restored.computed[1].name, "doubled");
+    }
+
+    #[test]
+    fn roundtrip_storage_decls() {
+        let tree = RenderTree {
+            title: "Storage Test".to_string(),
+            state: vec![],
+            data: vec![],
+            computed: vec![],
+            storage: vec![
+                StorageDecl {
+                    name: "theme".to_string(),
+                    storage_type: 0,
+                    key: "theme-pref".to_string(),
+                    default: RenderValue::Str("light".to_string()),
+                },
+                StorageDecl {
+                    name: "token".to_string(),
+                    storage_type: 1,
+                    key: "auth-token".to_string(),
+                    default: RenderValue::Str(String::new()),
+                },
+            ],
+            timers: vec![],
+            params: vec![],
+            root: vec![],
+            pages: vec![],
+        };
+        let bytes = serialize(&tree);
+        let restored = deserialize(&bytes).unwrap();
+        assert_eq!(tree, restored);
+        assert_eq!(restored.storage.len(), 2);
+        assert_eq!(restored.storage[0].name, "theme");
+        assert_eq!(restored.storage[0].storage_type, 0);
+        assert_eq!(restored.storage[1].storage_type, 1);
     }
 }

@@ -239,18 +239,18 @@ The short answer: **no**. Naze achieves strong component parity (~92% with all p
 |---|---|---|---|
 | **General computation** | Full JS/TS (loops, classes, modules, closures) | Tier 1: pipelines + pure functions (M15) | **Architectural** — by design |
 | **Complex business logic** | JS modules, npm packages | Tier 2: WASM imports (M23), Tier 3: server functions (M24) | **Bridged** — logic in Rust, not Naze |
-| **Global / shared state** | React Context, Zustand, Redux | M19d: `shared state` with optional grouping | **Closed** |
-| **Derived / computed state** | `useMemo`, computed values, selectors | M19d: `computed name = expression` | **Closed** |
+| **Global / shared state** | React Context, Zustand, Redux | M19d: `shared state` with optional grouping | **Implemented** ✅ |
+| **Derived / computed state** | `useMemo`, computed values, selectors | M19d: `computed name = expression` | **Implemented** ✅ |
 | **Side effects** | `useEffect`, lifecycle hooks | Reactive `data` URLs + `computed` (by design — no imperative effects) | **Covered** |
-| **Complex async flows** | `async/await`, promises, concurrent rendering | M19d: enhanced `data` (full HTTP, `trigger: manual`) | **Closed** |
+| **Complex async flows** | `async/await`, promises, concurrent rendering | M19d: enhanced `data` (full HTTP, `trigger: manual`) | **Implemented** ✅ |
 | **Third-party JS libraries** | Chart.js, Stripe.js, Mapbox, Clerk, etc. | M19e: `js` interop (sync + async calls to `globalThis` functions) | **Partial** — covers most SDK use cases |
-| **WebSockets / real-time** | Socket.io, Pusher, SSE | M19d: `data: stream "wss://..."` | **Closed** |
-| **Browser APIs** | localStorage, clipboard, geolocation, camera, notifications | M19d: `storage`, `copy`, `param`; M19e: `device` (geolocation, camera), `notify` | **Closed** |
-| **File uploads** | `<input type="file">`, drag-to-upload | M19d: `input type: "file"` + enhanced `data` POST (multipart) | **Closed** |
+| **WebSockets / real-time** | Socket.io, Pusher, SSE | M19d: `data: stream "wss://..."` | **Implemented** ✅ |
+| **Browser APIs** | localStorage, clipboard, geolocation, camera, notifications | M19d: `storage`, `copy`, `param`; M19e: `device` (geolocation, camera), `notify` | **Implemented** ✅ (M19d portion) |
+| **File uploads** | `<input type="file">`, drag-to-upload | M19d: `input type: "file"` + enhanced `data` POST (multipart) | **Implemented** ✅ |
 | **Rich text editing** | Tiptap, Slate, ProseMirror, contentEditable | -- (incompatible with Canvas2D rendering) | **Architectural gap** |
-| **Timers / scheduling** | `setTimeout`, `setInterval`, debounce/throttle | M19d: `timer` (after/every), `debounce`/`throttle` modifiers | **Closed** |
+| **Timers / scheduling** | `setTimeout`, `setInterval`, debounce/throttle | M19d: `timer` (after/every), `debounce`/`throttle` modifiers | **Implemented** ✅ |
 | **Error handling** | `try/catch`, error boundaries, fallback UI | `data.error` + `if`/`else`; full error boundaries deferred to M19b | **Partial** |
-| **URL search params** | `useSearchParams`, query string state | M19d: `param name: type default: value` | **Closed** |
+| **URL search params** | `useSearchParams`, query string state | M19d: `param name: type default: value` | **Implemented** ✅ |
 | **Textarea** | `<textarea>` for multi-line text input | M19e: `textarea` element | **Closed** |
 | **Dynamic imports** | `React.lazy()`, route-based code splitting | M23 lazy WASM loading (module-level) | **Partial** |
 
@@ -297,12 +297,12 @@ Business logic that doesn't fit Tier 1's declarative model gets written in Rust 
 
 ### Application Parity Summary
 
-| Parity Level | Description | Before M19d/e | With M19d/e | With All Milestones |
+| Parity Level | Description | Before M19d | With M19d (current) | With All Milestones |
 |---|---|---|---|---|
 | **Component UI parity** | Can Naze build equivalent UI components? | 92% | 92% | **92%** |
 | **Visual fidelity parity** | Does it look the same? | 88% | 88% | **88%** |
-| **Application logic parity** | Can Naze handle the same business logic? | ~40% | ~85% | **~99%** |
-| **Full application parity** | Can any app be fully replicated? | ~50-60% | ~85-90% | **~95%** of app categories |
+| **Application logic parity** | Can Naze handle the same business logic? | ~40% | **~82%** ✅ | **~99%** |
+| **Full application parity** | Can any app be fully replicated? | ~50-60% | **~80-85%** ✅ | **~95%** of app categories |
 
 ---
 

@@ -1,0 +1,21 @@
+-- Shared State: persists across page navigation
+app "Shared State Demo" {
+  shared state auth = false
+  shared state username = ""
+  state page-count = 0
+
+  page "/" {
+    column padding: 20px, gap: 16px {
+      heading "Home"
+      text "Logged in: {auth}"
+      text "Username: {username}"
+    }
+  }
+
+  page "/profile" {
+    column padding: 20px, gap: 16px {
+      heading "Profile"
+      text "Welcome, {username}"
+    }
+  }
+}

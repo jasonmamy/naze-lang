@@ -1,0 +1,25 @@
+-- Enhanced data: methods, cache, retry, manual trigger
+app "API Dashboard" {
+  state search = ""
+
+  data users: fetch "/api/users" {
+    method: get
+    cache: 5min
+    retry: 3
+  }
+
+  data results: fetch "/api/search" {
+    method: post
+    trigger: manual
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "API Dashboard"
+    text "Users: loading={users.loading}"
+    text "Search: {search}"
+    rect width: 200px, height: 40px, color: #2563eb, radius: 8px {
+      text "Search"
+      on click: set search = "query"
+    }
+  }
+}

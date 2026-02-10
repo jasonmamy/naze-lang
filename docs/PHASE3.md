@@ -232,25 +232,25 @@ if menu-open {
 }
 ```
 
-### M19c: Visual Properties Expansion
+### M19c: Visual Properties Expansion ✅
 **Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`, `naze-renderer`
 
 Styling properties needed for production visual fidelity. Without these, components work but lack polish (no shadows, no centered text, no truncation). See [PARITY.md](PARITY.md).
 
-- [ ] `shadow` prop: named presets (`shadow: sm`, `shadow: md`, `shadow: lg`, `shadow: xl`) and custom values (`shadow: "0 4px 6px rgba(0,0,0,0.1)"`)
-- [ ] `text-align` prop: `start`, `center`, `end`, `justify`
-- [ ] `text-overflow` prop: `clip` (default), `ellipsis` (truncate with "...")
-- [ ] `text-decoration` prop: `none`, `underline`, `line-through`
-- [ ] `line-height` prop: numeric multiplier (e.g., `1.5`) or unit value (`24px`)
-- [ ] `letter-spacing` prop: unit value (`0.5px`, `1px`)
-- [ ] `gradient` prop: `gradient: "linear(to-right, #3b82f6, #8b5cf6)"`, `gradient: "radial(#fff, #000)"`
-- [ ] `transform` prop: `transform: "rotate(45deg)"`, `transform: "scale(1.2)"`, `transform: "translate(10px, 5px)"`
-- [ ] `cursor` prop: `pointer`, `grab`, `grabbing`, `text`, `not-allowed`, `crosshair`, `move`, `resize`
-- [ ] `overflow` prop on non-scroll containers: `visible` (default), `hidden`, `clip`
-- [ ] Renderer: shadow rendering via Canvas2D `shadowBlur`/`shadowColor`/`shadowOffset`
-- [ ] Renderer: gradient fills via Canvas2D `createLinearGradient`/`createRadialGradient`
-- [ ] Renderer: transform matrix via Canvas2D `setTransform`/`rotate`/`scale`
-- [ ] Layout: text measurement with alignment, overflow truncation, line-height
+- [x] `shadow` prop: named presets (`shadow: sm`, `shadow: md`, `shadow: lg`, `shadow: xl`) and custom values (`shadow: "0 4px 6px rgba(0,0,0,0.1)"`)
+- [x] `text-align` prop: `start`, `center`, `end`, `justify`
+- [x] `text-overflow` prop: `clip` (default), `ellipsis` (truncate with "...")
+- [x] `text-decoration` prop: `none`, `underline`, `line-through`
+- [x] `line-height` prop: numeric multiplier (e.g., `1.5`) or unit value (`24px`)
+- [x] `letter-spacing` prop: unit value (`0.5px`, `1px`)
+- [x] `gradient` prop: `gradient: "linear(to-right, #3b82f6, #8b5cf6)"`, `gradient: "radial(#fff, #000)"`
+- [x] `transform` prop: `transform: "rotate(45deg)"`, `transform: "scale(1.2)"`, `transform: "translate(10px, 5px)"`
+- [x] `cursor` prop: `pointer`, `grab`, `grabbing`, `text`, `not-allowed`, `crosshair`, `move`, `resize`
+- [x] `overflow` prop on non-scroll containers: `visible` (default), `hidden`, `clip`
+- [x] Renderer: shadow rendering via Canvas2D `shadowBlur`/`shadowColor`/`shadowOffset`
+- [x] Renderer: gradient fills via Canvas2D `createLinearGradient`/`createRadialGradient`
+- [x] Renderer: transform matrix via Canvas2D `setTransform`/`rotate`/`scale`
+- [x] Layout: text measurement with alignment, overflow truncation, line-height
 
 **Example syntax:**
 ```naze
@@ -269,7 +269,7 @@ rect width: 24px, height: 24px, border: 3px, border-color: #3b82f6, radius: 12px
     transform: "rotate(0deg)", transition: "transform 1000ms linear"
 ```
 
-### M19d: Application Logic Primitives
+### M19d: Application Logic Primitives ✅
 **Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`
 
 The missing application-level features that close the gap from ~40% to ~82% application logic parity. These are all tied to the reactivity/rendering loop — WASM imports can't handle them because they must observe state changes, trigger re-renders, or access browser APIs. See [PARITY.md](PARITY.md) for the full gap analysis and design rationale.
@@ -278,87 +278,87 @@ The missing application-level features that close the gap from ~40% to ~82% appl
 
 #### Tier A — State Extensions
 
-- [ ] Grammar: `computed_stmt` rule (`computed name = expression`)
-- [ ] AST: `Node::Computed` variant
-- [ ] IR: `ComputedDecl { name, expression }` added to `RenderTree`
-- [ ] Compiler: dependency analysis — scan expression for state/computed refs at compile time
-- [ ] Compiler: cycle detection — error if computed values form a dependency cycle
-- [ ] Runtime: evaluate computed values after state change, before render
-- [ ] Runtime: skip re-evaluation when dependencies haven't changed
+- [x] Grammar: `computed_stmt` rule (`computed name = expression`)
+- [x] AST: `Node::Computed` variant
+- [x] IR: `ComputedDecl { name, expression }` added to `RenderTree`
+- [x] Compiler: dependency analysis — scan expression for state/computed refs at compile time
+- [x] Compiler: cycle detection — error if computed values form a dependency cycle
+- [x] Runtime: evaluate computed values after state change, before render
+- [x] Runtime: skip re-evaluation when dependencies haven't changed
 
-- [ ] Grammar: `shared` modifier on `state_stmt` (`shared state name = value`)
-- [ ] Grammar: optional grouping block (`shared state auth { user = null, token = "" }`)
-- [ ] AST: `SharedState` flag on state nodes
-- [ ] Compiler: validate shared state names are unique across all files
-- [ ] Runtime: shared state persists across `navigate` actions (not scoped to page)
-- [ ] Runtime: changes to shared state trigger re-render on any page that references it
+- [x] Grammar: `shared` modifier on `state_stmt` (`shared state name = value`)
+- [ ] Grammar: optional grouping block (`shared state auth { user = null, token = "" }`) *(deferred — simple form works)*
+- [x] AST: `SharedState` flag on state nodes
+- [x] Compiler: validate shared state names are unique across all files
+- [x] Runtime: shared state persists across `navigate` actions (not scoped to page)
+- [x] Runtime: changes to shared state trigger re-render on any page that references it
 
-- [ ] Grammar: `storage_stmt` rule (`storage name: local "key" default: value`)
-- [ ] AST: `Node::Storage` variant
-- [ ] IR: `StorageDecl { name, storage_type, key, default }`
-- [ ] Runtime: initialize from localStorage/sessionStorage on load, fall back to default
-- [ ] Runtime: auto-sync to storage on `set` (JSON serialization for non-string values)
-- [ ] Runtime: reactive — changes trigger re-render like normal state
+- [x] Grammar: `storage_stmt` rule (`storage name: local "key" default: value`)
+- [x] AST: `Node::Storage` variant
+- [x] IR: `StorageDecl { name, storage_type, key, default }`
+- [x] Runtime: initialize from localStorage/sessionStorage on load, fall back to default
+- [x] Runtime: auto-sync to storage on `set` (JSON serialization for non-string values)
+- [x] Runtime: reactive — changes trigger re-render like normal state
 
 #### Tier A — Data Extensions
 
-- [ ] Grammar: optional block body on `data_stmt` (`data name: fetch "url" { ... }`)
-- [ ] Grammar: data block properties: `method`, `params`, `headers`, `body`, `cache`, `retry`, `trigger`, `content-type`
-- [ ] AST: `DataConfig` struct on `Node::Data` (method, params, headers, body, cache, retry, trigger)
-- [ ] IR: extended `DataDecl` with HTTP configuration fields
-- [ ] Runtime: HTTP method support (GET, POST, PUT, DELETE)
-- [ ] Runtime: request params (append to URL as query string)
-- [ ] Runtime: custom headers (with string interpolation for auth tokens)
-- [ ] Runtime: request body serialization (JSON default, multipart for file uploads)
-- [ ] Runtime: response caching by URL+params with TTL expiry
-- [ ] Runtime: retry with exponential backoff on network failure
-- [ ] Runtime: `trigger: manual` — suppress auto-fetch; activated by `trigger name` action
-- [ ] Runtime: reactive URL interpolation — re-fetch when interpolated state values change (GET only)
+- [x] Grammar: optional block body on `data_stmt` (`data name: fetch "url" { ... }`)
+- [x] Grammar: data block properties: `method`, `params`, `headers`, `body`, `cache`, `retry`, `trigger`, `content-type`
+- [x] AST: `DataConfig` struct on `Node::Data` (method, params, headers, body, cache, retry, trigger)
+- [x] IR: extended `DataDecl` with HTTP configuration fields
+- [x] Runtime: HTTP method support (GET, POST, PUT, DELETE)
+- [x] Runtime: request params (append to URL as query string)
+- [x] Runtime: custom headers (with string interpolation for auth tokens)
+- [x] Runtime: request body serialization (JSON default, multipart for file uploads)
+- [x] Runtime: response caching by URL+params with TTL expiry
+- [x] Runtime: retry with exponential backoff on network failure
+- [x] Runtime: `trigger: manual` — suppress auto-fetch; activated by `trigger name` action
+- [x] Runtime: reactive URL interpolation — re-fetch when interpolated state values change (GET only)
 
-- [ ] Grammar: `stream` variant in data_stmt (`data name: stream "wss://..."`)
-- [ ] Grammar: `type: sse` property in stream data block
-- [ ] AST: `DataSource::Stream` variant (vs `DataSource::Fetch`)
-- [ ] IR: stream data source type in `DataDecl`
-- [ ] Runtime: WebSocket connection management (connect, auto-reconnect with backoff)
-- [ ] Runtime: Server-Sent Events connection management
-- [ ] Runtime: append incoming messages to `.data` reactive list
-- [ ] Runtime: reactive URL interpolation — close old connection, open new on URL change
-- [ ] `send` action — push message to a WebSocket stream
+- [x] Grammar: `stream` variant in data_stmt (`data name: stream "wss://..."`)
+- [x] Grammar: `type: sse` property in stream data block
+- [x] AST: `DataSource::Stream` variant (vs `DataSource::Fetch`)
+- [x] IR: stream data source type in `DataDecl`
+- [x] Runtime: WebSocket connection management (connect, auto-reconnect with backoff)
+- [x] Runtime: Server-Sent Events connection management
+- [x] Runtime: append incoming messages to `.data` reactive list
+- [x] Runtime: reactive URL interpolation — close old connection, open new on URL change
+- [x] `send` action — push message to a WebSocket stream
 
 #### Tier B — Scheduling & Browser APIs
 
-- [ ] Grammar: `param_stmt` rule (`param name: type default: value`)
-- [ ] AST: `Node::Param` variant
-- [ ] IR: `ParamDecl { name, param_type, default }`
-- [ ] Runtime: read URL query string on init, populate state with parsed values
-- [ ] Runtime: on `set`, update both state and URL via `replaceState`
-- [ ] Runtime: on `popstate`, sync from URL back to state and re-render
+- [x] Grammar: `param_stmt` rule (`param name: type default: value`)
+- [x] AST: `Node::Param` variant
+- [x] IR: `ParamDecl { name, param_type, default }`
+- [x] Runtime: read URL query string on init, populate state with parsed values
+- [x] Runtime: on `set`, update both state and URL via `replaceState`
+- [x] Runtime: on `popstate`, sync from URL back to state and re-render
 
-- [ ] Grammar: `timer_stmt` rule (`timer name: after/every duration { action }`)
-- [ ] Grammar: duration literal (`number ("ms" | "s" | "min")`)
-- [ ] AST: `Node::Timer` variant with `TimerKind::After` | `TimerKind::Every`
-- [ ] IR: `TimerDecl { name, kind, duration_ms, action }`
-- [ ] Runtime: `after` — single `setTimeout`, execute action, done
-- [ ] Runtime: `every` — `setInterval`, execute action each tick
-- [ ] Runtime: automatic cleanup when page/component unmounts
+- [x] Grammar: `timer_stmt` rule (`timer name: after/every duration { action }`)
+- [x] Grammar: duration literal (`number ("ms" | "s" | "min")`)
+- [x] AST: `Node::Timer` variant with `TimerKind::After` | `TimerKind::Every`
+- [x] IR: `TimerDecl { name, kind, duration_ms, action }`
+- [x] Runtime: `after` — single `setTimeout`, execute action, done
+- [x] Runtime: `every` — `setInterval`, execute action each tick
+- [x] Runtime: automatic cleanup when page/component unmounts
 
-- [ ] Grammar: `debounce` and `throttle` modifiers on `on_handler`
-- [ ] AST: optional `EventModifier { kind, duration_ms }` on event handlers
-- [ ] Runtime: debounce — delay action until N ms of inactivity
-- [ ] Runtime: throttle — execute at most once per N ms
+- [x] Grammar: `debounce` and `throttle` modifiers on `on_handler`
+- [x] AST: optional `EventModifier { kind, duration_ms }` on event handlers
+- [x] Runtime: debounce — delay action until N ms of inactivity
+- [x] Runtime: throttle — execute at most once per N ms
 
-- [ ] Grammar: `copy` action variant (`copy expression`)
-- [ ] Runtime: evaluate expression, write to clipboard via `navigator.clipboard.writeText()`
+- [x] Grammar: `copy` action variant (`copy expression`)
+- [x] Runtime: evaluate expression, write to clipboard via `navigator.clipboard.writeText()`
 
-- [ ] Grammar: `send` action variant (`send stream-name expression`)
-- [ ] Runtime: send message on named WebSocket stream
+- [x] Grammar: `send` action variant (`send stream-name expression`)
+- [x] Runtime: send message on named WebSocket stream
 
-- [ ] Grammar: `trigger` action variant (`trigger data-name`)
-- [ ] Runtime: execute manual-trigger data fetch
+- [x] Grammar: `trigger` action variant (`trigger data-name`)
+- [x] Runtime: execute manual-trigger data fetch
 
-- [ ] `input type: "file"` variant with `accept` and `max-size` props
-- [ ] Runtime: file input binding — store selected File in state
-- [ ] Runtime: multipart form data encoding for file upload via enhanced `data` POST
+- [x] `input type: "file"` variant with `accept` and `max-size` props
+- [x] Runtime: file input binding — store selected File in state
+- [x] Runtime: multipart form data encoding for file upload via enhanced `data` POST
 
 **Example syntax:**
 ```naze
@@ -561,9 +561,9 @@ Carried from Phase 2 M10-M12. Dev server and cross-platform builds exist. This m
 Track A (language):    M15 → M16 (M16 depends on M15 expression infrastructure)
 Track B (layout):      M17 (independent, parallel with Track A)
 Track C (animation):   M18 (independent, builds on M14)
-Track D (components):  M19 → M19b (overlay builds on M19 component events)
-Track E (visual):      M19c (independent, parallel with everything)
-Track F (app logic):   M19d → M19e (M19e extends M19d's data/action infrastructure)
+Track D (components):  M19 → M19b ✅ (overlay builds on M19 component events)
+Track E (visual):      M19c ✅
+Track F (app logic):   M19d ✅ → M19e (M19e extends M19d's data/action infrastructure)
 Track G (testing):     M20 (independent, can start immediately)
 Track H (tooling):     M21, M22 (parallel with everything)
 ```
@@ -571,16 +571,17 @@ Track H (tooling):     M21, M22 (parallel with everything)
 All tracks can run in parallel except M15 → M16, M19 → M19b, and M19d → M19e. M19d's state/data extensions are independent of other milestones. M19e extends M19d's data source and action infrastructure with JS interop and device APIs. The `computed` feature benefits from M15 pipeline syntax but can ship with simple expressions first.
 
 **Suggested priority order:**
-1. M19b (overlay system) — highest-leverage single addition; unblocks 17 component types (see [PARITY.md](PARITY.md))
-2. M19d (app logic primitives) — closes application logic gap from ~40% to ~82% with ~6 grammar rules
-3. M15 (pipeline operators) — highest-impact language feature; unlocks full `computed` expressions
-4. M19c (visual properties) — brings visual fidelity to production quality
-5. M20 (testing framework) — enables CI/CD, validates other milestones
-6. M16 (pattern matching) — completes Tier 1 computation
-7. M17 (templates/responsive) — production layout quality
-8. M19 (component events, theme inheritance) — component model completion
-9. M18 (advanced animation) — UI polish
-10. M21, M22 (tooling polish) — can be interleaved throughout
+1. ~~M19b (overlay system)~~ — **Complete**
+2. ~~M19d (app logic primitives)~~ — **Complete**
+3. ~~M19c (visual properties)~~ — **Complete**
+4. M15 (pipeline operators) — highest-impact language feature; unlocks full `computed` expressions
+5. M19e (remaining gap closures) — textarea, JS interop, browser device APIs
+6. M20 (testing framework) — enables CI/CD, validates other milestones
+7. M16 (pattern matching) — completes Tier 1 computation
+8. M17 (templates/responsive) — production layout quality
+9. M19 (component events, theme inheritance) — component model completion
+10. M18 (advanced animation) — UI polish
+11. M21, M22 (tooling polish) — can be interleaved throughout
 
 ## WASM Size Budget
 

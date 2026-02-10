@@ -1,0 +1,37 @@
+-- Overlay dropdown example: demonstrates anchored overlay with anchor-placement
+app "Overlay Dropdown" {
+  state show_menu = false
+  state selected = "None"
+
+  column padding: 20px, gap: 16px {
+    heading "Overlay Dropdown Example"
+    text "Selected: {selected}"
+
+    rect id: "menu-trigger", width: 200px, height: 40px, color: #374151, radius: 6px {
+      text "Open Menu", color: #ffffff
+      on click: set show_menu = true
+    }
+
+    if show_menu {
+      overlay anchor: "menu-trigger", anchor-placement: "bottom" {
+        container width: 200px, color: #ffffff, radius: 8px, border: 1px, border-color: #e5e7eb {
+          column {
+            rect width: 200px, height: 40px, color: #ffffff {
+              text "Option A", padding: 8px
+              on click: set selected = "Option A"
+            }
+            rect width: 200px, height: 40px, color: #ffffff {
+              text "Option B", padding: 8px
+              on click: set selected = "Option B"
+            }
+            rect width: 200px, height: 40px, color: #ffffff {
+              text "Option C", padding: 8px
+              on click: set selected = "Option C"
+            }
+          }
+        }
+        on click-outside: set show_menu = false
+      }
+    }
+  }
+}

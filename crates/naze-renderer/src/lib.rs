@@ -219,6 +219,122 @@ pub mod canvas {
             self.ctx.fill_text(text, x, baseline_y).unwrap();
         }
 
+        /// Draw text truncated with ellipsis if it exceeds max_width.
+        pub fn draw_text_ellipsis(
+            &self,
+            text: &str,
+            x: f64,
+            y: f64,
+            font_size: f64,
+            bold: bool,
+            color: &str,
+            max_width: f64,
+        ) {
+            let font = font_string(font_size, bold);
+            self.ctx.set_font(&font);
+            let full_width = self.ctx.measure_text(text).map(|m| m.width()).unwrap_or(0.0);
+            if full_width <= max_width {
+                self.ctx.set_fill_style_str(color);
+                let baseline_y = y + font_size * 0.8;
+                self.ctx.fill_text(text, x, baseline_y).unwrap();
+                return;
+            }
+            // Truncate and add ellipsis
+            let ellipsis_w = self.ctx.measure_text("...").map(|m| m.width()).unwrap_or(0.0);
+            let target = max_width - ellipsis_w;
+            let mut end = text.len();
+            for (i, _) in text.char_indices().rev() {
+                let sub = &text[..i];
+                let w = self.ctx.measure_text(sub).map(|m| m.width()).unwrap_or(0.0);
+                if w <= target {
+                    end = i;
+                    break;
+                }
+            }
+            let truncated = format!("{}...", &text[..end]);
+            self.ctx.set_fill_style_str(color);
+            let baseline_y = y + font_size * 0.8;
+            self.ctx.fill_text(&truncated, x, baseline_y).unwrap();
+        }
+
+        /// Set letter spacing on the canvas context.
+        pub fn set_letter_spacing(&self, spacing: f64) {
+            // Canvas2D letterSpacing property (supported in modern browsers)
+            // We set it via the context property
+            let js_val: JsValue = format!("{}px", spacing).into();
+            js_sys::Reflect::set(&self.ctx, &"letterSpacing".into(), &js_val).unwrap_or(false);
+        }
+
+        /// Clear letter spacing.
+        pub fn clear_letter_spacing(&self) {
+            let js_val: JsValue = "0px".into();
+            js_sys::Reflect::set(&self.ctx, &"letterSpacing".into(), &js_val).unwrap_or(false);
+        }
+
+        /// Draw text with alignment within a container width.
+        pub fn draw_text_aligned(
+            &self,
+            text: &str,
+            x: f64,
+            y: f64,
+            font_size: f64,
+            bold: bool,
+            color: &str,
+            text_align: &str,
+            container_width: f64,
+        ) {
+            let font = font_string(font_size, bold);
+            self.ctx.set_font(&font);
+            self.ctx.set_fill_style_str(color);
+            let baseline_y = y + font_size * 0.8;
+            let draw_x = match text_align {
+                "center" => {
+                    let tw = self.ctx.measure_text(text).map(|m| m.width()).unwrap_or(0.0);
+                    x + (container_width - tw) / 2.0
+                }
+                "right" | "end" => {
+                    let tw = self.ctx.measure_text(text).map(|m| m.width()).unwrap_or(0.0);
+                    x + container_width - tw
+                }
+                _ => x, // "left" / "start" / default
+            };
+            self.ctx.fill_text(text, draw_x, baseline_y).unwrap();
+        }
+
+        /// Draw text decoration (underline, line-through) beneath/through text.
+        pub fn draw_text_decoration(
+            &self,
+            x: f64,
+            y: f64,
+            width: f64,
+            font_size: f64,
+            decoration: &str,
+            color: &str,
+        ) {
+            self.ctx.set_stroke_style_str(color);
+            self.ctx.set_line_width(1.0_f64.max(font_size / 16.0));
+            self.ctx.begin_path();
+            match decoration {
+                "underline" => {
+                    let line_y = y + font_size * 0.95;
+                    self.ctx.move_to(x, line_y);
+                    self.ctx.line_to(x + width, line_y);
+                }
+                "line-through" => {
+                    let line_y = y + font_size * 0.5;
+                    self.ctx.move_to(x, line_y);
+                    self.ctx.line_to(x + width, line_y);
+                }
+                "overline" => {
+                    let line_y = y + font_size * 0.05;
+                    self.ctx.move_to(x, line_y);
+                    self.ctx.line_to(x + width, line_y);
+                }
+                _ => return,
+            }
+            self.ctx.stroke();
+        }
+
         /// Measure text width using the Canvas2D measureText API.
         /// Returns (width, height) where height is estimated from the font size.
         pub fn measure_text(&self, text: &str, font_size: f64, bold: bool) -> (f64, f64) {
@@ -460,6 +576,22 @@ pub mod canvas {
 
         /// Draw a text input field.
         pub fn draw_input(&self, x: f64, y: f64, w: f64, h: f64, value: &str, placeholder: &str, focused: bool, input_type: &str, show_caret: bool) {
+            // File input: draw as a button with file name
+            if input_type == "file" {
+                // Button area
+                let btn_w = 100.0_f64.min(w * 0.35);
+                self.ctx.set_fill_style_str("#2563eb");
+                self.draw_rounded_rect_path(x, y, btn_w, h, 4.0);
+                self.ctx.fill();
+                self.draw_text("Choose file", x + 8.0, y + 4.0, 14.0, false, "#ffffff");
+
+                // File name area
+                let name_x = x + btn_w + 8.0;
+                let display = if !value.is_empty() { value } else { "No file chosen" };
+                self.draw_text(display, name_x, y + 4.0, 14.0, false, "#6b7280");
+                return;
+            }
+
             // Background
             self.ctx.set_fill_style_str("#ffffff");
             self.draw_rounded_rect_path(x, y, w, h, 4.0);
@@ -587,6 +719,133 @@ pub mod canvas {
                     self.draw_text(label, x + 12.0, opt_y + 8.0, 16.0, false, color);
                 }
             }
+        }
+
+        /// Apply a CSS-like transform around the center point (cx, cy).
+        /// Supports: rotate(Ndeg), scale(N), scale(X,Y), translate(Xpx, Ypx)
+        pub fn apply_transform(&self, transform_str: &str, cx: f64, cy: f64) {
+            let transform_str = transform_str.trim();
+            // Translate to center, apply transform, translate back
+            let _ = self.ctx.translate(cx, cy);
+            if transform_str.starts_with("rotate(") {
+                let inner = &transform_str[7..transform_str.len().saturating_sub(1)];
+                let deg: f64 = inner.trim_end_matches("deg").parse().unwrap_or(0.0);
+                let _ = self.ctx.rotate(deg * std::f64::consts::PI / 180.0);
+            } else if transform_str.starts_with("scale(") {
+                let inner = &transform_str[6..transform_str.len().saturating_sub(1)];
+                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
+                let sx: f64 = parts[0].parse().unwrap_or(1.0);
+                let sy: f64 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(sx);
+                let _ = self.ctx.scale(sx, sy);
+            } else if transform_str.starts_with("translate(") {
+                let inner = &transform_str[10..transform_str.len().saturating_sub(1)];
+                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
+                let tx: f64 = parts[0].trim_end_matches("px").parse().unwrap_or(0.0);
+                let ty: f64 = parts.get(1).map(|s| s.trim_end_matches("px").parse().unwrap_or(0.0)).unwrap_or(0.0);
+                let _ = self.ctx.translate(tx, ty);
+            }
+            let _ = self.ctx.translate(-cx, -cy);
+        }
+
+        /// Fill a rectangle with a gradient.
+        /// Syntax: "linear(direction, color1, color2, ...)" or "radial(color1, color2, ...)"
+        /// Directions: to-right, to-left, to-bottom, to-top, to-bottom-right, etc.
+        pub fn fill_rect_with_gradient(
+            &self,
+            x: f64,
+            y: f64,
+            w: f64,
+            h: f64,
+            gradient_str: &str,
+            radius: f64,
+        ) {
+            let gradient_str = gradient_str.trim();
+            let fill_style = if gradient_str.starts_with("linear(") {
+                let inner = &gradient_str[7..gradient_str.len().saturating_sub(1)];
+                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
+                if parts.len() < 3 {
+                    return; // Need at least direction + 2 colors
+                }
+                let (x0, y0, x1, y1) = match parts[0] {
+                    "to-right" => (x, y, x + w, y),
+                    "to-left" => (x + w, y, x, y),
+                    "to-bottom" => (x, y, x, y + h),
+                    "to-top" => (x, y + h, x, y),
+                    "to-bottom-right" => (x, y, x + w, y + h),
+                    "to-top-left" => (x + w, y + h, x, y),
+                    _ => (x, y, x + w, y), // default: to-right
+                };
+                let grad = self.ctx.create_linear_gradient(x0, y0, x1, y1);
+                let colors = &parts[1..];
+                for (i, color) in colors.iter().enumerate() {
+                    let stop = i as f32 / (colors.len() as f32 - 1.0);
+                    let _ = grad.add_color_stop(stop, color);
+                }
+                JsValue::from(grad)
+            } else if gradient_str.starts_with("radial(") {
+                let inner = &gradient_str[7..gradient_str.len().saturating_sub(1)];
+                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
+                if parts.len() < 2 {
+                    return;
+                }
+                let cx = x + w / 2.0;
+                let cy = y + h / 2.0;
+                let r = w.max(h) / 2.0;
+                let grad = self.ctx.create_radial_gradient(cx, cy, 0.0, cx, cy, r).unwrap();
+                for (i, color) in parts.iter().enumerate() {
+                    let stop = i as f32 / (parts.len() as f32 - 1.0);
+                    let _ = grad.add_color_stop(stop, color);
+                }
+                JsValue::from(grad)
+            } else {
+                return;
+            };
+            self.ctx.set_fill_style(&fill_style);
+            if radius > 0.0 {
+                self.draw_rounded_rect_path(x, y, w, h, radius);
+                self.ctx.fill();
+            } else {
+                self.ctx.fill_rect(x, y, w, h);
+            }
+        }
+
+        /// Apply a shadow to subsequent draw operations.
+        /// Accepts named presets (sm, md, lg, xl) or custom CSS-like shadow strings.
+        pub fn apply_shadow(&self, shadow: &str) {
+            let (offset_x, offset_y, blur, color) = match shadow {
+                "sm" => (0.0, 1.0, 2.0, "rgba(0,0,0,0.05)"),
+                "md" => (0.0, 4.0, 6.0, "rgba(0,0,0,0.1)"),
+                "lg" => (0.0, 10.0, 15.0, "rgba(0,0,0,0.1)"),
+                "xl" => (0.0, 20.0, 25.0, "rgba(0,0,0,0.1)"),
+                custom => {
+                    // Parse: "offsetX offsetY blur color"
+                    let parts: Vec<&str> = custom.splitn(4, ' ').collect();
+                    if parts.len() >= 4 {
+                        let ox = parts[0].trim_end_matches("px").parse::<f64>().unwrap_or(0.0);
+                        let oy = parts[1].trim_end_matches("px").parse::<f64>().unwrap_or(0.0);
+                        let bl = parts[2].trim_end_matches("px").parse::<f64>().unwrap_or(0.0);
+                        self.ctx.set_shadow_offset_x(ox);
+                        self.ctx.set_shadow_offset_y(oy);
+                        self.ctx.set_shadow_blur(bl);
+                        self.ctx.set_shadow_color(parts[3]);
+                        return;
+                    }
+                    // Fallback to md preset if unparseable
+                    (0.0, 4.0, 6.0, "rgba(0,0,0,0.1)")
+                }
+            };
+            self.ctx.set_shadow_offset_x(offset_x);
+            self.ctx.set_shadow_offset_y(offset_y);
+            self.ctx.set_shadow_blur(blur);
+            self.ctx.set_shadow_color(color);
+        }
+
+        /// Clear shadow from the canvas context.
+        pub fn clear_shadow(&self) {
+            self.ctx.set_shadow_offset_x(0.0);
+            self.ctx.set_shadow_offset_y(0.0);
+            self.ctx.set_shadow_blur(0.0);
+            self.ctx.set_shadow_color("transparent");
         }
 
         /// Draw a filled rectangle with optional border.

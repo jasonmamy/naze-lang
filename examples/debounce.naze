@@ -1,0 +1,21 @@
+-- Debounce and Throttle: rate-limit event handlers
+app "Debounce Demo" {
+  state query = ""
+  state scroll-count = 0
+  data results: fetch "/api/search" {
+    trigger: manual
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Debounce & Throttle"
+
+    input bind: query
+    on change debounce 300ms: trigger results
+
+    text "Scroll count: {scroll-count}"
+    rect width: 400px, height: 200px, color: #f3f4f6, radius: 8px {
+      text "Scroll area"
+      on scroll throttle 100ms: set scroll-count = scroll-count + 1
+    }
+  }
+}

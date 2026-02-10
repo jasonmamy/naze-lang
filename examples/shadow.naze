@@ -1,0 +1,16 @@
+-- Shadow: named presets and custom shadow strings
+app "Shadow Demo" {
+  column padding: 40px, gap: 24px, color: #f1f5f9 {
+    heading "Shadow Presets"
+
+    row gap: 24px {
+      rect width: 100px, height: 100px, color: #ffffff, radius: 8px, shadow: "sm"
+      rect width: 100px, height: 100px, color: #ffffff, radius: 8px, shadow: "md"
+      rect width: 100px, height: 100px, color: #ffffff, radius: 8px, shadow: "lg"
+      rect width: 100px, height: 100px, color: #ffffff, radius: 8px, shadow: "xl"
+    }
+
+    heading "Custom Shadow"
+    rect width: 200px, height: 80px, color: #ffffff, radius: 12px, shadow: "0 8px 30px rgba(0,0,0,0.12)"
+  }
+}

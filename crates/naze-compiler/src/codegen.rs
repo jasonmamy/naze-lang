@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use naze_parser::ast::{Node, Prop, StringPart, Unit, Value, EventHandler, Action, Expression, BinOp};
+use naze_parser::ast::{Node, Prop, StringPart, StorageType, TimerKind, DataSource, Unit, Value, EventHandler, Action, Expression, BinOp};
 
 use crate::resolve::{ComponentDef, ResolvedProject};
 
 // Re-export IR types so existing consumers can use `naze_compiler::codegen::*`
-pub use naze_ir::{DataDecl, IrAction, IrBinOp, IrEventHandler, IrExpression, PageDef, RenderNode, RenderTree, RenderValue, StateDecl, TextPart};
+pub use naze_ir::{ComputedDecl, DataDecl, IrAction, IrBinOp, IrEventHandler, IrExpression, PageDef, ParamDecl, RenderNode, RenderTree, RenderValue, StateDecl, StorageDecl, TimerDecl, TextPart};
 
 /// Lower a resolved project into a flattened RenderTree.
 /// All component invocations are inlined with prop substitution.
@@ -20,6 +20,10 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
     let mut root = Vec::new();
     let mut state = Vec::new();
     let mut data = Vec::new();
+    let mut computed = Vec::new();
+    let mut storage = Vec::new();
+    let mut timers = Vec::new();
+    let mut params = Vec::new();
     let mut pages = Vec::new();
     let mut let_scope: HashMap<String, RenderValue> = HashMap::new();
 
@@ -41,8 +45,8 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                 ..
             } => {
                 title = t.clone();
-                // Collect state, data, and let declarations from inside the app block
-                collect_declarations(children, &mut state, &mut data, &mut let_scope);
+                // Collect state, data, computed, and let declarations from inside the app block
+                collect_declarations(children, &mut state, &mut data, &mut computed, &mut storage, &mut timers, &mut params, &mut let_scope);
                 // Check for page blocks within the app
                 let (app_root, app_pages) = lower_nodes_with_pages(children, &by_name, &let_scope);
                 root = app_root;
@@ -52,16 +56,57 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
             Node::Let { name, value, .. } => {
                 let_scope.insert(name.clone(), lower_value(value, &let_scope));
             }
-            Node::State { name, value, .. } => {
+            Node::State { name, value, shared, .. } => {
                 state.push(StateDecl {
                     name: name.clone(),
                     initial: lower_value(value, &let_scope),
+                    shared: *shared,
                 });
             }
-            Node::Data { name, url, .. } => {
+            Node::Data { name, url, source, config, .. } => {
                 data.push(DataDecl {
                     name: name.clone(),
                     url: url.clone(),
+                    source_type: match source {
+                        DataSource::Fetch => 0,
+                        DataSource::Stream => 1,
+                    },
+                    method: config.method.clone().unwrap_or_else(|| "get".to_string()),
+                    cache_ms: config.cache_ms.unwrap_or(0),
+                    retry_count: config.retry.unwrap_or(0),
+                    trigger_mode: if config.trigger.as_deref() == Some("manual") { 1 } else { 0 },
+                    content_type: config.content_type.clone().unwrap_or_default(),
+                });
+            }
+            Node::Computed { name, expr, .. } => {
+                computed.push(ComputedDecl {
+                    name: name.clone(),
+                    expr: lower_expression(expr),
+                });
+            }
+            Node::Storage {
+                name,
+                storage_type,
+                key,
+                default,
+                ..
+            } => {
+                storage.push(StorageDecl {
+                    name: name.clone(),
+                    storage_type: match storage_type {
+                        StorageType::Local => 0,
+                        StorageType::Session => 1,
+                    },
+                    key: key.clone(),
+                    default: lower_value(default, &let_scope),
+                });
+            }
+            Node::Timer { name, kind, duration_ms, action, .. } => {
+                timers.push(TimerDecl {
+                    name: name.clone(),
+                    kind: match kind { TimerKind::After => 0, TimerKind::Every => 1 },
+                    duration_ms: *duration_ms,
+                    action: lower_action(action),
                 });
             }
             // Skip use statements, comments, component defs at top level
@@ -69,14 +114,18 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
         }
     }
 
-    RenderTree { title, root, state, data, pages }
+    RenderTree { title, root, state, data, computed, storage, timers, params, pages }
 }
 
-/// Walk children to collect state/let/data declarations (does not recurse into elements).
+/// Walk children to collect state/let/data/computed declarations (does not recurse into elements).
 fn collect_declarations(
     nodes: &[Node],
     state: &mut Vec<StateDecl>,
     data: &mut Vec<DataDecl>,
+    computed: &mut Vec<ComputedDecl>,
+    storage: &mut Vec<StorageDecl>,
+    timers: &mut Vec<TimerDecl>,
+    params: &mut Vec<ParamDecl>,
     let_scope: &mut HashMap<String, RenderValue>,
 ) {
     for node in nodes {
@@ -84,16 +133,70 @@ fn collect_declarations(
             Node::Let { name, value, .. } => {
                 let_scope.insert(name.clone(), lower_value(value, let_scope));
             }
-            Node::State { name, value, .. } => {
+            Node::State { name, value, shared, .. } => {
                 state.push(StateDecl {
                     name: name.clone(),
                     initial: lower_value(value, let_scope),
+                    shared: *shared,
                 });
             }
-            Node::Data { name, url, .. } => {
+            Node::Data { name, url, source, config, .. } => {
                 data.push(DataDecl {
                     name: name.clone(),
                     url: url.clone(),
+                    source_type: match source {
+                        DataSource::Fetch => 0,
+                        DataSource::Stream => 1,
+                    },
+                    method: config.method.clone().unwrap_or_else(|| "get".to_string()),
+                    cache_ms: config.cache_ms.unwrap_or(0),
+                    retry_count: config.retry.unwrap_or(0),
+                    trigger_mode: if config.trigger.as_deref() == Some("manual") { 1 } else { 0 },
+                    content_type: config.content_type.clone().unwrap_or_default(),
+                });
+            }
+            Node::Computed { name, expr, .. } => {
+                computed.push(ComputedDecl {
+                    name: name.clone(),
+                    expr: lower_expression(expr),
+                });
+            }
+            Node::Storage {
+                name,
+                storage_type,
+                key,
+                default,
+                ..
+            } => {
+                storage.push(StorageDecl {
+                    name: name.clone(),
+                    storage_type: match storage_type {
+                        StorageType::Local => 0,
+                        StorageType::Session => 1,
+                    },
+                    key: key.clone(),
+                    default: lower_value(default, let_scope),
+                });
+            }
+            Node::Timer { name, kind, duration_ms, action, .. } => {
+                timers.push(TimerDecl {
+                    name: name.clone(),
+                    kind: match kind { TimerKind::After => 0, TimerKind::Every => 1 },
+                    duration_ms: *duration_ms,
+                    action: lower_action(action),
+                });
+            }
+            Node::Param { name, ty, default, .. } => {
+                let param_type = match ty {
+                    naze_parser::ast::Type::Text => "text",
+                    naze_parser::ast::Type::Number => "number",
+                    naze_parser::ast::Type::Bool => "bool",
+                    naze_parser::ast::Type::Color => "color",
+                }.to_string();
+                params.push(ParamDecl {
+                    name: name.clone(),
+                    param_type,
+                    default: lower_value(default, let_scope),
                 });
             }
             _ => {}
@@ -125,12 +228,14 @@ fn collect_validation_state(nodes: &[Node], state: &mut Vec<StateDecl>) {
                                     state.push(StateDecl {
                                         name: valid_key,
                                         initial: RenderValue::Bool(true), // Initially valid
+                                        shared: false,
                                     });
                                 }
                                 if !state.iter().any(|s| s.name == error_key) {
                                     state.push(StateDecl {
                                         name: error_key,
                                         initial: RenderValue::Str(String::new()), // No error initially
+                                        shared: false,
                                     });
                                 }
                             }
@@ -234,6 +339,8 @@ fn lower_node(
                                     right: Box::new(IrExpression::Bool(false)),
                                 },
                             },
+                            modifier_kind: 0,
+                            modifier_ms: 0,
                         });
                     }
                 }
@@ -249,6 +356,8 @@ fn lower_node(
                                     target: bind_var.clone(),
                                     expr,
                                 },
+                                modifier_kind: 0,
+                                modifier_ms: 0,
                             });
                         }
                     }
@@ -274,6 +383,8 @@ fn lower_node(
             let navigate_handler = IrEventHandler {
                 event: "click".to_string(),
                 action: IrAction::Navigate { path: to.clone() },
+                modifier_kind: 0,
+                modifier_ms: 0,
             };
             vec![RenderNode {
                 kind: "link".to_string(),
@@ -373,6 +484,8 @@ fn lower_nodes(
                                         right: Box::new(IrExpression::Bool(false)),
                                     },
                                 },
+                                modifier_kind: 0,
+                                modifier_ms: 0,
                             });
                         }
                     }
@@ -388,6 +501,8 @@ fn lower_nodes(
                                         target: bind_var.clone(),
                                         expr,
                                     },
+                                    modifier_kind: 0,
+                                    modifier_ms: 0,
                                 });
                             }
                         }
@@ -413,6 +528,8 @@ fn lower_nodes(
                 let navigate_handler = IrEventHandler {
                     event: "click".to_string(),
                     action: IrAction::Navigate { path: to.clone() },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
                 };
                 out.push(RenderNode {
                     kind: "link".to_string(),
@@ -476,6 +593,10 @@ fn lower_nodes(
             | Node::Let { .. }
             | Node::State { .. }
             | Node::Data { .. }
+            | Node::Computed { .. }
+            | Node::Storage { .. }
+            | Node::Timer { .. }
+            | Node::Param { .. }
             | Node::Theme { .. } => {
                 // Skip non-renderable nodes (declarations processed separately)
             }
@@ -632,6 +753,8 @@ fn lower_nodes_with_slots(
                                         right: Box::new(IrExpression::Bool(false)),
                                     },
                                 },
+                                modifier_kind: 0,
+                                modifier_ms: 0,
                             });
                         }
                     }
@@ -647,6 +770,8 @@ fn lower_nodes_with_slots(
                                         target: bind_var.clone(),
                                         expr,
                                     },
+                                    modifier_kind: 0,
+                                    modifier_ms: 0,
                                 });
                             }
                         }
@@ -722,6 +847,8 @@ fn lower_nodes_with_slots(
                 let navigate_handler = IrEventHandler {
                     event: "click".to_string(),
                     action: IrAction::Navigate { path: to.clone() },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
                 };
                 out.push(RenderNode {
                     kind: "link".to_string(),
@@ -836,9 +963,21 @@ fn lower_handlers(handlers: &[EventHandler]) -> Vec<IrEventHandler> {
 }
 
 fn lower_handler(h: &EventHandler) -> IrEventHandler {
+    let (modifier_kind, modifier_ms) = match &h.modifier {
+        Some(m) => {
+            let kind = match m.kind {
+                naze_parser::ast::ModifierKind::Debounce => 1,
+                naze_parser::ast::ModifierKind::Throttle => 2,
+            };
+            (kind, m.duration_ms)
+        }
+        None => (0, 0),
+    };
     IrEventHandler {
         event: h.event.clone(),
         action: lower_action(&h.action),
+        modifier_kind,
+        modifier_ms,
     }
 }
 
@@ -851,6 +990,16 @@ fn lower_action(a: &Action) -> IrAction {
         Action::Navigate { path, .. } => IrAction::Navigate { path: path.clone() },
         Action::ScrollTo { element_id, .. } => IrAction::ScrollTo { element_id: element_id.clone() },
         Action::Log { expr, .. } => IrAction::Log {
+            expr: lower_expression(expr),
+        },
+        Action::Trigger { data_name, .. } => IrAction::Trigger {
+            data_name: data_name.clone(),
+        },
+        Action::Copy { expr, .. } => IrAction::Copy {
+            expr: lower_expression(expr),
+        },
+        Action::Send { stream_name, expr, .. } => IrAction::Send {
+            stream_name: stream_name.clone(),
             expr: lower_expression(expr),
         },
     }

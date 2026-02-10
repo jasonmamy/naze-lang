@@ -58,7 +58,12 @@ pub fn parse(source: &str, file: &str) -> Result<Vec<Node>, ParseError> {
             Rule::use_stmt => nodes.push(parse_use(pair, file)),
             Rule::let_stmt => nodes.push(parse_let(pair, file)),
             Rule::state_stmt => nodes.push(parse_state(pair, file)),
+            Rule::shared_state_stmt => nodes.push(parse_shared_state(pair, file)),
+            Rule::computed_stmt => nodes.push(parse_computed(pair, file)),
+            Rule::storage_stmt => nodes.push(parse_storage(pair, file)),
             Rule::data_stmt => nodes.push(parse_data(pair, file)),
+            Rule::timer_stmt => nodes.push(parse_timer(pair, file)),
+            Rule::param_stmt => nodes.push(parse_param_stmt(pair, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(pair, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(pair, file)),
             Rule::on_handler => {} // on_handler at file scope is meaningless; skip
@@ -304,20 +309,153 @@ fn parse_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let mut inner = pair.into_inner();
     let name = inner.next().unwrap().as_str().to_string();
     let value = parse_value(inner.next().unwrap());
-    Node::State { name, value, span }
+    Node::State { name, value, shared: false, span }
+}
+
+fn parse_shared_state(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let value = parse_value(inner.next().unwrap());
+    Node::State { name, value, shared: true, span }
+}
+
+fn parse_computed(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let expr = parse_expression(inner.next().unwrap());
+    Node::Computed { name, expr, span }
+}
+
+fn parse_storage(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let st = inner.next().unwrap();
+    let storage_type = match st.as_str() {
+        "local" => StorageType::Local,
+        "session" => StorageType::Session,
+        _ => StorageType::Local,
+    };
+    let key_pair = inner.next().unwrap();
+    let key = match parse_string_lit(key_pair) {
+        Value::Str(s) => s,
+        _ => String::new(),
+    };
+    let default = parse_value(inner.next().unwrap());
+    Node::Storage {
+        name,
+        storage_type,
+        key,
+        default,
+        span,
+    }
 }
 
 fn parse_data(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let mut inner = pair.into_inner();
     let name = inner.next().unwrap().as_str().to_string();
+    let source_pair = inner.next().unwrap();
+    let source = match source_pair.as_str() {
+        "stream" => DataSource::Stream,
+        _ => DataSource::Fetch,
+    };
     let url_pair = inner.next().unwrap();
     // Extract string content (removing quotes)
     let url = match parse_string_lit(url_pair) {
         Value::Str(s) => s,
-        _ => String::new(), // Should not happen for data URLs
+        _ => String::new(),
     };
-    Node::Data { name, url, span }
+    let mut config = DataConfig::default();
+    // Parse optional data block with config properties
+    if let Some(block) = inner.next() {
+        if block.as_rule() == Rule::data_block {
+            for prop_pair in block.into_inner() {
+                if prop_pair.as_rule() == Rule::data_prop {
+                    let mut prop_inner = prop_pair.into_inner();
+                    let key = prop_inner.next().unwrap().as_str();
+                    let val_pair = prop_inner.next().unwrap();
+                    match key {
+                        "method" => {
+                            config.method = Some(val_pair.as_str().to_string());
+                        }
+                        "cache" => {
+                            config.cache_ms = Some(parse_duration_ms(val_pair));
+                        }
+                        "retry" => {
+                            if let Value::Num(n, _) = parse_value(val_pair) {
+                                config.retry = Some(n as u32);
+                            }
+                        }
+                        "trigger" => {
+                            config.trigger = Some(val_pair.as_str().trim_matches('"').to_string());
+                        }
+                        "content-type" => {
+                            if let Value::Str(s) = parse_value(val_pair) {
+                                config.content_type = Some(s);
+                            }
+                        }
+                        "body" => {
+                            config.body = Some(parse_value(val_pair));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    Node::Data { name, url, source, config, span }
+}
+
+fn parse_timer(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let kind_str = inner.next().unwrap().as_str();
+    let kind = match kind_str {
+        "after" => TimerKind::After,
+        "every" => TimerKind::Every,
+        _ => TimerKind::After,
+    };
+    let duration_pair = inner.next().unwrap();
+    let duration_ms = parse_duration_ms(duration_pair);
+    let action_pair = inner.next().unwrap();
+    let action = parse_action(action_pair, file);
+    Node::Timer { name, kind, duration_ms, action, span }
+}
+
+fn parse_param_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let ty_str = inner.next().unwrap().as_str();
+    let ty = match ty_str {
+        "text" => Type::Text,
+        "number" => Type::Number,
+        "bool" => Type::Bool,
+        "color" => Type::Color,
+        _ => Type::Text,
+    };
+    let default = parse_value(inner.next().unwrap());
+    Node::Param { name, ty, default, span }
+}
+
+fn parse_duration_ms(pair: pest::iterators::Pair<Rule>) -> u64 {
+    let text = pair.as_str();
+    if let Some(n) = text.strip_suffix("ms") {
+        n.parse::<f64>().unwrap_or(0.0) as u64
+    } else if let Some(n) = text.strip_suffix("min") {
+        (n.parse::<f64>().unwrap_or(0.0) * 60_000.0) as u64
+    } else if let Some(n) = text.strip_suffix('h') {
+        (n.parse::<f64>().unwrap_or(0.0) * 3_600_000.0) as u64
+    } else if let Some(n) = text.strip_suffix('s') {
+        (n.parse::<f64>().unwrap_or(0.0) * 1_000.0) as u64
+    } else {
+        // Try parsing as plain number (milliseconds)
+        text.parse::<f64>().unwrap_or(0.0) as u64
+    }
 }
 
 fn parse_if_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -616,7 +754,12 @@ fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> BlockContents {
             Rule::use_stmt => nodes.push(parse_use(p, file)),
             Rule::let_stmt => nodes.push(parse_let(p, file)),
             Rule::state_stmt => nodes.push(parse_state(p, file)),
+            Rule::shared_state_stmt => nodes.push(parse_shared_state(p, file)),
+            Rule::computed_stmt => nodes.push(parse_computed(p, file)),
+            Rule::storage_stmt => nodes.push(parse_storage(p, file)),
             Rule::data_stmt => nodes.push(parse_data(p, file)),
+            Rule::timer_stmt => nodes.push(parse_timer(p, file)),
+            Rule::param_stmt => nodes.push(parse_param_stmt(p, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(p, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(p, file)),
             Rule::on_handler => handlers.push(parse_on_handler(p, file)),
@@ -637,9 +780,22 @@ fn parse_on_handler(pair: pest::iterators::Pair<Rule>, file: &str) -> EventHandl
     let span = span_from_pair(&pair, file);
     let mut inner = pair.into_inner();
     let event = inner.next().unwrap().as_str().to_string();
-    let action_pair = inner.next().unwrap();
+    let next = inner.next().unwrap();
+    let (modifier, action_pair) = if next.as_rule() == Rule::event_modifier {
+        let mut mod_inner = next.into_inner();
+        let kind_str = mod_inner.next().unwrap().as_str();
+        let kind = match kind_str {
+            "debounce" => ModifierKind::Debounce,
+            "throttle" => ModifierKind::Throttle,
+            _ => ModifierKind::Debounce,
+        };
+        let duration_ms = parse_duration_ms(mod_inner.next().unwrap());
+        (Some(EventModifier { kind, duration_ms }), inner.next().unwrap())
+    } else {
+        (None, next)
+    };
     let action = parse_action(action_pair, file);
-    EventHandler { event, action, span }
+    EventHandler { event, action, modifier, span }
 }
 
 fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
@@ -671,6 +827,22 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
             let mut inner = pair.into_inner();
             let expr = parse_expression(inner.next().unwrap());
             Action::Log { expr, span }
+        }
+        Rule::trigger_action => {
+            let mut inner = pair.into_inner();
+            let data_name = inner.next().unwrap().as_str().to_string();
+            Action::Trigger { data_name, span }
+        }
+        Rule::copy_action => {
+            let mut inner = pair.into_inner();
+            let expr = parse_expression(inner.next().unwrap());
+            Action::Copy { expr, span }
+        }
+        Rule::send_action => {
+            let mut inner = pair.into_inner();
+            let stream_name = inner.next().unwrap().as_str().to_string();
+            let expr = parse_expression(inner.next().unwrap());
+            Action::Send { stream_name, expr, span }
         }
         _ => panic!("unexpected action rule: {:?}", pair.as_rule()),
     }
@@ -1232,6 +1404,141 @@ mod tests {
     }
 
     #[test]
+    fn parse_computed_stmt() {
+        let source = "computed total = count * price\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Computed { name, expr, .. } => {
+                assert_eq!(name, "total");
+                assert!(matches!(expr, Expression::BinOp { .. }));
+            }
+            _ => panic!("expected Computed node"),
+        }
+    }
+
+    #[test]
+    fn parse_computed_in_app_block() {
+        let source = r#"app "Shop" {
+  state count = 1
+  state price = 10
+  computed total = count * price
+  text "{total}"
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                assert_eq!(children.len(), 4); // state, state, computed, text
+                assert!(matches!(&children[2], Node::Computed { name, .. } if name == "total"));
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_storage_stmt() {
+        let source = "storage theme: local \"theme-pref\" default: \"light\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Storage {
+                name,
+                storage_type,
+                key,
+                default,
+                ..
+            } => {
+                assert_eq!(name, "theme");
+                assert!(matches!(storage_type, StorageType::Local));
+                assert_eq!(key, "theme-pref");
+                assert!(matches!(default, Value::Str(s) if s == "light"));
+            }
+            _ => panic!("expected Storage node"),
+        }
+    }
+
+    #[test]
+    fn parse_storage_session() {
+        let source = "storage token: session \"auth-token\" default: \"\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Storage {
+                name,
+                storage_type,
+                ..
+            } => {
+                assert_eq!(name, "token");
+                assert!(matches!(storage_type, StorageType::Session));
+            }
+            _ => panic!("expected Storage node"),
+        }
+    }
+
+    #[test]
+    fn parse_data_with_config() {
+        let source = "data users: fetch \"/api/users\" {\n  method: post\n  cache: 5min\n  retry: 3\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Data { name, url, config, .. } => {
+                assert_eq!(name, "users");
+                assert_eq!(url, "/api/users");
+                assert_eq!(config.method.as_deref(), Some("post"));
+                assert_eq!(config.cache_ms, Some(300_000)); // 5min = 300000ms
+                assert_eq!(config.retry, Some(3));
+            }
+            _ => panic!("expected Data node"),
+        }
+    }
+
+    #[test]
+    fn parse_timer_after() {
+        let source = "timer dismiss: after 5s {\n  set visible = false\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Timer { name, kind, duration_ms, action, .. } => {
+                assert_eq!(name, "dismiss");
+                assert!(matches!(kind, TimerKind::After));
+                assert_eq!(*duration_ms, 5000);
+                assert!(matches!(action, Action::Set { .. }));
+            }
+            _ => panic!("expected Timer node"),
+        }
+    }
+
+    #[test]
+    fn parse_timer_every() {
+        let source = "timer tick: every 1s {\n  set count = count + 1\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Timer { name, kind, duration_ms, .. } => {
+                assert_eq!(name, "tick");
+                assert!(matches!(kind, TimerKind::Every));
+                assert_eq!(*duration_ms, 1000);
+            }
+            _ => panic!("expected Timer node"),
+        }
+    }
+
+    #[test]
+    fn parse_data_simple() {
+        let source = "data items: fetch \"/api/items\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Data { name, config, .. } => {
+                assert_eq!(name, "items");
+                assert!(config.method.is_none());
+                assert!(config.cache_ms.is_none());
+            }
+            _ => panic!("expected Data node"),
+        }
+    }
+
+    #[test]
     fn parse_if_stmt() {
         let source = r#"app "Test" {
   state count = 0
@@ -1550,6 +1857,181 @@ mod tests {
     }
 
     #[test]
+    fn parse_overlay_element() {
+        let source = r#"app "Test" {
+  state dialog-open = false
+  overlay focus-trap: true, scroll-lock: true {
+    rect width: 480px, height: 300px, color: #ffffff {
+      text "Dialog content"
+    }
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                // state + overlay
+                assert_eq!(children.len(), 2);
+                match &children[1] {
+                    Node::Element {
+                        name, props, children, ..
+                    } => {
+                        assert_eq!(name, "overlay");
+                        assert_eq!(props.len(), 2);
+                        assert_eq!(props[0].key, "focus-trap");
+                        assert!(matches!(&props[0].value, Value::Bool(true)));
+                        assert_eq!(props[1].key, "scroll-lock");
+                        assert!(matches!(&props[1].value, Value::Bool(true)));
+                        assert_eq!(children.len(), 1); // rect
+                    }
+                    other => panic!("expected overlay Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_overlay_with_anchor() {
+        let source = r#"app "Test" {
+  state menu-open = false
+  rect id: "menu-btn" {
+    on click: set menu-open = true
+  }
+  if menu-open {
+    overlay anchor: "menu-btn", anchor-placement: "bottom" {
+      text "Menu item 1"
+      text "Menu item 2"
+    }
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                // state, rect, if
+                assert_eq!(children.len(), 3);
+                match &children[2] {
+                    Node::If { then_children, .. } => {
+                        assert_eq!(then_children.len(), 1);
+                        match &then_children[0] {
+                            Node::Element { name, props, .. } => {
+                                assert_eq!(name, "overlay");
+                                assert_eq!(props[0].key, "anchor");
+                                assert!(matches!(&props[0].value, Value::Str(s) if s == "menu-btn"));
+                                assert_eq!(props[1].key, "anchor-placement");
+                                assert!(matches!(&props[1].value, Value::Str(s) if s == "bottom"));
+                            }
+                            other => panic!("expected overlay Element, got {:?}", other),
+                        }
+                    }
+                    other => panic!("expected If, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_click_outside_event() {
+        let source = r#"app "Test" {
+  state open = false
+  overlay {
+    on click-outside: set open = false
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { name, handlers, .. } => {
+                        assert_eq!(name, "overlay");
+                        assert_eq!(handlers.len(), 1);
+                        assert_eq!(handlers[0].event, "click-outside");
+                        match &handlers[0].action {
+                            Action::Set { target, .. } => assert_eq!(target, "open"),
+                            other => panic!("expected Set action, got {:?}", other),
+                        }
+                    }
+                    other => panic!("expected overlay Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_context_menu_event() {
+        let source = r#"app "Test" {
+  state menu-open = false
+  rect {
+    on context-menu: set menu-open = true
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers[0].event, "context-menu");
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_pointer_move_event() {
+        let source = r#"app "Test" {
+  state x = 0
+  rect {
+    on pointer-move: set x = 1
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers[0].event, "pointer-move");
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_arrow_key_events() {
+        let source = r#"app "Test" {
+  state index = 0
+  rect {
+    on arrow-up: set index = index - 1
+    on arrow-down: set index = index + 1
+    on arrow-left: set index = 0
+    on arrow-right: set index = 10
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers.len(), 4);
+                        assert_eq!(handlers[0].event, "arrow-up");
+                        assert_eq!(handlers[1].event, "arrow-down");
+                        assert_eq!(handlers[2].event, "arrow-left");
+                        assert_eq!(handlers[3].event, "arrow-right");
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
     fn parse_multiple_pages() {
         let source = r#"app "My App" {
   page "/" {
@@ -1572,6 +2054,211 @@ mod tests {
                 match &children[1] {
                     Node::Page { path, .. } => assert_eq!(path, "/about"),
                     other => panic!("expected Page, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_trigger_action() {
+        let source = "app \"Test\" {\n  data items: fetch \"/api/items\"\n  rect {\n    on click: trigger items\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers.len(), 1);
+                        match &handlers[0].action {
+                            Action::Trigger { data_name, .. } => assert_eq!(data_name, "items"),
+                            other => panic!("expected Trigger action, got {:?}", other),
+                        }
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_copy_action() {
+        let source = "app \"Test\" {\n  state url = \"https://example.com\"\n  rect {\n    on click: copy url\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers.len(), 1);
+                        match &handlers[0].action {
+                            Action::Copy { expr, .. } => {
+                                assert!(matches!(expr, Expression::StateRef(n) if n == "url"));
+                            }
+                            other => panic!("expected Copy action, got {:?}", other),
+                        }
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_data_stream() {
+        let source = "data chat: stream \"wss://api.example.com/chat\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Data { name, url, source, .. } => {
+                assert_eq!(name, "chat");
+                assert_eq!(url, "wss://api.example.com/chat");
+                assert!(matches!(source, DataSource::Stream));
+            }
+            other => panic!("expected Data node, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_send_action() {
+        let source = "app \"Test\" {\n  state msg = \"hello\"\n  rect {\n    on click: send chat msg\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers.len(), 1);
+                        match &handlers[0].action {
+                            Action::Send { stream_name, expr, .. } => {
+                                assert_eq!(stream_name, "chat");
+                                assert!(matches!(expr, Expression::StateRef(n) if n == "msg"));
+                            }
+                            other => panic!("expected Send action, got {:?}", other),
+                        }
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_param_stmt_test() {
+        let source = "param page: number default: 1\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Param { name, ty, default, .. } => {
+                assert_eq!(name, "page");
+                assert!(matches!(ty, Type::Number));
+                match default {
+                    Value::Num(n, _) => assert_eq!(*n, 1.0),
+                    other => panic!("expected Num default, got {:?}", other),
+                }
+            }
+            other => panic!("expected Param node, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_param_text_default() {
+        let source = "param query: text default: \"hello\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Param { name, ty, default, .. } => {
+                assert_eq!(name, "query");
+                assert!(matches!(ty, Type::Text));
+                match default {
+                    Value::Str(s) => assert_eq!(s, "hello"),
+                    other => panic!("expected Str default, got {:?}", other),
+                }
+            }
+            other => panic!("expected Param node, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_shared_state_stmt() {
+        let source = "shared state auth = false\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::State { name, shared, .. } => {
+                assert_eq!(name, "auth");
+                assert!(*shared);
+            }
+            other => panic!("expected State node, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_regular_state_not_shared() {
+        let source = "state count = 0\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::State { name, shared, .. } => {
+                assert_eq!(name, "count");
+                assert!(!*shared);
+            }
+            other => panic!("expected State node, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_debounce_modifier() {
+        let source = "app \"Test\" {\n  state q = \"\"\n  rect {\n    on change debounce 300ms: set q = q\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers.len(), 1);
+                        let m = handlers[0].modifier.as_ref().unwrap();
+                        assert!(matches!(m.kind, ModifierKind::Debounce));
+                        assert_eq!(m.duration_ms, 300);
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_throttle_modifier() {
+        let source = "app \"Test\" {\n  state x = 0\n  rect {\n    on scroll throttle 100ms: set x = x + 1\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers.len(), 1);
+                        let m = handlers[0].modifier.as_ref().unwrap();
+                        assert!(matches!(m.kind, ModifierKind::Throttle));
+                        assert_eq!(m.duration_ms, 100);
+                    }
+                    other => panic!("expected Element, got {:?}", other),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_no_modifier() {
+        let source = "app \"Test\" {\n  state c = 0\n  rect {\n    on click: set c = c + 1\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                match &children[1] {
+                    Node::Element { handlers, .. } => {
+                        assert_eq!(handlers.len(), 1);
+                        assert!(handlers[0].modifier.is_none());
+                    }
+                    other => panic!("expected Element, got {:?}", other),
                 }
             }
             _ => panic!("expected App"),

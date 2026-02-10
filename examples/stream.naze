@@ -1,0 +1,20 @@
+-- Stream: WebSocket real-time data
+app "Stream Demo" {
+  state msg = ""
+  data chat: stream "wss://echo.websocket.org"
+
+  column padding: 20px, gap: 16px {
+    heading "WebSocket Stream"
+
+    if chat.loading {
+      text "Connecting..."
+    }
+
+    text "Messages received: {chat.data}"
+
+    rect width: 200px, height: 40px, color: #2563eb, radius: 8px, role: "button", label: "Send message" {
+      text "Send Hello"
+      on click: send chat msg
+    }
+  }
+}

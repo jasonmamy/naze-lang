@@ -40,5 +40,23 @@ web-sys = { version = "0.3", features = [
     "Response",
     "Headers",
     "Performance",
+    "Navigator",
+    "Clipboard",
+    "WebSocket",
+    "MessageEvent",
+    "CloseEvent",
+    "EventSource",
+    "EventSourceInit",
+    "File",
+    "FileList",
+    "FileReader",
+    "Blob",
+    "Storage",
+    "FormData",
+    "History",
+    "PopStateEvent",
+    "Url",
+    "UrlSearchParams",
 ] }
 wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"

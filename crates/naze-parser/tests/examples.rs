@@ -108,3 +108,98 @@ fn parse_multi_component() {
 fn parse_counter() {
     parse_example("counter.naze");
 }
+
+#[test]
+fn parse_overlay_dialog() {
+    parse_example("overlay-dialog.naze");
+}
+
+#[test]
+fn parse_overlay_dropdown() {
+    parse_example("overlay-dropdown.naze");
+}
+
+#[test]
+fn parse_computed() {
+    parse_example("computed.naze");
+}
+
+#[test]
+fn parse_storage() {
+    parse_example("storage.naze");
+}
+
+#[test]
+fn parse_data_enhanced() {
+    parse_example("data-enhanced.naze");
+}
+
+#[test]
+fn parse_timer() {
+    parse_example("timer.naze");
+}
+
+#[test]
+fn parse_actions() {
+    parse_example("actions.naze");
+}
+
+#[test]
+fn parse_stream() {
+    parse_example("stream.naze");
+}
+
+#[test]
+fn parse_params() {
+    parse_example("params.naze");
+}
+
+#[test]
+fn parse_shared_state() {
+    parse_example("shared-state.naze");
+}
+
+#[test]
+fn parse_debounce() {
+    parse_example("debounce.naze");
+}
+
+#[test]
+fn parse_file_input() {
+    parse_example("file-input.naze");
+}
+
+#[test]
+fn parse_text_decoration() {
+    parse_example("text-decoration.naze");
+}
+
+#[test]
+fn parse_shadow() {
+    parse_example("shadow.naze");
+}
+
+#[test]
+fn parse_text_alignment() {
+    parse_example("text-alignment.naze");
+}
+
+#[test]
+fn parse_text_overflow() {
+    parse_example("text-overflow.naze");
+}
+
+#[test]
+fn parse_gradient() {
+    parse_example("gradient.naze");
+}
+
+#[test]
+fn parse_transform() {
+    parse_example("transform.naze");
+}
+
+#[test]
+fn parse_visual_properties() {
+    parse_example("visual-properties.naze");
+}

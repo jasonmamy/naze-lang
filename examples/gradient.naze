@@ -1,0 +1,13 @@
+-- Gradient: linear and radial gradients
+app "Gradient Demo" {
+  column padding: 20px, gap: 16px {
+    heading "Linear Gradients"
+
+    rect width: 300px, height: 60px, radius: 8px, gradient: "linear(to-right, #3b82f6, #8b5cf6)"
+    rect width: 300px, height: 60px, radius: 8px, gradient: "linear(to-bottom, #f59e0b, #ef4444)"
+    rect width: 300px, height: 60px, radius: 8px, gradient: "linear(to-bottom-right, #10b981, #3b82f6, #8b5cf6)"
+
+    heading "Radial Gradient"
+    rect width: 200px, height: 200px, radius: 100px, gradient: "radial(#ffffff, #3b82f6)"
+  }
+}

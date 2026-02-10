@@ -1,0 +1,27 @@
+-- Actions: trigger, copy, and send
+app "Actions Demo" {
+  state share-url = "https://example.com/share"
+  state msg = "hello"
+  data items: fetch "/api/items" {
+    trigger: manual
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Actions Demo"
+
+    rect width: 200px, height: 40px, color: #2563eb, radius: 8px, role: "button", label: "Refresh data" {
+      text "Refresh Data"
+      on click: trigger items
+    }
+
+    rect width: 200px, height: 40px, color: #059669, radius: 8px, role: "button", label: "Copy URL" {
+      text "Copy Share URL"
+      on click: copy share-url
+    }
+
+    rect width: 200px, height: 40px, color: #7c3aed, radius: 8px, role: "button", label: "Send message" {
+      text "Send Message"
+      on click: send chat msg
+    }
+  }
+}

@@ -53,13 +53,19 @@ See [PHASE2.md](PHASE2.md) for the detailed milestone tracker.
 
 ---
 
-## Phase 3: Language Completion & Developer Experience — Next
+## Phase 3: Language Completion & Developer Experience — In Progress
 
 Complete the language with advanced computation features, finalize tooling, add testing framework.
 
 See [PHASE3.md](PHASE3.md) for the detailed milestone tracker (M15-M22).
 
-### Language Completion (M15-M19e)
+### Completed
+
+- **Overlay system** -- `overlay` element, focus trapping, outside-click, scroll-lock, anchor positioning (**M19b**)
+- **Visual properties** -- shadows, text-align, text-overflow, text-decoration, line-height, letter-spacing, gradients, transforms, cursor styles, overflow clipping (**M19c**)
+- **Application logic primitives** -- `computed` state, `shared state`, `storage` (localStorage), enhanced `data` (full HTTP), `data: stream` (WebSocket/SSE), `param` (URL query params), `timer`, `debounce`/`throttle`, `copy` (clipboard), file input (**M19d**)
+
+### Remaining — Language Completion (M15-M19e)
 
 - **Pipeline operators** -- `|` chains for `filter`, `map`, `sort-by`, `take`, `sum`, `reduce`, etc.
 - **Pure functions** -- expression-body functions with no side effects, inlining and constant folding
@@ -70,20 +76,17 @@ See [PHASE3.md](PHASE3.md) for the detailed milestone tracker (M15-M22).
 - **Advanced animation** -- spring physics, keyframes, GPU fast path, custom `cubic-bezier()`
 - **Component events** -- `emit` from child, `on event` in parent
 - **Theme inheritance** -- `extends`, runtime switching
-- **Overlay system** -- `overlay` element, focus trapping, outside-click, scroll-lock, anchor positioning
-- **Visual properties** -- shadows, text-align, text-overflow, gradients, transforms, cursor styles
-- **Application logic primitives** -- `computed` state, `shared state`, `storage` (localStorage), enhanced `data` (full HTTP), `data: stream` (WebSocket/SSE), `param` (URL query params), `timer`, `debounce`/`throttle`, `copy` (clipboard), file input
 - **Remaining gap closures** -- `textarea` element, `js` interop (third-party JS SDK calls), browser device APIs (`device geolocation`, `device camera`, `notify`) (see [PARITY.md](PARITY.md))
 
-### Testing & Tooling (M20-M22)
+### Remaining — Testing & Tooling (M20-M22)
 
 - **Testing framework** -- `.test.naze` files, `test`/`flow` blocks, headless renderer, `nazec test`, CI JSON output
 - **VS Code extension polish** -- full type-checking LSP, cross-file go-to-def, Marketplace publish
 - **Build pipeline polish** -- incremental compilation, standalone native binary, Android APK end-to-end
 
 **Parity targets:**
-- **Component UI parity:** M19b (overlay) + M19c (visual properties) → ~92% of shadcn/ui-equivalent components buildable.
-- **Application logic parity:** M19d (app logic primitives) + M19e (JS interop, device APIs, textarea) → ~85%. Combined with M15 (pipelines) + M23 (WASM imports) + M24 (server functions), reaches **~99%**.
+- **Component UI parity:** M19b (overlay) + M19c (visual properties) → ~92% of shadcn/ui-equivalent components buildable. **Both complete.**
+- **Application logic parity:** M19d (app logic primitives) + M19e (JS interop, device APIs, textarea) → ~85%. Combined with M15 (pipelines) + M23 (WASM imports) + M24 (server functions), reaches **~99%**. **M19d complete.**
 - See [PARITY.md](PARITY.md) for the full analysis and design rationale.
 
 **Target:** Sub-second hot reload cycle. Testing in CI. AI generates correct Naze >80% for common patterns.

@@ -1,0 +1,17 @@
+-- Text Alignment and Line Height
+app "Text Alignment" {
+  column padding: 20px, gap: 16px {
+    heading "Text Alignment"
+
+    column width: 300px, color: #f1f5f9, padding: 12px, gap: 8px {
+      text "Left aligned (default)"
+      text "Center aligned", text-align: "center"
+      text "Right aligned", text-align: "right"
+    }
+
+    heading "Line Height"
+    text "Default line height (1.2x)"
+    text "Tight line height (1.0x)", line-height: 1.0
+    text "Loose line height (2.0x)", line-height: 2.0
+  }
+}

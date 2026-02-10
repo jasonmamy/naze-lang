@@ -36,6 +36,8 @@ pub struct PositionedNode {
 pub struct LayoutTree {
     pub title: String,
     pub root: Vec<PositionedNode>,
+    /// Overlay nodes, rendered after root content (last = topmost).
+    pub overlays: Vec<PositionedNode>,
 }
 
 /// Default text measurement: estimates width at ~0.6 * font_size per character.
@@ -66,10 +68,30 @@ pub fn compute_layout_with_measure<F>(
 where
     F: Fn(&str, f32) -> (f32, f32),
 {
+    // Separate overlay nodes from normal flow
+    let mut normal_nodes = Vec::new();
+    let mut overlay_nodes = Vec::new();
+    for node in &tree.root {
+        if node.kind == "overlay" {
+            overlay_nodes.push(node);
+        } else {
+            normal_nodes.push(node.clone());
+        }
+    }
+
     let positioned: Vec<PositionedNode> = layout_children_column(
-        &tree.root,
+        &normal_nodes,
         0.0,
         0.0,
+        viewport_width,
+        viewport_height,
+        &text_measure,
+    );
+
+    // Position overlay nodes
+    let overlays = layout_overlays(
+        &overlay_nodes,
+        &positioned,
         viewport_width,
         viewport_height,
         &text_measure,
@@ -78,6 +100,7 @@ where
     LayoutTree {
         title: tree.title.clone(),
         root: positioned,
+        overlays,
     }
 }
 
@@ -175,7 +198,8 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             let text = get_text_content(node);
             let font_size = get_font_size(node);
             let (tw, th) = text_measure(&text, font_size);
-            (explicit_w.unwrap_or(tw), explicit_h.unwrap_or(th))
+            let line_height = get_num_prop(node, "line-height").map(|lh| lh as f32 * font_size).unwrap_or(th);
+            (explicit_w.unwrap_or(tw), explicit_h.unwrap_or(line_height))
         }
         "rect" => {
             (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0))
@@ -214,6 +238,10 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
         }
         "option" => {
             // Options are rendered in dropdown overlay, not laid out directly
+            (0.0, 0.0)
+        }
+        "overlay" => {
+            // Overlays don't consume space in normal flow — positioned separately
             (0.0, 0.0)
         }
         "spacer" => {
@@ -957,6 +985,146 @@ fn get_font_size(node: &RenderNode) -> f32 {
     }
 }
 
+/// Find a positioned node by its `id` prop. Returns (x, y, width, height) if found.
+fn find_node_by_id(nodes: &[PositionedNode], id: &str) -> Option<(f32, f32, f32, f32)> {
+    for node in nodes {
+        if let Some(RenderValue::Str(node_id)) = node.props.get("id") {
+            if node_id == id {
+                return Some((node.x, node.y, node.width, node.height));
+            }
+        }
+        if let Some(found) = find_node_by_id(&node.children, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// Position overlay nodes relative to their anchors or as full-viewport overlays.
+fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
+    overlay_nodes: &[&RenderNode],
+    positioned_root: &[PositionedNode],
+    viewport_width: f32,
+    viewport_height: f32,
+    text_measure: &F,
+) -> Vec<PositionedNode> {
+    let mut overlays = Vec::new();
+
+    for node in overlay_nodes {
+        let anchor_id = match node.props.get("anchor") {
+            Some(RenderValue::Str(id)) => Some(id.clone()),
+            _ => None,
+        };
+        let placement = match node.props.get("anchor-placement") {
+            Some(RenderValue::Str(p)) => p.as_str(),
+            _ => "bottom",
+        };
+
+        let padding = get_num_prop(node, "padding").unwrap_or(0.0) as f32;
+        let gap = get_num_prop(node, "gap").unwrap_or(0.0) as f32;
+        let align = get_str_prop(node, "align").unwrap_or("stretch");
+        let justify = get_str_prop(node, "justify").unwrap_or("start");
+
+        if let Some(ref anchor) = anchor_id {
+            if let Some((ax, ay, aw, ah)) = find_node_by_id(positioned_root, anchor) {
+                // Measure overlay content to determine its size
+                let content_w = resolve_dimension(node, "width", viewport_width)
+                    .unwrap_or_else(|| {
+                        // Measure children to determine intrinsic width
+                        let mut max_w: f32 = 0.0;
+                        for child in &node.children {
+                            let (cw, _) = measure_node(child, viewport_width, viewport_height, text_measure);
+                            max_w = max_w.max(cw);
+                        }
+                        max_w + padding * 2.0
+                    });
+                let content_h = resolve_dimension(node, "height", viewport_height)
+                    .unwrap_or_else(|| {
+                        let mut total_h: f32 = 0.0;
+                        for (i, child) in node.children.iter().enumerate() {
+                            let (_, ch) = measure_node(child, content_w, viewport_height, text_measure);
+                            total_h += ch;
+                            if i > 0 { total_h += gap; }
+                        }
+                        total_h + padding * 2.0
+                    });
+
+                // Position based on placement, with auto-flip at viewport edge
+                let (mut ox, mut oy) = match placement {
+                    "top" => (ax, ay - content_h),
+                    "left" => (ax - content_w, ay),
+                    "right" => (ax + aw, ay),
+                    _ /* "bottom" */ => (ax, ay + ah),
+                };
+
+                // Auto-flip if overlay would extend beyond viewport
+                if oy + content_h > viewport_height && placement == "bottom" {
+                    oy = ay - content_h; // flip to top
+                }
+                if oy < 0.0 && placement == "top" {
+                    oy = ay + ah; // flip to bottom
+                }
+                if ox + content_w > viewport_width && placement == "right" {
+                    ox = ax - content_w; // flip to left
+                }
+                if ox < 0.0 && placement == "left" {
+                    ox = ax + aw; // flip to right
+                }
+
+                // Clamp to viewport
+                ox = ox.max(0.0);
+                oy = oy.max(0.0);
+
+                let children = layout_column(
+                    &node.children,
+                    ox + padding,
+                    oy + padding,
+                    content_w - padding * 2.0,
+                    content_h - padding * 2.0,
+                    gap, align, justify, text_measure,
+                );
+
+                overlays.push(PositionedNode {
+                    kind: node.kind.clone(),
+                    props: node.props.clone(),
+                    handlers: node.handlers.clone(),
+                    x: ox,
+                    y: oy,
+                    width: content_w,
+                    height: content_h,
+                    children,
+                    scroll_info: None,
+                });
+            }
+            // If anchor not found, skip this overlay (it's invisible)
+        } else {
+            // No anchor — full-viewport overlay (e.g., modal dialog)
+            let children = layout_column(
+                &node.children,
+                padding,
+                padding,
+                viewport_width - padding * 2.0,
+                viewport_height - padding * 2.0,
+                gap, align, justify, text_measure,
+            );
+
+            overlays.push(PositionedNode {
+                kind: node.kind.clone(),
+                props: node.props.clone(),
+                handlers: node.handlers.clone(),
+                x: 0.0,
+                y: 0.0,
+                width: viewport_width,
+                height: viewport_height,
+                children,
+                scroll_info: None,
+            });
+        }
+    }
+
+    overlays
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1250,6 +1418,270 @@ mod tests {
             }
             check_positions(&layout.root, name);
         }
+    }
+
+    #[test]
+    fn layout_overlay_does_not_affect_siblings() {
+        // An overlay between two rects should not consume space
+        let tree = RenderTree {
+            title: "Overlay Test".to_string(),
+            state: vec![],
+            data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
+            root: vec![
+                RenderNode {
+                    kind: "rect".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("width".to_string(), RenderValue::Num(100.0, Some("px".to_string())));
+                        m.insert("height".to_string(), RenderValue::Num(50.0, Some("px".to_string())));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+                RenderNode {
+                    kind: "overlay".to_string(),
+                    props: HashMap::new(),
+                    children: vec![RenderNode {
+                        kind: "rect".to_string(),
+                        props: {
+                            let mut m = HashMap::new();
+                            m.insert("width".to_string(), RenderValue::Num(300.0, Some("px".to_string())));
+                            m.insert("height".to_string(), RenderValue::Num(200.0, Some("px".to_string())));
+                            m
+                        },
+                        children: vec![],
+                        handlers: vec![],
+                        condition: None,
+                        else_children: None,
+                        each_binding: None,
+                    }],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+                RenderNode {
+                    kind: "rect".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("width".to_string(), RenderValue::Num(100.0, Some("px".to_string())));
+                        m.insert("height".to_string(), RenderValue::Num(50.0, Some("px".to_string())));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+            ],
+            pages: vec![],
+        };
+        let layout = compute_layout(&tree, 800.0, 600.0);
+
+        // Root should have 2 rects (overlay extracted)
+        assert_eq!(layout.root.len(), 2, "overlay should be extracted from root");
+        // Second rect should be directly below the first (no gap from overlay)
+        let r1 = &layout.root[0];
+        let r2 = &layout.root[1];
+        assert!((r2.y - r1.y - 50.0).abs() < 1.0,
+            "second rect y ({}) should be first.y + first.height ({})",
+            r2.y, r1.y + r1.height);
+
+        // Overlay should be in overlays vec
+        assert_eq!(layout.overlays.len(), 1);
+        assert_eq!(layout.overlays[0].kind, "overlay");
+    }
+
+    #[test]
+    fn layout_overlay_full_viewport() {
+        // Overlay without anchor should span full viewport
+        let tree = RenderTree {
+            title: "Modal Test".to_string(),
+            state: vec![],
+            data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
+            root: vec![RenderNode {
+                kind: "overlay".to_string(),
+                props: HashMap::new(),
+                children: vec![RenderNode {
+                    kind: "text".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("__text".to_string(), RenderValue::Str("Hello".to_string()));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                }],
+                handlers: vec![],
+                condition: None,
+                else_children: None,
+                each_binding: None,
+            }],
+            pages: vec![],
+        };
+        let layout = compute_layout(&tree, 800.0, 600.0);
+
+        assert!(layout.root.is_empty(), "root should be empty (only overlay)");
+        assert_eq!(layout.overlays.len(), 1);
+
+        let overlay = &layout.overlays[0];
+        assert!((overlay.x - 0.0).abs() < 1.0);
+        assert!((overlay.y - 0.0).abs() < 1.0);
+        assert!((overlay.width - 800.0).abs() < 1.0);
+        assert!((overlay.height - 600.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn layout_overlay_anchored_bottom() {
+        // Overlay anchored to a button should appear below it
+        let tree = RenderTree {
+            title: "Dropdown Test".to_string(),
+            state: vec![],
+            data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
+            root: vec![
+                RenderNode {
+                    kind: "rect".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("id".to_string(), RenderValue::Str("btn".to_string()));
+                        m.insert("width".to_string(), RenderValue::Num(120.0, Some("px".to_string())));
+                        m.insert("height".to_string(), RenderValue::Num(40.0, Some("px".to_string())));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+                RenderNode {
+                    kind: "overlay".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("anchor".to_string(), RenderValue::Str("btn".to_string()));
+                        m.insert("width".to_string(), RenderValue::Num(200.0, Some("px".to_string())));
+                        m.insert("height".to_string(), RenderValue::Num(100.0, Some("px".to_string())));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+            ],
+            pages: vec![],
+        };
+        let layout = compute_layout(&tree, 800.0, 600.0);
+
+        assert_eq!(layout.root.len(), 1); // just the button
+        assert_eq!(layout.overlays.len(), 1);
+
+        let btn = &layout.root[0];
+        let overlay = &layout.overlays[0];
+
+        // Overlay should be positioned below the button (default placement = bottom)
+        assert!((overlay.x - btn.x).abs() < 1.0,
+            "overlay.x ({}) should equal btn.x ({})", overlay.x, btn.x);
+        assert!((overlay.y - (btn.y + btn.height)).abs() < 1.0,
+            "overlay.y ({}) should equal btn.y + btn.height ({})",
+            overlay.y, btn.y + btn.height);
+    }
+
+    #[test]
+    fn layout_overlay_anchor_auto_flip() {
+        // Button near bottom of viewport — overlay should flip to top
+        let tree = RenderTree {
+            title: "Flip Test".to_string(),
+            state: vec![],
+            data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
+            root: vec![
+                // Push button to bottom with a spacer
+                RenderNode {
+                    kind: "spacer".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("height".to_string(), RenderValue::Num(500.0, Some("px".to_string())));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+                RenderNode {
+                    kind: "rect".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("id".to_string(), RenderValue::Str("btn-bottom".to_string()));
+                        m.insert("width".to_string(), RenderValue::Num(120.0, Some("px".to_string())));
+                        m.insert("height".to_string(), RenderValue::Num(40.0, Some("px".to_string())));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+                RenderNode {
+                    kind: "overlay".to_string(),
+                    props: {
+                        let mut m = HashMap::new();
+                        m.insert("anchor".to_string(), RenderValue::Str("btn-bottom".to_string()));
+                        m.insert("anchor-placement".to_string(), RenderValue::Str("bottom".to_string()));
+                        m.insert("width".to_string(), RenderValue::Num(200.0, Some("px".to_string())));
+                        m.insert("height".to_string(), RenderValue::Num(150.0, Some("px".to_string())));
+                        m
+                    },
+                    children: vec![],
+                    handlers: vec![],
+                    condition: None,
+                    else_children: None,
+                    each_binding: None,
+                },
+            ],
+            pages: vec![],
+        };
+        let layout = compute_layout(&tree, 800.0, 600.0);
+
+        let btn = &layout.root[1]; // second node (after spacer)
+        let overlay = &layout.overlays[0];
+
+        // Button is at y=500, height=40 → bottom edge at 540
+        // Overlay height=150 → would extend to 690 (past viewport 600)
+        // Should auto-flip to top: overlay.y = btn.y - overlay.height = 500 - 150 = 350
+        assert!(overlay.y < btn.y,
+            "overlay.y ({}) should be above btn.y ({}) due to auto-flip",
+            overlay.y, btn.y);
+        assert!((overlay.y - (btn.y - 150.0)).abs() < 1.0,
+            "overlay.y ({}) should be btn.y - height ({})",
+            overlay.y, btn.y - 150.0);
     }
 
     #[test]

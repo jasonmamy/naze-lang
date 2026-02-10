@@ -117,6 +117,35 @@ fn rounded_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia
     pb.finish()
 }
 
+fn get_str_prop(props: &HashMap<String, RenderValue>, key: &str, default: &str) -> String {
+    match props.get(key) {
+        Some(RenderValue::Str(s)) => s.clone(),
+        _ => default.to_string(),
+    }
+}
+
+fn draw_text_decoration(
+    pixmap: &mut Pixmap,
+    x: f32,
+    y: f32,
+    width: f32,
+    font_size: f32,
+    decoration: &str,
+    color: u32,
+) {
+    let line_y = match decoration {
+        "underline" => y + font_size * 0.95,
+        "line-through" => y + font_size * 0.5,
+        "overline" => y + font_size * 0.05,
+        _ => return,
+    };
+    let thickness = 1.0_f32.max(font_size / 16.0);
+    let paint = make_paint(color);
+    if let Some(rect) = Rect::from_xywh(x, line_y, width, thickness) {
+        pixmap.fill_rect(rect, &paint, Transform::identity(), None);
+    }
+}
+
 fn draw_text(
     pixmap: &mut Pixmap,
     text: &str,
@@ -173,6 +202,10 @@ pub fn draw_tree(pixmap: &mut Pixmap, layout: &LayoutTree, font: &fontdue::Font)
     for node in &layout.root {
         draw_node(pixmap, node, font);
     }
+    // Draw overlays on top of root content
+    for node in &layout.overlays {
+        draw_node(pixmap, node, font);
+    }
 }
 
 fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font) {
@@ -202,7 +235,18 @@ fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font) {
             if !text.is_empty() {
                 let font_size = get_font_size(&node.props, false) as f32;
                 let color = get_color_u32(&node.props, "color", 0x000000);
-                draw_text(pixmap, &text, x, y, font_size, font, color);
+                let text_align = get_str_prop(&node.props, "text-align", "");
+                let text_width = text.len() as f32 * font_size * 0.6;
+                let draw_x = match text_align.as_str() {
+                    "center" => x + (w - text_width) / 2.0,
+                    "right" | "end" => x + w - text_width,
+                    _ => x,
+                };
+                draw_text(pixmap, &text, draw_x, y, font_size, font, color);
+                let decoration = get_str_prop(&node.props, "text-decoration", "");
+                if !decoration.is_empty() {
+                    draw_text_decoration(pixmap, draw_x, y, text_width, font_size, &decoration, color);
+                }
             }
         }
         "heading" => {
@@ -210,7 +254,18 @@ fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font) {
             if !text.is_empty() {
                 let font_size = get_font_size(&node.props, true) as f32;
                 let color = get_color_u32(&node.props, "color", 0x000000);
-                draw_text(pixmap, &text, x, y, font_size, font, color);
+                let text_align = get_str_prop(&node.props, "text-align", "");
+                let text_width = text.len() as f32 * font_size * 0.6;
+                let draw_x = match text_align.as_str() {
+                    "center" => x + (w - text_width) / 2.0,
+                    "right" | "end" => x + w - text_width,
+                    _ => x,
+                };
+                draw_text(pixmap, &text, draw_x, y, font_size, font, color);
+                let decoration = get_str_prop(&node.props, "text-decoration", "");
+                if !decoration.is_empty() {
+                    draw_text_decoration(pixmap, draw_x, y, text_width, font_size, &decoration, color);
+                }
             }
         }
         "row" | "column" | "stack" | "grid" => {

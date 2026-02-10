@@ -1,0 +1,19 @@
+-- Text Overflow: ellipsis, letter-spacing, overflow hidden
+app "Text Overflow" {
+  column padding: 20px, gap: 16px {
+    heading "Text Overflow"
+
+    text "This is a very long text that should be truncated with an ellipsis when it exceeds the container width", text-overflow: "ellipsis"
+
+    heading "Letter Spacing"
+    text "Normal spacing"
+    text "Wide spacing", letter-spacing: 4px
+    text "Tight spacing", letter-spacing: -1px
+
+    heading "Overflow Hidden"
+    column width: 150px, height: 60px, color: #f1f5f9, padding: 8px, overflow: "hidden" {
+      text "This content is clipped by the container boundary"
+      rect width: 200px, height: 30px, color: #3b82f6
+    }
+  }
+}

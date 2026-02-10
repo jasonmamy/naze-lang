@@ -1,0 +1,17 @@
+-- File Input: upload files with accept and max-size constraints
+app "File Upload" {
+  state avatar = ""
+  state document = ""
+
+  column padding: 20px, gap: 16px {
+    heading "File Upload"
+
+    text "Profile Avatar"
+    input type: "file", bind: avatar, accept: "image/*", max-size: "5mb"
+
+    text "Document"
+    input type: "file", bind: document, accept: ".pdf,.doc,.docx"
+
+    text "Selected: {avatar}"
+  }
+}

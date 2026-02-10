@@ -338,6 +338,10 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         title: tree.title.clone(),
         state: tree.state.clone(),
         data: tree.data.clone(),
+        computed: tree.computed.clone(),
+        storage: tree.storage.clone(),
+        timers: tree.timers.clone(),
+        params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
     }

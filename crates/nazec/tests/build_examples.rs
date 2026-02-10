@@ -5,7 +5,7 @@ use naze_compiler::error::Severity;
 use naze_compiler::resolve;
 use naze_compiler::typecheck;
 
-const WASM_SIZE_LIMIT: usize = 150 * 1024; // 150KB (Phase 2 budget)
+const WASM_SIZE_LIMIT: usize = 350 * 1024; // 350KB (Phase 3 budget — grew from storage, params, timers, streams, computed, a11y)
 
 /// Embedded runtime WASM — same as what nazec embeds.
 const RUNTIME_WASM: &[u8] =

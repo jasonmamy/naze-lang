@@ -1,0 +1,14 @@
+-- Transform: rotate, scale, translate
+app "Transform Demo" {
+  column padding: 40px, gap: 32px {
+    heading "Transforms"
+
+    row gap: 40px {
+      rect width: 80px, height: 80px, color: #3b82f6, radius: 8px, transform: "rotate(45deg)"
+      rect width: 80px, height: 80px, color: #ef4444, radius: 8px, transform: "scale(1.3)"
+      rect width: 80px, height: 80px, color: #10b981, radius: 8px, transform: "translate(10px, -5px)"
+    }
+
+    text "Rotated text", transform: "rotate(-5deg)"
+  }
+}

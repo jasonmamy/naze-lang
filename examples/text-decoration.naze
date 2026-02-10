@@ -1,0 +1,16 @@
+-- Text Decoration: underline, line-through, overline + cursor styles
+app "Text Decoration" {
+  column padding: 20px, gap: 16px {
+    heading "Text Decoration"
+
+    text "Underlined text", text-decoration: "underline"
+    text "Line-through text", text-decoration: "line-through"
+    text "Overline text", text-decoration: "overline"
+
+    heading "Cursor Styles"
+    rect width: 200px, height: 40px, color: #3b82f6, radius: 8px, cursor: "pointer"
+    rect width: 200px, height: 40px, color: #ef4444, radius: 8px, cursor: "crosshair"
+    text "Hover for help cursor", cursor: "help"
+    text "Not allowed cursor", cursor: "not-allowed"
+  }
+}

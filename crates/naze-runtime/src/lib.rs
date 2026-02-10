@@ -5,7 +5,7 @@ use js_sys::RegExp;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-use naze_ir::{IrAction, IrBinOp, IrExpression, PageDef, RenderNode, RenderTree, RenderValue, TextPart};
+use naze_ir::{ComputedDecl, IrAction, IrBinOp, IrExpression, PageDef, ParamDecl, RenderNode, RenderTree, RenderValue, StorageDecl, TimerDecl, TextPart};
 use naze_layout::{self, LayoutTree, PositionedNode, ScrollInfo};
 use naze_renderer::{self, canvas::Renderer};
 
@@ -237,6 +237,9 @@ thread_local! {
 /// `canvas_id` is the HTML id of the canvas element to render into.
 #[wasm_bindgen]
 pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
+    // 0. Set up panic hook for better error messages
+    console_error_panic_hook::set_once();
+
     // 1. Deserialize the render tree
     let render_tree: RenderTree = naze_ir::deserialize(app_data)
         .map_err(|e| JsValue::from_str(&format!("failed to deserialize app data: {}", e)))?;
@@ -254,14 +257,30 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
         state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
     }
 
+    // 3b. Initialize storage-backed state (read from localStorage/sessionStorage)
+    init_storage(&render_tree.storage, &mut state_store);
+
+    // 3c. Initialize URL params (read from query string, fallback to defaults)
+    init_params(&render_tree.params, &mut state_store);
+
+    // 3d. Evaluate computed values (derived from initial state)
+    recompute_computed(&render_tree.computed, &mut state_store);
+
     // 4. Set up the renderer
     let renderer = Renderer::new(canvas_id)?;
 
     // 5. Get initial path from URL or default to "/"
     let current_path = get_current_path();
 
-    // 6. Collect data URLs for fetching after setup
-    let data_fetches: Vec<(String, String)> = render_tree.data.iter()
+    // 6. Collect data declarations for fetching after setup (skip manual triggers and streams)
+    let data_fetches: Vec<(String, String, String)> = render_tree.data.iter()
+        .filter(|d| d.trigger_mode == 0 && d.source_type == 0) // skip manual trigger and streams
+        .map(|d| (d.name.clone(), d.url.clone(), d.method.clone()))
+        .collect();
+
+    // 6b. Collect stream declarations for WebSocket/SSE connections
+    let stream_connects: Vec<(String, String)> = render_tree.data.iter()
+        .filter(|d| d.source_type == 1) // stream sources
         .map(|d| (d.name.clone(), d.url.clone()))
         .collect();
 
@@ -303,9 +322,17 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
     setup_popstate_handler()?;
 
     // 13. Fire off data fetches
-    for (name, url) in data_fetches {
-        fetch_data(&name, &url);
+    for (name, url, method) in data_fetches {
+        fetch_data(&name, &url, &method);
     }
+
+    // 13b. Connect WebSocket/SSE streams
+    for (name, url) in stream_connects {
+        connect_stream(&name, &url);
+    }
+
+    // 14. Set up timers
+    setup_timers();
 
     Ok(())
 }
@@ -341,6 +368,22 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
     for decl in &render_tree.state {
         state_store.insert(decl.name.clone(), decl.initial.clone());
     }
+
+    // 2b. Initialize data state variables (loading=true, error=null, data=null)
+    for decl in &render_tree.data {
+        state_store.insert(format!("{}.loading", decl.name), RenderValue::Bool(true));
+        state_store.insert(format!("{}.error", decl.name), RenderValue::Str(String::new()));
+        state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
+    }
+
+    // 2c. Initialize storage-backed state
+    init_storage(&render_tree.storage, &mut state_store);
+
+    // 2d. Initialize URL params
+    init_params(&render_tree.params, &mut state_store);
+
+    // 2e. Evaluate computed values
+    recompute_computed(&render_tree.computed, &mut state_store);
 
     // 3. Update global app state
     APP.with(|cell| {
@@ -585,6 +628,10 @@ fn do_render() -> Result<(), JsValue> {
         // Get current time for animation processing
         let now = get_now_ms();
 
+        // 0. Re-evaluate computed values and persist storage before resolving
+        recompute_computed(&app.render_tree.computed, &mut app.state_store);
+        persist_storage(&app.render_tree.storage, &app.state_store);
+
         // 1. Resolve interpolated strings against current state
         let resolved = resolve_tree(&app.render_tree, &app.state_store);
 
@@ -615,6 +662,10 @@ fn do_render() -> Result<(), JsValue> {
             title: resolved.title.clone(),
             state: resolved.state.clone(),
             data: vec![],
+            computed: vec![],
+            storage: vec![],
+            timers: vec![],
+            params: vec![],
             root: animated_root,
             pages: vec![],
         };
@@ -725,6 +776,10 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         title: tree.title.clone(),
         state: tree.state.clone(),
         data: tree.data.clone(),
+        computed: tree.computed.clone(),
+        storage: tree.storage.clone(),
+        timers: tree.timers.clone(),
+        params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.iter().map(|page| PageDef {
             path: page.path.clone(),
@@ -863,6 +918,10 @@ fn draw_tree(
     for node in &layout.root {
         draw_node(renderer, node, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
     }
+    // Draw overlays on top of root content (later index = higher z-order)
+    for node in &layout.overlays {
+        draw_node(renderer, node, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+    }
 }
 
 /// Recursively draw a positioned node and its children.
@@ -893,21 +952,61 @@ fn draw_node(
         renderer.set_global_alpha(opacity);
     }
 
+    // Handle transform - wrap in save/restore
+    let transform = naze_renderer::get_str_prop(&node.props, "transform", "");
+    let needs_transform = !transform.is_empty();
+    if needs_transform {
+        renderer.save();
+        let cx = x + w / 2.0;
+        let cy = y + h / 2.0;
+        renderer.apply_transform(&transform, cx, cy);
+    }
+
     match node.kind.as_str() {
         "rect" => {
-            let color = naze_renderer::get_color_prop(&node.props, "color", "#000000");
+            let shadow = naze_renderer::get_str_prop(&node.props, "shadow", "");
+            let has_shadow = !shadow.is_empty();
+            if has_shadow {
+                renderer.save();
+                renderer.apply_shadow(&shadow);
+            }
+            let gradient = naze_renderer::get_str_prop(&node.props, "gradient", "");
             let radius = naze_renderer::get_num_prop(&node.props, "radius", 0.0);
-            let border = naze_renderer::get_num_prop(&node.props, "border", 0.0);
-            let border_color = naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
-            renderer.draw_rect_with_border(x, y, w, h, &color, radius, border, &border_color);
+            if !gradient.is_empty() {
+                renderer.fill_rect_with_gradient(x, y, w, h, &gradient, radius);
+            } else {
+                let color = naze_renderer::get_color_prop(&node.props, "color", "#000000");
+                let border = naze_renderer::get_num_prop(&node.props, "border", 0.0);
+                let border_color = naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
+                renderer.draw_rect_with_border(x, y, w, h, &color, radius, border, &border_color);
+            }
+            if has_shadow {
+                renderer.clear_shadow();
+                renderer.restore();
+            }
         }
         "container" => {
-            let color = naze_renderer::get_color_prop(&node.props, "color", "");
+            let shadow = naze_renderer::get_str_prop(&node.props, "shadow", "");
+            let has_shadow = !shadow.is_empty();
+            if has_shadow {
+                renderer.save();
+                renderer.apply_shadow(&shadow);
+            }
+            let gradient = naze_renderer::get_str_prop(&node.props, "gradient", "");
             let radius = naze_renderer::get_num_prop(&node.props, "radius", 0.0);
-            let border = naze_renderer::get_num_prop(&node.props, "border", 0.0);
-            let border_color = naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
-            if !color.is_empty() || border > 0.0 {
-                renderer.draw_rect_with_border(x, y, w, h, &color, radius, border, &border_color);
+            if !gradient.is_empty() {
+                renderer.fill_rect_with_gradient(x, y, w, h, &gradient, radius);
+            } else {
+                let color = naze_renderer::get_color_prop(&node.props, "color", "");
+                let border = naze_renderer::get_num_prop(&node.props, "border", 0.0);
+                let border_color = naze_renderer::get_color_prop(&node.props, "border-color", "#000000");
+                if !color.is_empty() || border > 0.0 {
+                    renderer.draw_rect_with_border(x, y, w, h, &color, radius, border, &border_color);
+                }
+            }
+            if has_shadow {
+                renderer.clear_shadow();
+                renderer.restore();
             }
             for child in &node.children {
                 draw_node(renderer, child, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
@@ -918,7 +1017,32 @@ fn draw_node(
             if !text.is_empty() {
                 let font_size = naze_renderer::get_font_size(&node.props, false);
                 let color = naze_renderer::get_color_prop(&node.props, "color", "#000000");
-                renderer.draw_text(&text, x, y, font_size, false, &color);
+                let text_align = naze_renderer::get_str_prop(&node.props, "text-align", "");
+                let text_overflow = naze_renderer::get_str_prop(&node.props, "text-overflow", "");
+                let letter_spacing = naze_renderer::get_num_prop(&node.props, "letter-spacing", 0.0);
+                if letter_spacing != 0.0 {
+                    renderer.set_letter_spacing(letter_spacing);
+                }
+                if text_overflow == "ellipsis" {
+                    renderer.draw_text_ellipsis(&text, x, y, font_size, false, &color, w);
+                } else if !text_align.is_empty() {
+                    renderer.draw_text_aligned(&text, x, y, font_size, false, &color, &text_align, w);
+                } else {
+                    renderer.draw_text(&text, x, y, font_size, false, &color);
+                }
+                let decoration = naze_renderer::get_str_prop(&node.props, "text-decoration", "");
+                if !decoration.is_empty() {
+                    let (tw, _) = renderer.measure_text(&text, font_size, false);
+                    let draw_x = match text_align.as_str() {
+                        "center" => x + (w - tw) / 2.0,
+                        "right" | "end" => x + w - tw,
+                        _ => x,
+                    };
+                    renderer.draw_text_decoration(draw_x, y, tw, font_size, &decoration, &color);
+                }
+                if letter_spacing != 0.0 {
+                    renderer.clear_letter_spacing();
+                }
             }
         }
         "heading" => {
@@ -926,7 +1050,32 @@ fn draw_node(
             if !text.is_empty() {
                 let font_size = naze_renderer::get_font_size(&node.props, true);
                 let color = naze_renderer::get_color_prop(&node.props, "color", "#000000");
-                renderer.draw_text(&text, x, y, font_size, true, &color);
+                let text_align = naze_renderer::get_str_prop(&node.props, "text-align", "");
+                let text_overflow = naze_renderer::get_str_prop(&node.props, "text-overflow", "");
+                let letter_spacing = naze_renderer::get_num_prop(&node.props, "letter-spacing", 0.0);
+                if letter_spacing != 0.0 {
+                    renderer.set_letter_spacing(letter_spacing);
+                }
+                if text_overflow == "ellipsis" {
+                    renderer.draw_text_ellipsis(&text, x, y, font_size, true, &color, w);
+                } else if !text_align.is_empty() {
+                    renderer.draw_text_aligned(&text, x, y, font_size, true, &color, &text_align, w);
+                } else {
+                    renderer.draw_text(&text, x, y, font_size, true, &color);
+                }
+                let decoration = naze_renderer::get_str_prop(&node.props, "text-decoration", "");
+                if !decoration.is_empty() {
+                    let (tw, _) = renderer.measure_text(&text, font_size, true);
+                    let draw_x = match text_align.as_str() {
+                        "center" => x + (w - tw) / 2.0,
+                        "right" | "end" => x + w - tw,
+                        _ => x,
+                    };
+                    renderer.draw_text_decoration(draw_x, y, tw, font_size, &decoration, &color);
+                }
+                if letter_spacing != 0.0 {
+                    renderer.clear_letter_spacing();
+                }
             }
         }
         "image" => {
@@ -991,6 +1140,10 @@ fn draw_node(
                 Some(RenderValue::Bind(var)) => {
                     match state.get(var) {
                         Some(RenderValue::Str(s)) => s.clone(),
+                        // For file inputs, state is an Object — extract the "name" field
+                        Some(RenderValue::Object(obj)) => {
+                            obj.iter().find(|(k, _)| k == "name").and_then(|(_, v)| if let RenderValue::Str(s) = v { Some(s.clone()) } else { None }).unwrap_or_default()
+                        }
                         _ => String::new(),
                     }
                 }
@@ -1088,13 +1241,36 @@ fn draw_node(
             }
         }
         "row" | "column" | "stack" | "grid" => {
-            let color = naze_renderer::get_color_prop(&node.props, "color", "");
+            let shadow = naze_renderer::get_str_prop(&node.props, "shadow", "");
+            let has_shadow = !shadow.is_empty();
+            if has_shadow {
+                renderer.save();
+                renderer.apply_shadow(&shadow);
+            }
+            let gradient = naze_renderer::get_str_prop(&node.props, "gradient", "");
             let radius = naze_renderer::get_num_prop(&node.props, "radius", 0.0);
-            if !color.is_empty() {
-                renderer.draw_rect(x, y, w, h, &color, radius);
+            if !gradient.is_empty() {
+                renderer.fill_rect_with_gradient(x, y, w, h, &gradient, radius);
+            } else {
+                let color = naze_renderer::get_color_prop(&node.props, "color", "");
+                if !color.is_empty() {
+                    renderer.draw_rect(x, y, w, h, &color, radius);
+                }
+            }
+            if has_shadow {
+                renderer.clear_shadow();
+                renderer.restore();
+            }
+            let overflow = naze_renderer::get_str_prop(&node.props, "overflow", "");
+            let clip = overflow == "hidden" || overflow == "clip";
+            if clip {
+                renderer.begin_clip(x, y, w, h, radius);
             }
             for child in &node.children {
                 draw_node(renderer, child, state, focused_input_id, focused_element_id, open_select_id, caret_visible, scroll_states);
+            }
+            if clip {
+                renderer.end_clip();
             }
         }
         "spacer" => {}
@@ -1109,6 +1285,10 @@ fn draw_node(
     if is_focused {
         let radius = naze_renderer::get_num_prop(&node.props, "radius", 0.0);
         renderer.draw_focus_ring(x, y, w, h, radius);
+    }
+
+    if needs_transform {
+        renderer.restore();
     }
 
     if needs_opacity {
@@ -1210,6 +1390,19 @@ fn setup_event_listeners() -> Result<(), JsValue> {
     window.add_event_listener_with_callback("keydown", keydown_cb.as_ref().unchecked_ref())?;
     keydown_cb.forget();
 
+    // Context menu handler — fire context-menu event handlers, suppress browser menu
+    let contextmenu_cb = Closure::<dyn Fn(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
+        let x = event.offset_x() as f32;
+        let y = event.offset_y() as f32;
+        let handled = handle_contextmenu(x, y);
+        if handled {
+            event.prevent_default();
+            schedule_render();
+        }
+    });
+    canvas.add_event_listener_with_callback("contextmenu", contextmenu_cb.as_ref().unchecked_ref())?;
+    contextmenu_cb.forget();
+
     Ok(())
 }
 
@@ -1228,13 +1421,74 @@ fn handle_click(x: f32, y: f32) -> bool {
             None => return false,
         };
 
+        // Check overlays first (topmost = last in vec, check in reverse)
+        // If click lands inside an overlay, handle it there; if outside, fire click-outside
+        let mut overlay_consumed = false;
+        for overlay in layout.overlays.iter().rev() {
+            if point_in_node(overlay, x, y) {
+                // Click is inside this overlay — check for inputs/selects/click handlers within it
+                if let Some((bind_var, node_id, current_value, input_type, change_handlers, validate_prop)) = find_input_at_point(&overlay.children, x, y, &app.state_store) {
+                    app.open_select_id = None;
+                    if input_type == "file" {
+                        let accept = find_input_prop_at_point(&overlay.children, x, y, "accept");
+                        let max_size = parse_max_size(&find_input_prop_at_point(&overlay.children, x, y, "max-size"));
+                        drop(borrow);
+                        open_file_picker(&bind_var, &accept, max_size, change_handlers);
+                    } else {
+                        drop(borrow);
+                        focus_input(&bind_var, &node_id, &current_value, &input_type, change_handlers, validate_prop);
+                    }
+                    return true;
+                }
+                let handlers = find_click_handlers(&overlay.children, x, y);
+                if !handlers.is_empty() {
+                    let mut changed = false;
+                    for handler in &handlers {
+                        if execute_action(&handler.action, &mut app.state_store) {
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
+                overlay_consumed = true;
+                break;
+            } else {
+                // Click is outside this overlay — fire click-outside handlers
+                let outside_handlers: Vec<_> = overlay.handlers.iter()
+                    .filter(|h| h.event == "click-outside")
+                    .cloned()
+                    .collect();
+                if !outside_handlers.is_empty() {
+                    let mut changed = false;
+                    for handler in &outside_handlers {
+                        if execute_action(&handler.action, &mut app.state_store) {
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
+            }
+        }
+
+        // If an overlay consumed the click but had no specific handler, block click-through
+        if overlay_consumed {
+            return false;
+        }
+
         // Check if clicking on an input element first
         if let Some((bind_var, node_id, current_value, input_type, change_handlers, validate_prop)) = find_input_at_point(&layout.root, x, y, &app.state_store) {
             // Close any open select when clicking an input
             app.open_select_id = None;
-            // Drop borrow before calling focus_input which needs to borrow again
-            drop(borrow);
-            focus_input(&bind_var, &node_id, &current_value, &input_type, change_handlers, validate_prop);
+            if input_type == "file" {
+                let accept = find_input_prop_at_point(&layout.root, x, y, "accept");
+                let max_size = parse_max_size(&find_input_prop_at_point(&layout.root, x, y, "max-size"));
+                drop(borrow);
+                open_file_picker(&bind_var, &accept, max_size, change_handlers);
+            } else {
+                // Drop borrow before calling focus_input which needs to borrow again
+                drop(borrow);
+                focus_input(&bind_var, &node_id, &current_value, &input_type, change_handlers, validate_prop);
+            }
             return true; // Needs re-render to show focus
         }
 
@@ -1286,6 +1540,7 @@ fn handle_click(x: f32, y: f32) -> bool {
 }
 
 /// Check if any node at (x, y) has a handler for the given event.
+/// Checks overlays first when a layout is available.
 fn hit_test_any_handler(nodes: &[PositionedNode], x: f32, y: f32, event: &str) -> bool {
     // Walk depth-first; check deepest children first
     for node in nodes.iter().rev() {
@@ -1304,6 +1559,17 @@ fn hit_test_any_handler(nodes: &[PositionedNode], x: f32, y: f32, event: &str) -
         }
     }
     false
+}
+
+/// Check overlays then root for any handler at (x, y).
+fn hit_test_any_handler_with_overlays(layout: &LayoutTree, x: f32, y: f32, event: &str) -> bool {
+    // Check overlays first (topmost = last)
+    for overlay in layout.overlays.iter().rev() {
+        if point_in_node(overlay, x, y) {
+            return hit_test_any_handler(&overlay.children, x, y, event);
+        }
+    }
+    hit_test_any_handler(&layout.root, x, y, event)
 }
 
 /// Find click handlers on the deepest node at (x, y).
@@ -1380,6 +1646,105 @@ fn find_hover_element(
     None
 }
 
+// ─── Overlay helpers ─────────────────────────────────────────────────────────
+
+/// Find event handlers at a point for a specific event type (e.g., "pointer-move", "context-menu").
+fn find_event_handlers_at_point(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+    event: &str,
+) -> Vec<naze_ir::IrEventHandler> {
+    for node in nodes.iter().rev() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        // Check children first (deeper wins)
+        let child_handlers = find_event_handlers_at_point(&node.children, x, y, event);
+        if !child_handlers.is_empty() {
+            return child_handlers;
+        }
+        let handlers: Vec<_> = node.handlers.iter()
+            .filter(|h| h.event == event)
+            .cloned()
+            .collect();
+        if !handlers.is_empty() {
+            return handlers;
+        }
+    }
+    Vec::new()
+}
+
+/// Handle right-click / context menu. Returns true if a handler was found.
+fn handle_contextmenu(x: f32, y: f32) -> bool {
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        let app = match borrow.as_mut() {
+            Some(a) => a,
+            None => return false,
+        };
+        let layout = match &app.layout {
+            Some(l) => l.clone(),
+            None => return false,
+        };
+
+        // Check overlays first
+        for overlay in layout.overlays.iter().rev() {
+            if point_in_node(overlay, x, y) {
+                let handlers = find_event_handlers_at_point(&overlay.children, x, y, "context-menu");
+                if !handlers.is_empty() {
+                    let mut changed = false;
+                    for handler in &handlers {
+                        if execute_action(&handler.action, &mut app.state_store) {
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
+                return false; // Inside overlay but no handler
+            }
+        }
+
+        // Check root
+        let handlers = find_event_handlers_at_point(&layout.root, x, y, "context-menu");
+        if handlers.is_empty() {
+            return false;
+        }
+        let mut changed = false;
+        for handler in &handlers {
+            if execute_action(&handler.action, &mut app.state_store) {
+                changed = true;
+            }
+        }
+        changed
+    })
+}
+
+/// Get the topmost overlay with focus-trap: true, if any.
+fn get_focus_trap_overlay(layout: &LayoutTree) -> Option<PositionedNode> {
+    for overlay in layout.overlays.iter().rev() {
+        if let Some(RenderValue::Bool(true)) = overlay.props.get("focus-trap") {
+            return Some(overlay.clone());
+        }
+    }
+    None
+}
+
+/// Find handlers by element ID, searching overlays first then root.
+fn find_handlers_in_layout(
+    layout: &LayoutTree,
+    element_id: &str,
+    event: &str,
+) -> Option<Vec<naze_ir::IrEventHandler>> {
+    // Search overlays first
+    for overlay in layout.overlays.iter().rev() {
+        if let Some(handlers) = find_handlers_by_element_id(&overlay.children, element_id, event) {
+            return Some(handlers);
+        }
+    }
+    find_handlers_by_element_id(&layout.root, element_id, event)
+}
+
 // ─── Action execution ────────────────────────────────────────────────────────
 
 /// Execute an action, mutating the state store. Returns true if state was changed.
@@ -1405,6 +1770,29 @@ fn execute_action(
             let value = evaluate_expr(expr, state);
             log_to_console(&value);
             false // no re-render needed
+        }
+        IrAction::Trigger { data_name } => {
+            // Re-fetch the named data source
+            web_sys::console::log_1(&format!("trigger: re-fetching {}", data_name).into());
+            // Trigger will be handled by the main event loop after re-render
+            true
+        }
+        IrAction::Copy { expr } => {
+            let value = evaluate_expr(expr, state);
+            let text = render_value_to_string(&value);
+            // Use the Clipboard API
+            if let Some(window) = web_sys::window() {
+                let clipboard = window.navigator().clipboard();
+                let _ = clipboard.write_text(&text);
+            }
+            false // no re-render needed
+        }
+        IrAction::Send { stream_name, expr } => {
+            let value = evaluate_expr(expr, state);
+            let _text = render_value_to_string(&value);
+            // WebSocket send — stub until Batch 6 (data streams)
+            web_sys::console::log_1(&format!("send to {}: (stub)", stream_name).into());
+            false
         }
     }
 }
@@ -1470,6 +1858,197 @@ fn setup_popstate_handler() -> Result<(), JsValue> {
     popstate_cb.forget();
 
     Ok(())
+}
+
+// ─── Storage persistence ─────────────────────────────────────────────────────
+
+/// Initialize storage-backed state variables by reading from web storage.
+/// Falls back to the declared default value if storage is empty or unreadable.
+/// Initialize URL parameter state from query string, falling back to defaults.
+fn init_params(
+    param_decls: &[ParamDecl],
+    state: &mut HashMap<String, RenderValue>,
+) {
+    if param_decls.is_empty() {
+        return;
+    }
+
+    // Parse query string from URL
+    let query_params: HashMap<String, String> = if let Some(window) = web_sys::window() {
+        if let Ok(search) = window.location().search() {
+            let search = search.trim_start_matches('?');
+            search.split('&')
+                .filter_map(|pair| {
+                    let mut parts = pair.splitn(2, '=');
+                    let key = parts.next()?;
+                    let val = parts.next().unwrap_or("");
+                    if key.is_empty() { None } else { Some((key.to_string(), val.to_string())) }
+                })
+                .collect()
+        } else {
+            HashMap::new()
+        }
+    } else {
+        HashMap::new()
+    };
+
+    for decl in param_decls {
+        let value = if let Some(raw) = query_params.get(&decl.name) {
+            // Parse URL value according to declared type
+            match decl.param_type.as_str() {
+                "number" => {
+                    if let Ok(n) = raw.parse::<f64>() {
+                        RenderValue::Num(n, None)
+                    } else {
+                        decl.default.clone()
+                    }
+                }
+                "bool" => {
+                    RenderValue::Bool(raw == "true" || raw == "1")
+                }
+                _ => RenderValue::Str(raw.clone()),
+            }
+        } else {
+            decl.default.clone()
+        };
+        state.insert(decl.name.clone(), value);
+    }
+}
+
+fn init_storage(
+    storage_decls: &[StorageDecl],
+    state: &mut HashMap<String, RenderValue>,
+) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+    for decl in storage_decls {
+        let store = if decl.storage_type == 0 {
+            window.local_storage().ok().flatten()
+        } else {
+            window.session_storage().ok().flatten()
+        };
+        let value = store
+            .and_then(|s| s.get_item(&decl.key).ok().flatten())
+            .and_then(|raw| parse_storage_value(&raw))
+            .unwrap_or_else(|| decl.default.clone());
+        state.insert(decl.name.clone(), value);
+    }
+}
+
+/// Persist storage-backed state variables after a state change.
+fn persist_storage(
+    storage_decls: &[StorageDecl],
+    state: &HashMap<String, RenderValue>,
+) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+    for decl in storage_decls {
+        if let Some(value) = state.get(&decl.name) {
+            let store = if decl.storage_type == 0 {
+                window.local_storage().ok().flatten()
+            } else {
+                window.session_storage().ok().flatten()
+            };
+            if let Some(s) = store {
+                let raw = storage_value_to_string(value);
+                let _ = s.set_item(&decl.key, &raw);
+            }
+        }
+    }
+}
+
+fn parse_storage_value(raw: &str) -> Option<RenderValue> {
+    if raw == "true" {
+        Some(RenderValue::Bool(true))
+    } else if raw == "false" {
+        Some(RenderValue::Bool(false))
+    } else if let Ok(n) = raw.parse::<f64>() {
+        Some(RenderValue::Num(n, None))
+    } else {
+        Some(RenderValue::Str(raw.to_string()))
+    }
+}
+
+fn storage_value_to_string(value: &RenderValue) -> String {
+    match value {
+        RenderValue::Str(s) => s.clone(),
+        RenderValue::Num(n, _) => {
+            if n.fract() == 0.0 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{}", n)
+            }
+        }
+        RenderValue::Bool(b) => (if *b { "true" } else { "false" }).to_string(),
+        RenderValue::Color(c) => format!("#{:06x}", c),
+        _ => String::new(),
+    }
+}
+
+// ─── Timers ──────────────────────────────────────────────────────────────────
+
+/// Set up all timer declarations (setTimeout / setInterval).
+fn setup_timers() {
+    let timer_decls: Vec<TimerDecl> = APP.with(|cell| {
+        let borrow = cell.borrow();
+        borrow.as_ref().map(|app| app.render_tree.timers.clone()).unwrap_or_default()
+    });
+
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+
+    for decl in timer_decls {
+        let action = decl.action.clone();
+        let cb = Closure::<dyn Fn()>::new(move || {
+            let needs_render = APP.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                if let Some(app) = borrow.as_mut() {
+                    execute_action(&action, &mut app.state_store)
+                } else {
+                    false
+                }
+            });
+            if needs_render {
+                schedule_render();
+            }
+        });
+
+        if decl.kind == 0 {
+            // after → setTimeout
+            let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                cb.as_ref().unchecked_ref(),
+                decl.duration_ms as i32,
+            );
+        } else {
+            // every → setInterval
+            let _ = window.set_interval_with_callback_and_timeout_and_arguments_0(
+                cb.as_ref().unchecked_ref(),
+                decl.duration_ms as i32,
+            );
+        }
+        cb.forget(); // Leak the closure so it persists
+    }
+}
+
+// ─── Computed values ─────────────────────────────────────────────────────────
+
+/// Re-evaluate all computed declarations and update the state store.
+/// Computed values are evaluated in declaration order; a computed value
+/// can reference state variables and earlier computed values.
+fn recompute_computed(
+    computed: &[ComputedDecl],
+    state: &mut HashMap<String, RenderValue>,
+) {
+    for decl in computed {
+        let value = evaluate_expr(&decl.expr, state);
+        state.insert(decl.name.clone(), value);
+    }
 }
 
 // ─── Expression evaluation ───────────────────────────────────────────────────
@@ -1915,6 +2494,91 @@ fn focus_input(bind_var: &str, node_id: &str, current_value: &str, input_type: &
     }
 }
 
+/// Open a native file picker for file-type inputs.
+fn open_file_picker(bind_var: &str, accept: &str, max_size_bytes: u64, change_handlers: Vec<naze_ir::IrEventHandler>) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+    let document = match window.document() {
+        Some(d) => d,
+        None => return,
+    };
+
+    // Create a hidden <input type="file">
+    let el = match document.create_element("input") {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    let file_input: web_sys::HtmlInputElement = match el.dyn_into() {
+        Ok(i) => i,
+        Err(_) => return,
+    };
+    file_input.set_type("file");
+    if !accept.is_empty() {
+        file_input.set_attribute("accept", accept).ok();
+    }
+    let _ = file_input.style().set_property("display", "none");
+    if let Some(body) = document.body() {
+        let _ = body.append_child(&file_input);
+    }
+
+    let bind_var = bind_var.to_string();
+    let file_input_clone = file_input.clone();
+    let on_change = Closure::<dyn Fn()>::new(move || {
+        let files = match file_input_clone.files() {
+            Some(f) => f,
+            None => return,
+        };
+        let file = match files.get(0) {
+            Some(f) => f,
+            None => return,
+        };
+
+        let name = file.name();
+        let size = file.size() as u64;
+        let file_type = file.type_();
+
+        // Check max-size
+        if max_size_bytes > 0 && size > max_size_bytes {
+            web_sys::console::log_1(&format!("File too large: {} bytes (max {})", size, max_size_bytes).into());
+            return;
+        }
+
+        // Store file name in bound state variable
+        let bind = bind_var.clone();
+        let change_h = change_handlers.clone();
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                // Store as object with name, size, type
+                let obj = vec![
+                    ("name".to_string(), RenderValue::Str(name)),
+                    ("size".to_string(), RenderValue::Num(size as f64, None)),
+                    ("type".to_string(), RenderValue::Str(file_type)),
+                ];
+                app.state_store.insert(bind.clone(), RenderValue::Object(obj));
+                // Execute change handlers
+                for handler in &change_h {
+                    execute_action(&handler.action, &mut app.state_store);
+                }
+            }
+        });
+        schedule_render();
+
+        // Clean up the hidden input
+        if let Some(parent) = file_input_clone.parent_node() {
+            let _ = parent.remove_child(&file_input_clone);
+        }
+    });
+
+    file_input.set_onchange(Some(on_change.as_ref().unchecked_ref()));
+    on_change.forget();
+
+    // Trigger the file dialog
+    file_input.click();
+}
+
 /// Find an input node at the given point. Returns (bind_var, node_id, current_value, input_type, change_handlers, validate_prop) if found.
 fn find_input_at_point(nodes: &[PositionedNode], x: f32, y: f32, state: &HashMap<String, RenderValue>) -> Option<(String, String, String, String, Vec<naze_ir::IrEventHandler>, Option<RenderValue>)> {
     for node in nodes.iter().rev() {
@@ -1946,6 +2610,56 @@ fn find_input_at_point(nodes: &[PositionedNode], x: f32, y: f32, state: &HashMap
         }
     }
     None
+}
+
+/// Find a string prop on the input node at a given point.
+fn find_input_prop_at_point(nodes: &[PositionedNode], x: f32, y: f32, prop: &str) -> String {
+    for node in nodes.iter().rev() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        if let Some(result) = find_input_prop_at_point_inner(&node.children, x, y, prop) {
+            return result;
+        }
+        if node.kind == "input" {
+            return naze_renderer::get_str_prop(&node.props, prop, "").to_string();
+        }
+    }
+    String::new()
+}
+
+fn find_input_prop_at_point_inner(nodes: &[PositionedNode], x: f32, y: f32, prop: &str) -> Option<String> {
+    for node in nodes.iter().rev() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        if let Some(r) = find_input_prop_at_point_inner(&node.children, x, y, prop) {
+            return Some(r);
+        }
+        if node.kind == "input" {
+            return Some(naze_renderer::get_str_prop(&node.props, prop, "").to_string());
+        }
+    }
+    None
+}
+
+/// Parse a max-size string like "5mb", "500kb" into bytes.
+fn parse_max_size(s: &str) -> u64 {
+    let s = s.trim().to_lowercase();
+    if s.is_empty() {
+        return 0;
+    }
+    if let Some(rest) = s.strip_suffix("gb") {
+        rest.trim().parse::<u64>().unwrap_or(0) * 1024 * 1024 * 1024
+    } else if let Some(rest) = s.strip_suffix("mb") {
+        rest.trim().parse::<u64>().unwrap_or(0) * 1024 * 1024
+    } else if let Some(rest) = s.strip_suffix("kb") {
+        rest.trim().parse::<u64>().unwrap_or(0) * 1024
+    } else if let Some(rest) = s.strip_suffix('b') {
+        rest.trim().parse::<u64>().unwrap_or(0)
+    } else {
+        s.parse::<u64>().unwrap_or(0)
+    }
 }
 
 /// Find a select node at the given point. Returns (bind_var, select_id) if found.
@@ -2110,9 +2824,61 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
             return true; // Needs render to update ghost position
         }
 
-        // Track hover state - find deepest element with hover handlers
+        // Fire pointer-move handlers on nodes under the mouse
         let mut needs_render = false;
-        let hover_info = find_hover_element(&layout.root, x, y);
+        // Check overlays first, then root
+        let pointer_move_nodes: &[PositionedNode] = {
+            let mut found_in_overlay = false;
+            for overlay in layout.overlays.iter().rev() {
+                if point_in_node(overlay, x, y) {
+                    found_in_overlay = true;
+                    break;
+                }
+            }
+            if found_in_overlay {
+                // For pointer-move in overlays, search overlay children
+                &[]  // handled below per-overlay
+            } else {
+                &layout.root
+            }
+        };
+        // Fire pointer-move on overlay children if applicable
+        for overlay in layout.overlays.iter().rev() {
+            if point_in_node(overlay, x, y) {
+                let pm_handlers = find_event_handlers_at_point(&overlay.children, x, y, "pointer-move");
+                for handler in &pm_handlers {
+                    if execute_action(&handler.action, &mut app.state_store) {
+                        needs_render = true;
+                    }
+                }
+                break;
+            }
+        }
+        // Fire pointer-move on root nodes
+        if !pointer_move_nodes.is_empty() {
+            let pm_handlers = find_event_handlers_at_point(&layout.root, x, y, "pointer-move");
+            for handler in &pm_handlers {
+                if execute_action(&handler.action, &mut app.state_store) {
+                    needs_render = true;
+                }
+            }
+        }
+
+        // Track hover state - find deepest element with hover handlers
+        // Check overlays first
+        let hover_info = {
+            let mut result = None;
+            for overlay in layout.overlays.iter().rev() {
+                if point_in_node(overlay, x, y) {
+                    result = find_hover_element(&overlay.children, x, y);
+                    break;
+                }
+            }
+            if result.is_none() {
+                result = find_hover_element(&layout.root, x, y);
+            }
+            result
+        };
         let new_hover_id = hover_info.as_ref().map(|(id, _)| id.clone());
 
         if new_hover_id != app.hovered_element_id {
@@ -2128,15 +2894,23 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
         }
 
         // Update cursor based on what's under the mouse
-        let has_draggable = find_draggable_at_point(&layout.root, x, y).is_some();
-        let has_clickable = hit_test_any_handler(&layout.root, x, y, "click");
+        // Priority: explicit cursor prop > draggable > clickable > default
+        let explicit_cursor = find_cursor_prop_at_point(&layout.overlays, x, y)
+            .or_else(|| find_cursor_prop_at_point(&layout.root, x, y));
 
-        if has_draggable {
-            set_cursor("grab");
-        } else if has_clickable {
-            set_cursor("pointer");
+        if let Some(cursor) = explicit_cursor {
+            set_cursor(&cursor);
         } else {
-            set_cursor("default");
+            let has_draggable = find_draggable_at_point(&layout.root, x, y).is_some();
+            let has_clickable = hit_test_any_handler_with_overlays(&layout, x, y, "click");
+
+            if has_draggable {
+                set_cursor("grab");
+            } else if has_clickable {
+                set_cursor("pointer");
+            } else {
+                set_cursor("default");
+            }
         }
 
         needs_render
@@ -2262,6 +3036,24 @@ fn find_drop_target_at_point(nodes: &[PositionedNode], x: f32, y: f32) -> Option
     None
 }
 
+/// Find the cursor prop on the deepest node at the given point.
+fn find_cursor_prop_at_point(nodes: &[PositionedNode], x: f32, y: f32) -> Option<String> {
+    for node in nodes.iter().rev() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        // Check children first (deeper wins)
+        if let Some(result) = find_cursor_prop_at_point(&node.children, x, y) {
+            return Some(result);
+        }
+        // Check this node's cursor prop
+        if let Some(RenderValue::Str(cursor)) = node.props.get("cursor") {
+            return Some(cursor.clone());
+        }
+    }
+    None
+}
+
 /// Set the cursor style on the canvas.
 fn set_cursor(cursor: &str) {
     APP.with(|cell| {
@@ -2286,6 +3078,13 @@ fn handle_wheel(x: f32, y: f32, delta_x: f32, delta_y: f32) -> bool {
             Some(l) => l.clone(),
             None => return false,
         };
+
+        // Check if any visible overlay has scroll-lock: true — suppress scrolling
+        for overlay in layout.overlays.iter().rev() {
+            if let Some(RenderValue::Bool(true)) = overlay.props.get("scroll-lock") {
+                return false; // Scroll locked by overlay
+            }
+        }
 
         // Find scroll container at point
         if let Some((scroll_id, scroll_info, bounds)) = find_scroll_at_point(&layout.root, x, y) {
@@ -2404,11 +3203,10 @@ fn scroll_to_element(element_id: &str) {
         };
 
         // Find the element by ID and its containing scroll container
-        if let Some((element_y, scroll_id, scroll_info, container_y)) =
+        if let Some((element_y, scroll_id, scroll_info, container_y, container_h)) =
             find_element_and_scroll_container(&layout.root, element_id, None) {
             // Calculate the scroll offset to bring element into view
             let relative_y = element_y - container_y;
-            let container_h = scroll_info.content_height - scroll_info.content_height; // This should be viewport height
 
             // Get or create scroll state
             let state = app.scroll_states.entry(scroll_id).or_default();
@@ -2421,18 +3219,18 @@ fn scroll_to_element(element_id: &str) {
 }
 
 /// Find an element by ID and its containing scroll container.
-/// Returns (element_y, scroll_id, scroll_info, container_y) if found.
+/// Returns (element_y, scroll_id, scroll_info, container_y, container_h) if found.
 fn find_element_and_scroll_container(
     nodes: &[PositionedNode],
     element_id: &str,
-    current_scroll: Option<(String, ScrollInfo, f32)>,
-) -> Option<(f32, String, ScrollInfo, f32)> {
+    current_scroll: Option<(String, ScrollInfo, f32, f32)>,
+) -> Option<(f32, String, ScrollInfo, f32, f32)> {
     for node in nodes {
         // Update current scroll container if this is a scroll node
         let scroll_context = if node.kind == "scroll" {
             if let Some(ref info) = node.scroll_info {
                 let scroll_id = format!("scroll_{}_{}", node.x as i32, node.y as i32);
-                Some((scroll_id, info.clone(), node.y))
+                Some((scroll_id, info.clone(), node.y, node.height))
             } else {
                 current_scroll.clone()
             }
@@ -2443,8 +3241,8 @@ fn find_element_and_scroll_container(
         // Check if this node has the target ID
         if let Some(RenderValue::Str(id)) = node.props.get("id") {
             if id == element_id {
-                if let Some((scroll_id, scroll_info, container_y)) = scroll_context {
-                    return Some((node.y, scroll_id, scroll_info, container_y));
+                if let Some((scroll_id, scroll_info, container_y, container_h)) = scroll_context {
+                    return Some((node.y, scroll_id, scroll_info, container_y, container_h));
                 }
             }
         }
@@ -2473,8 +3271,14 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
         };
 
         // Handle Tab key for focus navigation
+        // If an overlay has focus-trap, restrict focusable elements to that overlay
+        let focusable_source = get_focus_trap_overlay(&layout);
+        let focusable_nodes = match &focusable_source {
+            Some(overlay) => &overlay.children,
+            None => layout.root.as_slice(),
+        };
         if key == "Tab" {
-            let focusable = collect_focusable_elements(&layout.root);
+            let focusable = collect_focusable_elements(focusable_nodes);
             if focusable.is_empty() {
                 return false;
             }
@@ -2543,13 +3347,62 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
             }
         }
 
-        // Handle Escape key - blur focused element
+        // Handle Escape key - dismiss topmost overlay first, then blur focused element
         if key == "Escape" {
+            // Check if any overlay should be dismissed (topmost first)
+            for overlay in layout.overlays.iter().rev() {
+                // dismiss-on-escape defaults to true; opt out with dismiss-on-escape: false
+                let dismiss = match overlay.props.get("dismiss-on-escape") {
+                    Some(RenderValue::Bool(false)) => false,
+                    _ => true,
+                };
+                if dismiss {
+                    // Fire click-outside handlers to dismiss the overlay
+                    let outside_handlers: Vec<_> = overlay.handlers.iter()
+                        .filter(|h| h.event == "click-outside")
+                        .cloned()
+                        .collect();
+                    if !outside_handlers.is_empty() {
+                        let mut changed = false;
+                        for handler in &outside_handlers {
+                            if execute_action(&handler.action, &mut app.state_store) {
+                                changed = true;
+                            }
+                        }
+                        return changed;
+                    }
+                }
+            }
+            // No overlay to dismiss — blur focused element
             if app.focused_element_id.is_some() || app.focused_input.is_some() {
                 app.focused_element_id = None;
                 app.focused_input = None;
                 blur_hidden_input();
                 return true;
+            }
+        }
+
+        // Handle arrow key events on focused element
+        let arrow_event = match key {
+            "ArrowUp" => Some("arrow-up"),
+            "ArrowDown" => Some("arrow-down"),
+            "ArrowLeft" => Some("arrow-left"),
+            "ArrowRight" => Some("arrow-right"),
+            _ => None,
+        };
+        if let Some(event_name) = arrow_event {
+            if let Some(ref focused_id) = app.focused_element_id.clone() {
+                // Search overlays first, then root
+                let handlers = find_handlers_in_layout(&layout, focused_id, event_name);
+                if let Some(handlers) = handlers {
+                    let mut changed = false;
+                    for handler in &handlers {
+                        if execute_action(&handler.action, &mut app.state_store) {
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
             }
         }
 
@@ -2932,14 +3785,15 @@ fn create_a11y_element(
 
 /// Fetch data from a URL and populate the state variables.
 /// Creates {name}.loading, {name}.error, {name}.data state variables.
-fn fetch_data(name: &str, url: &str) {
+fn fetch_data(name: &str, url: &str, method: &str) {
     use wasm_bindgen_futures::spawn_local;
 
     let name = name.to_string();
     let url = url.to_string();
+    let method = method.to_string();
 
     spawn_local(async move {
-        let result = do_fetch(&url).await;
+        let result = do_fetch(&url, &method).await;
 
         APP.with(|cell| {
             let mut borrow = cell.borrow_mut();
@@ -2978,13 +3832,90 @@ fn fetch_data(name: &str, url: &str) {
     });
 }
 
+/// Connect to a WebSocket stream and append incoming messages to the data list.
+fn connect_stream(name: &str, url: &str) {
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+
+    let ws = match web_sys::WebSocket::new(url) {
+        Ok(ws) => ws,
+        Err(e) => {
+            web_sys::console::log_1(&format!("WebSocket connect failed: {:?}", e).into());
+            return;
+        }
+    };
+
+    let name_clone = name.to_string();
+
+    // Set loading to false on open
+    let name_open = name_clone.clone();
+    let onopen = Closure::wrap(Box::new(move |_: web_sys::Event| {
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                app.state_store.insert(
+                    format!("{}.loading", name_open),
+                    RenderValue::Bool(false),
+                );
+            }
+        });
+        schedule_render();
+    }) as Box<dyn Fn(web_sys::Event)>);
+    ws.set_onopen(Some(onopen.as_ref().unchecked_ref()));
+    onopen.forget();
+
+    // Append incoming messages to data list
+    let name_msg = name_clone.clone();
+    let onmessage = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
+        if let Some(text) = e.data().as_string() {
+            APP.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                if let Some(app) = borrow.as_mut() {
+                    let key = format!("{}.data", name_msg);
+                    let current = app.state_store.get(&key).cloned().unwrap_or(RenderValue::List(vec![]));
+                    let mut items = match current {
+                        RenderValue::List(items) => items,
+                        _ => vec![],
+                    };
+                    items.push(RenderValue::Str(text));
+                    app.state_store.insert(key, RenderValue::List(items));
+                }
+            });
+            schedule_render();
+        }
+    }) as Box<dyn Fn(web_sys::MessageEvent)>);
+    ws.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
+    onmessage.forget();
+
+    // Set error on close/error
+    let name_err = name_clone.clone();
+    let onerror = Closure::wrap(Box::new(move |_: web_sys::Event| {
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                app.state_store.insert(
+                    format!("{}.error", name_err),
+                    RenderValue::Str("WebSocket error".to_string()),
+                );
+                app.state_store.insert(
+                    format!("{}.loading", name_err),
+                    RenderValue::Bool(false),
+                );
+            }
+        });
+        schedule_render();
+    }) as Box<dyn Fn(web_sys::Event)>);
+    ws.set_onerror(Some(onerror.as_ref().unchecked_ref()));
+    onerror.forget();
+}
+
 /// Perform the actual HTTP fetch and parse JSON response.
-async fn do_fetch(url: &str) -> Result<RenderValue, String> {
+async fn do_fetch(url: &str, method: &str) -> Result<RenderValue, String> {
     let window = web_sys::window().ok_or("no window")?;
 
-    // Create request
+    // Create request with configured method
     let opts = web_sys::RequestInit::new();
-    opts.set_method("GET");
+    opts.set_method(&method.to_uppercase());
     opts.set_mode(web_sys::RequestMode::Cors);
 
     let request = web_sys::Request::new_with_str_and_init(url, &opts)

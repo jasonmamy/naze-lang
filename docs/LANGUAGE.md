@@ -13,12 +13,12 @@ A `.naze` file contains any combination of:
 - `component` definitions (component files)
 - `theme` definitions
 - `let` bindings and `state` declarations
-- `computed` declarations *(planned)*
-- `shared state` declarations *(planned)*
-- `storage` declarations *(planned)*
+- `computed` declarations
+- `shared state` declarations
+- `storage` declarations
 - `data` declarations (async fetch, streams)
-- `param` declarations *(planned)*
-- `timer` declarations *(planned)*
+- `param` declarations
+- `timer` declarations
 - Elements
 
 ```naze
@@ -132,7 +132,7 @@ row gap: 12px, padding: 16px {
 }
 ```
 
-**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`, `wrap`, `flex-grow`, `flex-shrink`, `min-width`, `max-width`, `min-height`, `max-height`
+**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`, `wrap`, `flex-grow`, `flex-shrink`, `min-width`, `max-width`, `min-height`, `max-height`, `cursor`, `shadow`, `overflow`, `gradient`, `transform`
 
 #### `column`
 
@@ -145,13 +145,13 @@ column gap: 16px, padding: 20px {
 }
 ```
 
-**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`, `wrap`, `flex-grow`, `flex-shrink`, `min-width`, `max-width`, `min-height`, `max-height`
+**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`, `wrap`, `flex-grow`, `flex-shrink`, `min-width`, `max-width`, `min-height`, `max-height`, `cursor`, `shadow`, `overflow`, `gradient`, `transform`
 
 #### `stack`
 
 Layers children on top of each other at the same position. All children share the same origin point. Useful for overlays and backgrounds.
 
-**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`
+**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`, `cursor`, `shadow`, `overflow`, `gradient`, `transform`
 
 #### `grid`
 
@@ -166,7 +166,7 @@ grid columns: 3, gap: 8px {
 }
 ```
 
-**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`
+**Props:** `padding`, `gap`, `width`, `height`, `color`, `columns`, `align`, `justify`, `cursor`, `shadow`, `overflow`, `gradient`, `transform`
 
 #### `container`
 
@@ -178,7 +178,7 @@ container padding: 16px, color: #eff6ff, radius: 8px {
 }
 ```
 
-**Props:** `padding`, `width`, `height`, `radius`, `color`
+**Props:** `padding`, `width`, `height`, `radius`, `color`, `border`, `border-color`, `opacity`, `cursor`, `shadow`, `overflow`, `gradient`, `transform`
 
 #### `spacer`
 
@@ -218,7 +218,7 @@ Draws a colored rectangle.
 rect width: 80px, height: 80px, color: #2563eb, radius: 8px
 ```
 
-**Props:** `width`, `height`, `color`, `background`, `radius`, `opacity`, `border`, `border-color`
+**Props:** `width`, `height`, `color`, `background`, `radius`, `opacity`, `border`, `border-color`, `cursor`, `shadow`, `gradient`, `transform`
 
 #### `text`
 
@@ -229,7 +229,7 @@ text "Hello, world!"
 text "Colored text" color: #666666, font-size: 14px
 ```
 
-**Props:** `color`, `font-size`, `size`, `weight`
+**Props:** `color`, `font-size`, `size`, `weight`, `opacity`, `cursor`, `text-decoration`, `text-align`, `line-height`, `letter-spacing`, `text-overflow`, `transform`
 
 #### `heading`
 
@@ -240,7 +240,7 @@ heading "Page Title"
 heading "Small heading" font-size: 18px, color: #1e293b
 ```
 
-**Props:** `color`, `font-size`, `size`
+**Props:** `color`, `font-size`, `size`, `opacity`, `cursor`, `text-decoration`, `text-align`, `line-height`, `letter-spacing`, `text-overflow`, `transform`
 
 #### `image`
 
@@ -250,7 +250,7 @@ Displays an image. Loaded asynchronously and cached.
 image src: "photo.jpg", width: 200px, height: 150px
 ```
 
-**Props:** `src`, `width`, `height`, `fit`, `alt`
+**Props:** `src`, `width`, `height`, `fit`, `alt`, `cursor`, `transform`
 
 #### `link`
 
@@ -362,16 +362,14 @@ state expanded = false
 
 State variables can hold numbers, text, booleans, and lists.
 
-### Computed State (Planned — not yet implemented)
+### Computed State
 
 `computed` creates read-only derived values that auto-update when their dependencies change. Replaces the need for `useMemo` or repeated inline expressions.
 
 ```naze
-computed filtered-items = items | filter status == "active"
-computed total-price = cart | map price * quantity | sum
 computed full-name = "{first-name} {last-name}"
-computed item-count = filtered-items | count
 computed has-items = item-count > 0
+computed total = count * price
 ```
 
 **Semantics:**
@@ -379,11 +377,11 @@ computed has-items = item-count > 0
 - Dependencies tracked at compile time (scans expression for state/computed refs)
 - Re-evaluates only when a dependency changes
 - Can reference other `computed` values (compiler validates no cycles)
-- Pipeline syntax (M15) works naturally: `computed x = list | filter | sort | take 5`
+- Pipeline syntax (M15, not yet implemented) will work naturally: `computed x = list | filter | sort | take 5`
 
 **Grammar:** Mirrors `state` exactly — `computed name = expression`
 
-### Shared State (Planned — not yet implemented)
+### Shared State
 
 `shared state` creates state that persists across pages and is accessible from any component. Replaces the need for React Context, Redux, or Zustand.
 
@@ -392,26 +390,16 @@ computed has-items = item-count > 0
 shared state current-user = null
 shared state auth-token = ""
 shared state cart-items = []
-
--- Grouped shared state (optional, for namespacing)
-shared state auth {
-  user = null
-  token = ""
-  logged-in = false
-}
--- accessed as: auth.user, auth.token, auth.logged-in
--- mutated as: set auth.token = "abc123"
 ```
 
 **Semantics:**
 - Same as `state` but not scoped to a page — persists across `navigate` actions
 - Changes trigger re-render on any page that references the shared state
-- Grouped form is syntactic sugar for dot-prefixed names
 - Mutated with same `set` action as regular state
 
-**Grammar:** `shared` modifier on existing `state` rule, with optional grouping block.
+**Grammar:** `shared` modifier on existing `state` rule.
 
-### Persistent Storage (Planned — not yet implemented)
+### Persistent Storage
 
 `storage` creates reactive state bound to browser localStorage or sessionStorage. Values persist across sessions and auto-sync on change.
 
@@ -469,9 +457,9 @@ rect width: 200px, height: 50px, color: #2563eb, radius: 8px {
 | `navigate` | `navigate "/path"` | Navigate to a route |
 | `scroll-to` | `scroll-to "element-id"` | Scroll to an element by ID |
 | `log` | `log expression` | Output to browser console / stderr |
-| `trigger` | `trigger data-name` | Trigger a manual `data` fetch *(planned)* |
-| `copy` | `copy expression` | Copy value to clipboard *(planned)* |
-| `send` | `send stream-name expression` | Send message on a WebSocket stream *(planned)* |
+| `trigger` | `trigger data-name` | Trigger a manual `data` fetch |
+| `copy` | `copy expression` | Copy value to clipboard |
+| `send` | `send stream-name expression` | Send message on a WebSocket stream |
 | `js` | `js "function"(args)` or `js "function"(args) -> target` | Call a JavaScript function *(planned)* |
 | `notify` | `notify "title" { body: "text" }` | Send browser notification *(planned)* |
 
@@ -488,7 +476,7 @@ on click: set index = (index + 1) % 5
 
 **Operators:** `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `>`, `<`, `>=`, `<=`, `&&`, `||`
 
-### Event Modifiers: Debounce & Throttle (Planned — not yet implemented)
+### Event Modifiers: Debounce & Throttle
 
 Event handlers can have `debounce` or `throttle` modifiers to control firing rate.
 
@@ -503,7 +491,7 @@ on scroll throttle 100ms: set scroll-position = event.y
 - `debounce Nms` — delays action until N milliseconds of inactivity
 - `throttle Nms` — executes at most once per N milliseconds
 
-### Timer (Planned — not yet implemented)
+### Timer
 
 Timers schedule actions based on time. Two forms: `after` (one-shot) and `every` (repeating).
 
@@ -690,7 +678,7 @@ app "My Site" {
 - `on click: navigate "/path"` — programmatic navigation in event handlers
 - Browser back/forward works via History API integration
 
-### URL Parameters (Planned — not yet implemented)
+### URL Parameters
 
 `param` declares reactive state bound to URL query parameters. Enables bookmarkable, shareable search/filter/pagination state.
 
@@ -731,7 +719,7 @@ input bind: name, placeholder: "Type here..."
 text "Hello, {name}!"
 ```
 
-**Props:** `bind` (state variable), `placeholder`, `type` (`"text"`, `"number"`, `"email"`, `"password"`)
+**Props:** `bind` (state variable), `placeholder`, `type` (`"text"`, `"number"`, `"email"`, `"password"`, `"file"`), `accept` (MIME filter for file type), `max-size` (size limit for file type)
 
 ### Checkbox
 
@@ -778,7 +766,7 @@ if username_valid {
 
 **Validation rules:** `required`, `min-length`, `max-length`, `pattern` (text); `min`, `max` (number)
 
-### File Input (Planned — not yet implemented)
+### File Input
 
 File selection via the existing `input` element with `type: "file"`. Upload via enhanced `data` POST.
 
@@ -893,9 +881,9 @@ Three derived states are available for each `data` declaration:
 - `name.error` — error message string (falsy if no error)
 - `name.data` — the fetched data (available after loading completes)
 
-### Enhanced Data: Full HTTP (Planned — not yet implemented)
+### Enhanced Data: Full HTTP
 
-The `data` keyword will be extended with an optional block body supporting full HTTP configuration: methods, headers, params, body, caching, retry, and manual triggering.
+The `data` keyword supports an optional block body with full HTTP configuration: methods, headers, params, body, caching, retry, and manual triggering.
 
 ```naze
 -- Read operation (auto-fetches on mount, reactive to interpolated state)
@@ -941,7 +929,7 @@ data results: fetch "/api/search?q={search-query}" {
 - All operations produce the same `.loading`/`.error`/`.data` lifecycle
 - Reactive URL interpolation: if `{search-query}` changes, re-fetches automatically (GET only)
 
-### Data Streams: WebSocket / SSE (Planned — not yet implemented)
+### Data Streams: WebSocket / SSE
 
 `data: stream` declares a persistent connection for real-time push data. Reuses the same `data` lifecycle pattern.
 
@@ -1106,7 +1094,7 @@ interpolation = "{" (ref | name) "}"
 
 Whitespace (spaces, tabs) is ignored between tokens. Newlines are significant as statement terminators for elements without blocks.
 
-### Application Logic Additions (Planned — not yet implemented)
+### Application Logic Additions (M19d — Implemented)
 
 ```
 statement  += computed_stmt | shared_state_stmt | storage_stmt
@@ -1115,9 +1103,8 @@ statement  += computed_stmt | shared_state_stmt | storage_stmt
 -- Derived reactive state
 computed_stmt   = "computed" name "=" expression
 
--- Global shared state (with optional grouping block)
+-- Global shared state
 shared_state_stmt = "shared" "state" name "=" value
-                  | "shared" "state" name "{" (name "=" value)* "}"
 
 -- Persistent browser storage
 storage_stmt    = "storage" name ":" ("local" | "session") string "default:" value
@@ -1138,19 +1125,25 @@ data_prop       = ("method" | "params" | "headers" | "body" | "cache"
 
 -- Extended actions
 action         += trigger_action | copy_action | send_action
-                | js_action | notify_action
 trigger_action  = "trigger" name
 copy_action     = "copy" expression
 send_action     = "send" name expression
-js_action       = "js" string "(" args? ")" ("->" name)?
-notify_action   = "notify" string notify_block?
-notify_block    = "{" ("body" | "icon") ":" value "}"
 
 -- Event modifiers
 on_handler      = "on" event_name event_modifier? ":" action
 event_modifier  = ("debounce" | "throttle") duration
+```
 
--- Additional data sources (M19e)
+### Planned Grammar Additions (M19e — not yet implemented)
+
+```
+-- JS interop
+action         += js_action | notify_action
+js_action       = "js" string "(" args? ")" ("->" name)?
+notify_action   = "notify" string notify_block?
+notify_block    = "{" ("body" | "icon") ":" value "}"
+
+-- Additional data sources
 data_stmt      += "data" name ":" "js" string "(" args? ")" data_block?
                 | "data" name ":" "device" device_api data_block?
 device_api      = "geolocation" | "camera"
@@ -1172,9 +1165,123 @@ For upcoming language features (pipeline operators, pattern matching, layout tem
 
 An `overlay` element that renders content above normal layout flow, enabling dialogs, dropdowns, tooltips, popovers, toasts, and menus. Includes `focus-trap`, `scroll-lock`, `on click-outside`, and `anchor` positioning.
 
-### Visual Properties Expansion (Planned — M19c)
+### Visual Properties (M19c — Implemented)
 
-Additional styling properties for production visual fidelity: `shadow`, `text-align`, `text-overflow`, `text-decoration`, `line-height`, `letter-spacing`, `gradient`, `transform`, `cursor`, `overflow`.
+Additional styling properties for production visual fidelity. These properties are type-checked per element and rendered via Canvas2D (WASM) and tiny-skia (native).
+
+#### `cursor`
+
+Sets the mouse cursor style when hovering over an element. Available on all elements.
+
+```naze
+rect cursor: "pointer" { text "Click me" }
+text "Not allowed" cursor: "not-allowed"
+```
+
+**Values:** `pointer`, `grab`, `grabbing`, `text`, `not-allowed`, `crosshair`, `move`, `resize`, `default`
+
+#### `text-decoration`
+
+Adds visual decoration to text. Available on `text`, `heading`, `link`.
+
+```naze
+text "Underlined" text-decoration: "underline"
+text "Struck through" text-decoration: "line-through"
+text "Overline" text-decoration: "overline"
+```
+
+**Values:** `underline`, `line-through`, `overline`, `none`
+
+#### `shadow`
+
+Adds a box shadow to container and shape elements. Available on `row`, `column`, `stack`, `grid`, `rect`, `container`, `overlay`.
+
+```naze
+container shadow: "lg", padding: 24px, radius: 12px, color: #ffffff {
+  text "Card with shadow"
+}
+rect width: 100px, height: 100px, color: #fff, shadow: "0 4px 6px rgba(0,0,0,0.1)"
+```
+
+**Named presets:** `sm`, `md`, `lg`, `xl`
+**Custom format:** `"offsetX offsetY blur color"` (e.g., `"0 4px 6px rgba(0,0,0,0.1)"`)
+
+#### `text-align`
+
+Aligns text horizontally within its container. Available on `text`, `heading`, `link`.
+
+```naze
+text "Centered" text-align: "center"
+text "Right aligned" text-align: "right"
+```
+
+**Values:** `start` (default), `center`, `end`, `right`
+
+#### `line-height`
+
+Sets line height as a multiplier of font size. Available on `text`, `heading`, `link`.
+
+```naze
+text "Spacious text" line-height: 2.0
+```
+
+**Value:** number (multiplier of font-size, e.g., `1.5` = 1.5× font size)
+
+#### `letter-spacing`
+
+Adjusts spacing between characters. Available on `text`, `heading`.
+
+```naze
+text "S p a c e d" letter-spacing: 3px
+```
+
+**Value:** number with px unit
+
+#### `text-overflow`
+
+Controls how text is displayed when it overflows its container. Available on `text`, `heading`.
+
+```naze
+text "This very long text will be truncated..." text-overflow: "ellipsis"
+```
+
+**Values:** `clip` (default), `ellipsis` (truncates with "...")
+
+#### `overflow`
+
+Controls clipping of child content that exceeds container bounds. Available on `row`, `column`, `stack`, `grid`, `container`.
+
+```naze
+column width: 200px, height: 100px, overflow: "hidden" {
+  text "This content will be clipped at the container boundary"
+}
+```
+
+**Values:** `visible` (default), `hidden`, `clip`
+
+#### `gradient`
+
+Fills an element with a gradient instead of a solid color. Takes priority over `color`. Available on `row`, `column`, `stack`, `grid`, `rect`, `container`.
+
+```naze
+rect width: 300px, height: 100px, gradient: "linear(to-right, #3b82f6, #8b5cf6)", radius: 8px
+rect width: 150px, height: 150px, gradient: "radial(#ffffff, #10b981)", radius: 75px
+```
+
+**Linear format:** `"linear(direction, color1, color2, ...)"` — directions: `to-right`, `to-left`, `to-bottom`, `to-top`, `to-bottom-right`, `to-top-right`
+**Radial format:** `"radial(center-color, edge-color, ...)"`
+
+#### `transform`
+
+Applies 2D transformations to elements. Available on `row`, `column`, `stack`, `grid`, `rect`, `text`, `heading`, `container`, `image`.
+
+```naze
+rect width: 80px, height: 80px, color: #3b82f6, transform: "rotate(45deg)"
+rect width: 60px, height: 60px, color: #ef4444, transform: "scale(1.3)"
+rect width: 60px, height: 60px, color: #10b981, transform: "translate(10px, -5px)"
+```
+
+**Values:** `"rotate(Ndeg)"`, `"scale(N)"` or `"scale(X, Y)"`, `"translate(Xpx, Ypx)"`
 
 ### JavaScript Interop (Planned — M19e)
 

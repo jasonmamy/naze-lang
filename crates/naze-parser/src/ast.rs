@@ -43,11 +43,39 @@ pub enum Node {
     State {
         name: String,
         value: Value,
+        shared: bool,
         span: Span,
     },
     Data {
         name: String,
         url: String,
+        source: DataSource,
+        config: DataConfig,
+        span: Span,
+    },
+    Computed {
+        name: String,
+        expr: Expression,
+        span: Span,
+    },
+    Storage {
+        name: String,
+        storage_type: StorageType,
+        key: String,
+        default: Value,
+        span: Span,
+    },
+    Timer {
+        name: String,
+        kind: TimerKind,
+        duration_ms: u64,
+        action: Action,
+        span: Span,
+    },
+    Param {
+        name: String,
+        ty: Type,
+        default: Value,
         span: Span,
     },
     If {
@@ -96,7 +124,69 @@ pub enum Node {
 pub struct EventHandler {
     pub event: String,
     pub action: Action,
+    pub modifier: Option<EventModifier>,
     pub span: Span,
+}
+
+/// Event handler modifier (debounce or throttle).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventModifier {
+    pub kind: ModifierKind,
+    pub duration_ms: u64,
+}
+
+/// Kind of event modifier.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ModifierKind {
+    Debounce,
+    Throttle,
+}
+
+/// Configuration for enhanced data fetch declarations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataConfig {
+    pub method: Option<String>,         // "get", "post", "put", "delete", "patch"
+    pub headers: Vec<(String, String)>, // static headers
+    pub body: Option<Value>,            // request body
+    pub cache_ms: Option<u64>,          // cache TTL in milliseconds
+    pub retry: Option<u32>,             // retry count
+    pub trigger: Option<String>,        // "auto" (default) or "manual"
+    pub content_type: Option<String>,   // e.g. "application/json"
+}
+
+impl Default for DataConfig {
+    fn default() -> Self {
+        Self {
+            method: None,
+            headers: vec![],
+            body: None,
+            cache_ms: None,
+            retry: None,
+            trigger: None,
+            content_type: None,
+        }
+    }
+}
+
+/// Storage type for persistent state declarations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StorageType {
+    Local,
+    Session,
+}
+
+/// Data source type: HTTP fetch or real-time stream (WebSocket/SSE).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DataSource {
+    Fetch,
+    Stream,
+}
+
+/// Timer kind: one-shot (after) or repeating (every).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TimerKind {
+    After,
+    Every,
 }
 
 /// An action triggered by an event.
@@ -116,6 +206,19 @@ pub enum Action {
         span: Span,
     },
     Log {
+        expr: Expression,
+        span: Span,
+    },
+    Trigger {
+        data_name: String,
+        span: Span,
+    },
+    Copy {
+        expr: Expression,
+        span: Span,
+    },
+    Send {
+        stream_name: String,
         expr: Expression,
         span: Span,
     },

@@ -11,7 +11,7 @@ NEWLINE_CHAR = _{ "\n" }
 
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
-statement = _{ comment | use_stmt | component_def | app_block | page_block | theme_def | let_stmt | state_stmt | data_stmt | if_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
+statement = _{ comment | use_stmt | component_def | app_block | page_block | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | data_stmt | timer_stmt | param_stmt | if_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
 
 // -- Comments
 comment = @{ "--" ~ (!NEWLINE_CHAR ~ ANY)* }
@@ -48,16 +48,43 @@ let_stmt = { "let" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 // -- State declaration (mutable, reactive): state count = 0
 state_stmt = { "state" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 
-// -- Data declaration (async fetch): data users: fetch "url"
-data_stmt = { "data" ~ ident ~ ":" ~ "fetch" ~ string_lit ~ NEWLINE_CHAR }
+// -- Shared state declaration (persists across page navigation): shared state auth = null
+shared_state_stmt = { "shared" ~ "state" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 
-// -- Event handler: on click: set count = count + 1
-on_handler = { "on" ~ event_name ~ ":" ~ action ~ NEWLINE_CHAR }
-event_name = { "click" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" }
-action = _{ set_action | navigate_action | scroll_to_action | log_action }
+// -- Computed declaration (read-only derived state): computed total = count * price
+computed_stmt = { "computed" ~ ident ~ "=" ~ expression ~ NEWLINE_CHAR }
+
+// -- Storage declaration (persistent state): storage theme: local "theme-pref" default: "light"
+storage_stmt = { "storage" ~ ident ~ ":" ~ storage_type ~ string_lit ~ "default" ~ ":" ~ value ~ NEWLINE_CHAR }
+storage_type = { "local" | "session" }
+
+// -- Data declaration (async fetch or stream): data users: fetch "url" { ... } or data chat: stream "wss://..."
+data_stmt = { "data" ~ ident ~ ":" ~ data_source ~ string_lit ~ (data_block | NEWLINE_CHAR) }
+data_source = { "fetch" | "stream" }
+data_block = { "{" ~ (NEWLINE_CHAR | data_prop)* ~ "}" }
+data_prop = { data_prop_key ~ ":" ~ data_prop_value ~ NEWLINE_CHAR? }
+data_prop_key = { "method" | "cache" | "retry" | "trigger" | "content-type" | "body" | "headers" }
+data_prop_value = _{ duration_lit | value }
+
+// -- Timer declaration: timer toast-dismiss: after 5s { set show-toast = false }
+timer_stmt = { "timer" ~ ident ~ ":" ~ timer_kind ~ duration_lit ~ "{" ~ (NEWLINE_CHAR)* ~ action ~ (NEWLINE_CHAR)* ~ "}" }
+timer_kind = { "after" | "every" }
+
+// -- URL param: param page: number default: 1
+param_stmt = { "param" ~ ident ~ ":" ~ type_name ~ "default" ~ ":" ~ value ~ NEWLINE_CHAR }
+
+// -- Event handler: on click: set count = count + 1, with optional debounce/throttle
+on_handler = { "on" ~ event_name ~ event_modifier? ~ ":" ~ action ~ NEWLINE_CHAR }
+event_name = { "click-outside" | "click" | "context-menu" | "pointer-move" | "arrow-up" | "arrow-down" | "arrow-left" | "arrow-right" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" }
+event_modifier = { modifier_kind ~ duration_lit }
+modifier_kind = { "debounce" | "throttle" }
+action = _{ set_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action }
 set_action = { "set" ~ ident ~ "=" ~ expression }
 navigate_action = { "navigate" ~ string_lit }
 scroll_to_action = { "scroll-to" ~ string_lit }
+trigger_action = { "trigger" ~ ident }
+copy_action = { "copy" ~ expression }
+send_action = { "send" ~ ident ~ expression }
 log_action = { "log" ~ expression }
 
 // -- Conditional: if expr { ... } else { ... }
@@ -112,6 +139,9 @@ color_lit = @{ "#" ~ ASCII_HEX_DIGIT{3,8} }
 number_lit = ${ number_raw ~ unit? }
 number_raw = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 unit = { "px" | "%" | "em" }
+
+duration_lit = ${ number_raw ~ duration_unit }
+duration_unit = { "ms" | "min" | "s" | "h" }
 
 bool_lit = { "true" | "false" }
 

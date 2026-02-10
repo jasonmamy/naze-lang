@@ -1,0 +1,29 @@
+-- Visual Properties: comprehensive demo combining M19c features
+app "Visual Properties" {
+  column padding: 20px, gap: 20px, color: #f8fafc {
+    heading "Visual Properties", text-decoration: "underline"
+
+    -- Shadows and gradients
+    row gap: 16px {
+      rect width: 120px, height: 80px, color: #ffffff, radius: 12px, shadow: "lg"
+      rect width: 120px, height: 80px, radius: 12px, gradient: "linear(to-right, #3b82f6, #8b5cf6)", shadow: "md"
+      rect width: 120px, height: 80px, radius: 12px, gradient: "radial(#ffffff, #10b981)"
+    }
+
+    -- Text properties
+    column width: 300px, color: #ffffff, padding: 16px, gap: 8px, shadow: "sm", overflow: "hidden" {
+      text "Left aligned"
+      text "Centered text", text-align: "center"
+      text "Right aligned", text-align: "right"
+      text "S p a c e d  o u t", letter-spacing: 3px
+      text "This long text will be truncated when it overflows the container boundary", text-overflow: "ellipsis"
+      text "Struck through", text-decoration: "line-through", color: #ef4444
+    }
+
+    -- Transform
+    row gap: 40px {
+      rect width: 60px, height: 60px, color: #f59e0b, radius: 8px, transform: "rotate(15deg)", cursor: "grab"
+      rect width: 60px, height: 60px, color: #8b5cf6, radius: 8px, transform: "scale(1.2)", cursor: "pointer"
+    }
+  }
+}

@@ -8,7 +8,8 @@ use naze_ir::{IrAction, IrBinOp, IrExpression, RenderNode, RenderTree, RenderVal
 use naze_layout::{LayoutTree, PositionedNode};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
-use winit::event::{ElementState, MouseButton, WindowEvent};
+use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
+use winit::keyboard::{Key, NamedKey};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{CursorIcon, Window, WindowId};
 
@@ -54,13 +55,20 @@ impl ApplicationHandler for App {
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor_pos = Some((position.x as f32, position.y as f32));
                 // Update cursor icon based on whether we're over a clickable node
+                // Check overlays first, then root
                 if let (Some(layout), Some(window)) = (&self.layout, &self.window) {
-                    let is_clickable = hit_test_any_handler(
-                        &layout.root,
-                        position.x as f32,
-                        position.y as f32,
-                        "click",
-                    );
+                    let x = position.x as f32;
+                    let y = position.y as f32;
+                    let mut is_clickable = false;
+                    for overlay in layout.overlays.iter().rev() {
+                        if point_in_node(overlay, x, y) {
+                            is_clickable = hit_test_any_handler(&overlay.children, x, y, "click");
+                            break;
+                        }
+                    }
+                    if !is_clickable {
+                        is_clickable = hit_test_any_handler(&layout.root, x, y, "click");
+                    }
                     window.set_cursor(if is_clickable {
                         CursorIcon::Pointer
                     } else {
@@ -75,6 +83,16 @@ impl ApplicationHandler for App {
             } => {
                 if let Some((x, y)) = self.cursor_pos {
                     if self.handle_click(x, y) {
+                        self.render();
+                    }
+                }
+            }
+            WindowEvent::KeyboardInput {
+                event: KeyEvent { logical_key, state: ElementState::Pressed, .. },
+                ..
+            } => {
+                if logical_key == Key::Named(NamedKey::Escape) {
+                    if self.handle_escape() {
                         self.render();
                     }
                 }
@@ -141,6 +159,40 @@ impl App {
             Some(l) => l,
             None => return false,
         };
+
+        // Check overlays first (topmost = last in vec, check in reverse)
+        for overlay in layout.overlays.iter().rev() {
+            if point_in_node(overlay, x, y) {
+                // Click inside overlay — find handlers within
+                let handlers = find_click_handlers(&overlay.children, x, y);
+                if !handlers.is_empty() {
+                    let mut changed = false;
+                    for handler in &handlers {
+                        if execute_action(&handler.action, &mut self.state_store) {
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
+                return false; // Inside overlay but no handler — block click-through
+            } else {
+                // Click outside overlay — fire click-outside handlers
+                let outside_handlers: Vec<_> = overlay.handlers.iter()
+                    .filter(|h| h.event == "click-outside")
+                    .cloned()
+                    .collect();
+                if !outside_handlers.is_empty() {
+                    let mut changed = false;
+                    for handler in &outside_handlers {
+                        if execute_action(&handler.action, &mut self.state_store) {
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
+            }
+        }
+
         let handlers = find_click_handlers(&layout.root, x, y);
         if handlers.is_empty() {
             return false;
@@ -152,6 +204,36 @@ impl App {
             }
         }
         changed
+    }
+
+    fn handle_escape(&mut self) -> bool {
+        let layout = match &self.layout {
+            Some(l) => l,
+            None => return false,
+        };
+        // Dismiss topmost overlay (if dismiss-on-escape is not false)
+        for overlay in layout.overlays.iter().rev() {
+            let dismiss = match overlay.props.get("dismiss-on-escape") {
+                Some(RenderValue::Bool(false)) => false,
+                _ => true,
+            };
+            if dismiss {
+                let outside_handlers: Vec<_> = overlay.handlers.iter()
+                    .filter(|h| h.event == "click-outside")
+                    .cloned()
+                    .collect();
+                if !outside_handlers.is_empty() {
+                    let mut changed = false;
+                    for handler in &outside_handlers {
+                        if execute_action(&handler.action, &mut self.state_store) {
+                            changed = true;
+                        }
+                    }
+                    return changed;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -203,6 +285,10 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         title: tree.title.clone(),
         state: tree.state.clone(),
         data: tree.data.clone(),
+        computed: tree.computed.clone(),
+        storage: tree.storage.clone(),
+        timers: tree.timers.clone(),
+        params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
     }
@@ -360,6 +446,20 @@ fn execute_action(
         IrAction::Log { expr } => {
             let value = evaluate_expr(expr, state);
             println!("[log] {:?}", value);
+            false
+        }
+        IrAction::Trigger { data_name } => {
+            println!("[trigger] {}", data_name);
+            false
+        }
+        IrAction::Copy { expr } => {
+            let value = evaluate_expr(expr, state);
+            println!("[copy] {:?}", value);
+            false
+        }
+        IrAction::Send { stream_name, expr } => {
+            let value = evaluate_expr(expr, state);
+            println!("[send {}] {:?}", stream_name, value);
             false
         }
     }

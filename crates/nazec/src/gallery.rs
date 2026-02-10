@@ -23,7 +23,7 @@ use crate::native_renderer;
 // Embed the pre-built runtime files from wasm-pack output.
 const RUNTIME_WASM: &[u8] = include_bytes!("../../naze-runtime/pkg/naze_runtime_bg.wasm");
 const RUNTIME_JS: &str = include_str!("../../naze-runtime/pkg/naze_runtime.js");
-const RUNTIME_BG_JS: &str = include_str!("../../naze-runtime/pkg/naze_runtime_bg.js");
+// Note: naze_runtime_bg.js was removed in newer wasm-pack versions; gallery works without it.
 
 const GALLERY_HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 <html lang="en">
@@ -59,6 +59,15 @@ const GALLERY_HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
     }
     #sidebar button:hover { background: #333; }
     #sidebar button.active { background: #3b82f6; border-color: #3b82f6; }
+    #sidebar h3 {
+      margin: 12px 0 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8888aa;
+      padding: 0 4px;
+    }
+    #sidebar h3:first-of-type { margin-top: 0; }
     #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     #title {
       padding: 12px 16px;
@@ -165,6 +174,144 @@ fn find_examples(dir: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> 
     Ok(examples)
 }
 
+// ─── Example Categories ─────────────────────────────────────────────────────
+
+struct Category {
+    name: &'static str,
+    examples: &'static [&'static str],
+}
+
+const CATEGORIES: &[Category] = &[
+    Category {
+        name: "Basics",
+        examples: &[
+            "hello",
+            "boxes",
+            "colors",
+            "columns",
+            "rows",
+            "nested",
+            "padding",
+            "rounded",
+            "typography",
+        ],
+    },
+    Category {
+        name: "Layout",
+        examples: &["grid", "layout-features", "app-shell", "dashboard-static"],
+    },
+    Category {
+        name: "Components",
+        examples: &[
+            "component-basic",
+            "component-props",
+            "multi-component",
+            "slots",
+        ],
+    },
+    Category {
+        name: "State & Logic",
+        examples: &[
+            "counter",
+            "conditional",
+            "computed",
+            "shared-state",
+            "storage",
+            "actions",
+        ],
+    },
+    Category {
+        name: "Forms",
+        examples: &[
+            "input",
+            "input-types",
+            "checkbox",
+            "radio",
+            "select",
+            "on-change",
+            "validation",
+            "file-input",
+        ],
+    },
+    Category {
+        name: "Data & Streams",
+        examples: &["data-fetch", "data-enhanced", "stream", "params"],
+    },
+    Category {
+        name: "Events & Timing",
+        examples: &["keyboard-nav", "drag-drop", "debounce", "timer"],
+    },
+    Category {
+        name: "Navigation",
+        examples: &["navigation", "scroll"],
+    },
+    Category {
+        name: "Theming",
+        examples: &["theming"],
+    },
+    Category {
+        name: "Animation",
+        examples: &["animation"],
+    },
+    Category {
+        name: "Overlays",
+        examples: &["overlay-dialog", "overlay-dropdown"],
+    },
+    Category {
+        name: "Visual Styling",
+        examples: &[
+            "text-decoration",
+            "text-alignment",
+            "text-overflow",
+            "shadow",
+            "gradient",
+            "transform",
+            "visual-properties",
+        ],
+    },
+    Category {
+        name: "Images",
+        examples: &["images"],
+    },
+];
+
+/// Organize discovered examples into categories. Returns (category_name, example_names) pairs.
+/// Examples not in any category go into "Other" at the end.
+fn categorize_examples(discovered: &[String]) -> Vec<(&'static str, Vec<String>)> {
+    let discovered_set: std::collections::HashSet<&str> =
+        discovered.iter().map(|s| s.as_str()).collect();
+    let mut used = std::collections::HashSet::new();
+    let mut result = Vec::new();
+
+    for cat in CATEGORIES {
+        let matched: Vec<String> = cat
+            .examples
+            .iter()
+            .filter(|name| discovered_set.contains(*name))
+            .map(|name| {
+                used.insert(*name);
+                name.to_string()
+            })
+            .collect();
+        if !matched.is_empty() {
+            result.push((cat.name, matched));
+        }
+    }
+
+    // Collect uncategorized examples
+    let mut other: Vec<String> = discovered
+        .iter()
+        .filter(|name| !used.contains(name.as_str()))
+        .cloned()
+        .collect();
+    other.sort();
+    if !other.is_empty() {
+        result.push(("Other", other));
+    }
+
+    result
+}
+
 /// Build a single example to output_dir/{name}/app_data.bin.
 fn build_example(
     examples_dir: &Path,
@@ -211,7 +358,6 @@ fn build_example(
 fn copy_runtime(output_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::write(output_dir.join("naze_runtime_bg.wasm"), RUNTIME_WASM)?;
     fs::write(output_dir.join("naze_runtime.js"), RUNTIME_JS)?;
-    fs::write(output_dir.join("naze_runtime_bg.js"), RUNTIME_BG_JS)?;
     Ok(())
 }
 
@@ -220,17 +366,23 @@ fn generate_gallery_html(
     examples: &[String],
     output_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let buttons: String = examples
-        .iter()
-        .map(|name| {
-            format!(
+    let categories = categorize_examples(examples);
+    let mut buttons = String::new();
+    for (cat_name, cat_examples) in &categories {
+        buttons.push_str(&format!("    <h3>{}</h3>\n", cat_name));
+        for name in cat_examples {
+            buttons.push_str(&format!(
                 "    <button data-name=\"{}\" onclick=\"loadExample('{}')\">{}</button>\n",
                 name, name, name
-            )
-        })
-        .collect();
+            ));
+        }
+    }
 
-    let first = examples.first().map(|s| s.as_str()).unwrap_or("hello");
+    let first = categories
+        .first()
+        .and_then(|(_, exs)| exs.first())
+        .map(|s| s.as_str())
+        .unwrap_or("hello");
 
     let html = GALLERY_HTML_TEMPLATE
         .replace("{{EXAMPLE_BUTTONS}}", &buttons)
@@ -297,8 +449,14 @@ const SIDEBAR_WIDTH: f32 = 200.0;
 const BUTTON_HEIGHT: f32 = 32.0;
 const BUTTON_PADDING: f32 = 4.0;
 
+const CATEGORY_HEADER_HEIGHT: f32 = 24.0;
+
+/// (category_name, list of indices into NativeGallery::examples)
+type CategoryIndex = Vec<(&'static str, Vec<usize>)>;
+
 struct NativeGallery {
     examples: Vec<(String, RenderTree)>,
+    categorized: CategoryIndex,
     selected: usize,
     state_store: HashMap<String, RenderValue>,
     font: fontdue::Font,
@@ -377,17 +535,28 @@ impl NativeGallery {
         }
     }
 
+    /// Map a sidebar y-coordinate to an example index, accounting for category headers.
+    fn sidebar_hit_test(&self, y: f32) -> Option<usize> {
+        let mut cur_y = 48.0; // Skip gallery title
+        for (_, indices) in &self.categorized {
+            cur_y += CATEGORY_HEADER_HEIGHT; // category header
+            for &idx in indices {
+                if y >= cur_y && y < cur_y + BUTTON_HEIGHT {
+                    return Some(idx);
+                }
+                cur_y += BUTTON_HEIGHT + BUTTON_PADDING;
+            }
+        }
+        None
+    }
+
     fn update_cursor(&self) {
         if let (Some((x, y)), Some(window)) = (self.cursor_pos, &self.window) {
             // Check sidebar buttons
             if x < SIDEBAR_WIDTH {
-                let y_offset = y - 48.0; // Skip header
-                if y_offset > 0.0 {
-                    let btn_idx = (y_offset / (BUTTON_HEIGHT + BUTTON_PADDING)) as usize;
-                    if btn_idx < self.examples.len() {
-                        window.set_cursor(CursorIcon::Pointer);
-                        return;
-                    }
+                if self.sidebar_hit_test(y).is_some() {
+                    window.set_cursor(CursorIcon::Pointer);
+                    return;
                 }
             }
             // Check example content handlers
@@ -404,13 +573,9 @@ impl NativeGallery {
     fn handle_click(&mut self, x: f32, y: f32) {
         // Check sidebar clicks
         if x < SIDEBAR_WIDTH {
-            let y_offset = y - 48.0; // Skip header
-            if y_offset > 0.0 {
-                let btn_idx = (y_offset / (BUTTON_HEIGHT + BUTTON_PADDING)) as usize;
-                if btn_idx < self.examples.len() {
-                    self.select_example(btn_idx);
-                    return;
-                }
+            if let Some(idx) = self.sidebar_hit_test(y) {
+                self.select_example(idx);
+                return;
             }
         }
 
@@ -527,58 +692,97 @@ impl NativeGallery {
                     handlers: vec![],
                     scroll_info: None,
                 }],
+                overlays: vec![],
             },
             &self.font,
             None, // Gallery doesn't track focused inputs
         );
 
-        // Example buttons
+        // Example buttons organized by category
         let mut y = 48.0;
-        for (idx, (name, _)) in self.examples.iter().enumerate() {
-            let is_selected = idx == self.selected;
-
-            // Button background
-            let btn_color = if is_selected {
-                tiny_skia::Color::from_rgba8(59, 130, 246, 255) // Blue
-            } else {
-                tiny_skia::Color::from_rgba8(51, 51, 51, 255) // Dark gray
-            };
-            let btn_paint = Paint {
-                shader: Shader::SolidColor(btn_color),
-                ..Paint::default()
-            };
-            if let Some(rect) = Rect::from_xywh(8.0, y, SIDEBAR_WIDTH - 16.0, BUTTON_HEIGHT) {
-                pixmap.fill_rect(rect, &btn_paint, Transform::identity(), None);
-            }
-
-            // Button text
+        for (cat_name, indices) in &self.categorized {
+            // Category header
             native_renderer::draw_tree(
                 pixmap,
                 &LayoutTree {
                     title: String::new(),
                     root: vec![PositionedNode {
                         kind: "text".to_string(),
-                        x: 16.0,
+                        x: 12.0,
                         y: y + 6.0,
-                        width: SIDEBAR_WIDTH - 32.0,
-                        height: 20.0,
+                        width: SIDEBAR_WIDTH - 24.0,
+                        height: 16.0,
                         props: {
                             let mut p = HashMap::new();
-                            p.insert("__text".to_string(), RenderValue::Str(name.clone()));
-                            p.insert("font-size".to_string(), RenderValue::Num(14.0, None));
-                            p.insert("color".to_string(), RenderValue::Color(0xFFFFFF));
+                            p.insert(
+                                "__text".to_string(),
+                                RenderValue::Str(cat_name.to_uppercase()),
+                            );
+                            p.insert("font-size".to_string(), RenderValue::Num(11.0, None));
+                            p.insert("color".to_string(), RenderValue::Color(0x8888AA));
                             p
                         },
                         children: vec![],
                         handlers: vec![],
                         scroll_info: None,
                     }],
+                    overlays: vec![],
                 },
                 &self.font,
-                None, // Gallery doesn't track focused inputs
+                None,
             );
+            y += CATEGORY_HEADER_HEIGHT;
 
-            y += BUTTON_HEIGHT + BUTTON_PADDING;
+            for &idx in indices {
+                let (name, _) = &self.examples[idx];
+                let is_selected = idx == self.selected;
+
+                // Button background
+                let btn_color = if is_selected {
+                    tiny_skia::Color::from_rgba8(59, 130, 246, 255) // Blue
+                } else {
+                    tiny_skia::Color::from_rgba8(51, 51, 51, 255) // Dark gray
+                };
+                let btn_paint = Paint {
+                    shader: Shader::SolidColor(btn_color),
+                    ..Paint::default()
+                };
+                if let Some(rect) =
+                    Rect::from_xywh(8.0, y, SIDEBAR_WIDTH - 16.0, BUTTON_HEIGHT)
+                {
+                    pixmap.fill_rect(rect, &btn_paint, Transform::identity(), None);
+                }
+
+                // Button text
+                native_renderer::draw_tree(
+                    pixmap,
+                    &LayoutTree {
+                        title: String::new(),
+                        root: vec![PositionedNode {
+                            kind: "text".to_string(),
+                            x: 16.0,
+                            y: y + 6.0,
+                            width: SIDEBAR_WIDTH - 32.0,
+                            height: 20.0,
+                            props: {
+                                let mut p = HashMap::new();
+                                p.insert("__text".to_string(), RenderValue::Str(name.clone()));
+                                p.insert("font-size".to_string(), RenderValue::Num(14.0, None));
+                                p.insert("color".to_string(), RenderValue::Color(0xFFFFFF));
+                                p
+                            },
+                            children: vec![],
+                            handlers: vec![],
+                            scroll_info: None,
+                        }],
+                        overlays: vec![],
+                    },
+                    &self.font,
+                    None,
+                );
+
+                y += BUTTON_HEIGHT + BUTTON_PADDING;
+            }
         }
     }
 
@@ -587,6 +791,7 @@ impl NativeGallery {
         let offset_layout = LayoutTree {
             title: layout.title.clone(),
             root: offset_nodes(&layout.root, x_offset, 0.0),
+            overlays: offset_nodes(&layout.overlays, x_offset, 0.0),
         };
         native_renderer::draw_tree(pixmap, &offset_layout, &self.font, None);
     }
@@ -616,6 +821,10 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         title: tree.title.clone(),
         state: tree.state.clone(),
         data: tree.data.clone(),
+        computed: tree.computed.clone(),
+        storage: tree.storage.clone(),
+        timers: tree.timers.clone(),
+        params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
     }
@@ -818,6 +1027,8 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             eprintln!("[log] {}", msg);
             false
         }
+        // Trigger, Copy, Send not supported in gallery preview
+        _ => false,
     }
 }
 
@@ -961,16 +1172,43 @@ fn run_native(examples_dir: &Path, examples: &[String]) -> Result<(), Box<dyn st
         return Err("No examples could be loaded".into());
     }
 
+    // Build category index: map example names to their indices in `loaded`
+    let loaded_names: Vec<String> = loaded.iter().map(|(name, _)| name.clone()).collect();
+    let categories = categorize_examples(&loaded_names);
+    let name_to_idx: HashMap<&str, usize> = loaded_names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (n.as_str(), i))
+        .collect();
+    let categorized: CategoryIndex = categories
+        .iter()
+        .map(|(cat, names)| {
+            let indices: Vec<usize> = names
+                .iter()
+                .filter_map(|n| name_to_idx.get(n.as_str()).copied())
+                .collect();
+            (*cat, indices)
+        })
+        .filter(|(_, indices)| !indices.is_empty())
+        .collect();
+
+    // First example is first in categorized order
+    let first_idx = categorized
+        .first()
+        .and_then(|(_, indices)| indices.first().copied())
+        .unwrap_or(0);
+
     // Initialize state for first example
     let mut state_store = HashMap::new();
-    for decl in &loaded[0].1.state {
+    for decl in &loaded[first_idx].1.state {
         state_store.insert(decl.name.clone(), decl.initial.clone());
     }
 
     let event_loop = EventLoop::new()?;
     let mut gallery = NativeGallery {
         examples: loaded,
-        selected: 0,
+        categorized,
+        selected: first_idx,
         state_store,
         font,
         window: None,

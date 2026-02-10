@@ -1,0 +1,15 @@
+-- URL Parameters: read query string values
+app "Params Demo" {
+  param page: number default: 1
+  param query: text default: ""
+  param dark: bool default: false
+
+  column padding: 20px, gap: 16px {
+    heading "URL Params Demo"
+    text "Page: {page}"
+    text "Query: {query}"
+    if dark {
+      text "Dark mode enabled"
+    }
+  }
+}

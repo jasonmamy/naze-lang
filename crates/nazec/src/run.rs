@@ -406,6 +406,10 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         title: tree.title.clone(),
         state: tree.state.clone(),
         data: tree.data.clone(),
+        computed: tree.computed.clone(),
+        storage: tree.storage.clone(),
+        timers: tree.timers.clone(),
+        params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
     }
@@ -578,6 +582,8 @@ fn find_click_handlers(
                         target: var.clone(),
                         expr: IrExpression::Bool(!current),
                     },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
                 }];
                 // Add change handlers
                 handlers.extend(
@@ -602,6 +608,8 @@ fn find_click_handlers(
                         target: var.clone(),
                         expr: IrExpression::Str(value_str),
                     },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
                 }];
                 // Add change handlers
                 handlers.extend(
@@ -698,6 +706,8 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             eprintln!("[log] {}", msg);
             false
         }
+        // Trigger, Copy, Send not supported in native runner
+        _ => false,
     }
 }
 
