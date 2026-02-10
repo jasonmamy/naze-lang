@@ -517,6 +517,32 @@ fn draw_node(
                 font,
             );
         }
+        "textarea" => {
+            let placeholder = match node.props.get("placeholder") {
+                Some(RenderValue::Str(s)) => s.clone(),
+                _ => String::new(),
+            };
+            let value = match node.props.get("value") {
+                Some(RenderValue::Str(s)) => s.clone(),
+                _ => String::new(),
+            };
+            let node_id = format!("textarea_{}_{}", x as i32, y as i32);
+            let focused = focused_input_id == Some(node_id.as_str());
+            // Draw textarea as a bordered multi-line box
+            draw_input(
+                pixmap,
+                x,
+                y,
+                w,
+                h,
+                &value,
+                &placeholder,
+                focused,
+                "text",
+                focused,
+                font,
+            );
+        }
         "select" => {
             // Get current value from selected prop (resolved in run.rs/gallery.rs)
             let selected_value = match node.props.get("selected") {

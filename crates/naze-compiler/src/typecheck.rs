@@ -112,6 +112,19 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
             "anchor" | "anchor-placement" | "cursor" | "shadow" => Some(Expected::Text),
             _ => None,
         },
+        "textarea" => match prop {
+            "width" | "height" | "font-size" | "rows" | "max-length" | "opacity"
+            | "tab-index" | "line-height" | "letter-spacing" | "border" | "radius" => {
+                Some(Expected::Number)
+            }
+            "color" | "border-color" => Some(Expected::Color),
+            "placeholder" | "cursor" | "text-align" | "shadow" | "transform" => {
+                Some(Expected::Text)
+            }
+            "bind" => Some(Expected::Any),
+            "validate" => Some(Expected::Any),
+            _ => None,
+        },
         _ => layout_prop,
     }
 }
@@ -669,6 +682,12 @@ fn check_handler(
         Action::Send { expr, .. } => {
             check_expression(expr, state_names, &handler.span, errors);
         }
+        Action::JsCall { args, .. } => {
+            for arg in args {
+                check_expression(arg, state_names, &handler.span, errors);
+            }
+        }
+        Action::Notify { .. } => {}
     }
 }
 
@@ -924,9 +943,12 @@ fn check_accessibility_props(
     // Elements that should have explicit roles or labels for screen readers
     let needs_label = matches!(
         element,
-        "rect" | "image" | "input" | "checkbox" | "radio" | "select"
+        "rect" | "image" | "input" | "textarea" | "checkbox" | "radio" | "select"
     );
-    let is_interactive = matches!(element, "rect" | "input" | "checkbox" | "radio" | "select")
+    let is_interactive = matches!(
+        element,
+        "rect" | "input" | "textarea" | "checkbox" | "radio" | "select"
+    )
         || props.iter().any(|p| p.key == "on");
 
     let has_label = props.iter().any(|p| p.key == "label");

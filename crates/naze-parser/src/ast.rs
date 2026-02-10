@@ -164,6 +164,7 @@ pub struct DataConfig {
     pub retry: Option<u32>,     // retry count
     pub trigger: Option<String>, // "auto" (default) or "manual"
     pub content_type: Option<String>, // e.g. "application/json"
+    pub watch: bool,                  // for device APIs: continuously watch vs one-shot
 }
 
 impl Default for DataConfig {
@@ -176,6 +177,7 @@ impl Default for DataConfig {
             retry: None,
             trigger: None,
             content_type: None,
+            watch: false,
         }
     }
 }
@@ -187,11 +189,13 @@ pub enum StorageType {
     Session,
 }
 
-/// Data source type: HTTP fetch or real-time stream (WebSocket/SSE).
+/// Data source type: HTTP fetch, real-time stream (WebSocket/SSE), JS function call, or device API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DataSource {
     Fetch,
     Stream,
+    JsCall,
+    Device,
 }
 
 /// Timer kind: one-shot (after) or repeating (every).
@@ -232,6 +236,18 @@ pub enum Action {
     Send {
         stream_name: String,
         expr: Expression,
+        span: Span,
+    },
+    JsCall {
+        function_name: String,
+        args: Vec<Expression>,
+        target: Option<String>, // state var to store return value
+        span: Span,
+    },
+    Notify {
+        title: String,
+        body: Option<String>,
+        icon: Option<String>,
         span: Span,
     },
 }

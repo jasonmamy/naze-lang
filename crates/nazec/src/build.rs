@@ -28,6 +28,7 @@ const INDEX_HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 </head>
 <body>
   <canvas id="naze-canvas"></canvas>
+  {{SCRIPTS}}
   <script type="module">
     import init, { start } from './naze_runtime.js';
     async function main() {
@@ -104,7 +105,15 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
     fs::write(output_dir.join("naze_runtime_bg.wasm"), RUNTIME_WASM)?;
     fs::write(output_dir.join("naze_runtime.js"), RUNTIME_JS)?;
 
-    let html = INDEX_HTML_TEMPLATE.replace("{{TITLE}}", &render_tree.title);
+    let script_tags: String = manifest
+        .scripts
+        .iter()
+        .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let html = INDEX_HTML_TEMPLATE
+        .replace("{{TITLE}}", &render_tree.title)
+        .replace("{{SCRIPTS}}", &script_tags);
     fs::write(output_dir.join("index.html"), html)?;
 
     if format == Format::Text {

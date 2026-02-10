@@ -463,6 +463,14 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             println!("[send {}] {:?}", stream_name, value);
             false
         }
+        IrAction::JsCall { function_name, .. } => {
+            eprintln!("[js] {} - JS interop not available in native mode", function_name);
+            false
+        }
+        IrAction::Notify { title, .. } => {
+            eprintln!("[notify] {} - notifications not available in native mode", title);
+            false
+        }
     }
 }
 

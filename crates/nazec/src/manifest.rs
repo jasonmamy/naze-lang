@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -6,6 +7,8 @@ pub struct Manifest {
     pub app: App,
     #[serde(default)]
     pub build: Build,
+    #[serde(default)]
+    pub scripts: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

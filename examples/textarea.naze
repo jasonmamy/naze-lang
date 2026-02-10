@@ -1,0 +1,17 @@
+app "Textarea Demo" {
+  state content = ""
+  state notes = "Hello\nWorld"
+
+  column padding: 20px, gap: 16px {
+    heading "Multi-line Text Input"
+
+    text "Enter some text:"
+    textarea bind: content, placeholder: "Type here...", rows: 4
+
+    text "With existing content:"
+    textarea bind: notes, rows: 3
+
+    text "Preview:"
+    text "{content}" color: #2563eb
+  }
+}

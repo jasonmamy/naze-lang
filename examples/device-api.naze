@@ -1,0 +1,52 @@
+app "Device API Demo" {
+  state permission-status = "unknown"
+
+  data location: device "geolocation" {
+    trigger: "manual"
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Browser Device APIs"
+
+    text "Geolocation"
+    rect padding: 12px, radius: 8, color: #f1f5f9 {
+      column gap: 8px {
+        rect padding: 8px, radius: 4, color: #3b82f6 {
+          text "Get Location" color: #ffffff
+          on click: trigger location
+        }
+
+        if location.loading {
+          text "Getting location..." color: #6b7280
+        }
+
+        if location.error {
+          text "Error: {location.error}" color: #ef4444
+        }
+
+        if location.data {
+          text "Latitude: {location.data.latitude}" color: #10b981
+          text "Longitude: {location.data.longitude}" color: #10b981
+        }
+      }
+    }
+
+    text "Notifications"
+    rect padding: 12px, radius: 8, color: #f1f5f9 {
+      column gap: 8px {
+        rect padding: 8px, radius: 4, color: #8b5cf6 {
+          text "Send Notification" color: #ffffff
+          on click: notify "Hello from Naze!" {
+            body: "This is a browser notification"
+            icon: "https://example.com/icon.png"
+          }
+        }
+
+        rect padding: 8px, radius: 4, color: #f59e0b {
+          text "Simple Notify" color: #ffffff
+          on click: notify "Quick update!"
+        }
+      }
+    }
+  }
+}

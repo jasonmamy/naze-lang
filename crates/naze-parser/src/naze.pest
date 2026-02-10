@@ -61,10 +61,10 @@ storage_type = { "local" | "session" }
 
 // -- Data declaration (async fetch or stream): data users: fetch "url" { ... } or data chat: stream "wss://..."
 data_stmt = { "data" ~ ident ~ ":" ~ data_source ~ string_lit ~ (data_block | NEWLINE_CHAR) }
-data_source = { "fetch" | "stream" }
+data_source = { "fetch" | "stream" | "js" | "device" }
 data_block = { "{" ~ (NEWLINE_CHAR | data_prop)* ~ "}" }
 data_prop = { data_prop_key ~ ":" ~ data_prop_value ~ NEWLINE_CHAR? }
-data_prop_key = { "method" | "cache" | "retry" | "trigger" | "content-type" | "body" | "headers" }
+data_prop_key = { "method" | "cache" | "retry" | "trigger" | "content-type" | "body" | "headers" | "watch" }
 data_prop_value = _{ duration_lit | value }
 
 // -- Timer declaration: timer toast-dismiss: after 5s { set show-toast = false }
@@ -79,7 +79,7 @@ on_handler = { "on" ~ event_name ~ event_modifier? ~ ":" ~ action ~ NEWLINE_CHAR
 event_name = { "click-outside" | "click" | "context-menu" | "pointer-move" | "arrow-up" | "arrow-down" | "arrow-left" | "arrow-right" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" }
 event_modifier = { modifier_kind ~ duration_lit }
 modifier_kind = { "debounce" | "throttle" }
-action = _{ set_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action }
+action = _{ set_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action | js_action | notify_action }
 set_action = { "set" ~ ident ~ "=" ~ expression }
 navigate_action = { "navigate" ~ string_lit }
 scroll_to_action = { "scroll-to" ~ string_lit }
@@ -87,6 +87,11 @@ trigger_action = { "trigger" ~ ident }
 copy_action = { "copy" ~ expression }
 send_action = { "send" ~ ident ~ expression }
 log_action = { "log" ~ expression }
+js_action = { "js" ~ string_lit ~ "(" ~ call_args? ~ ")" ~ ("->" ~ ident)? }
+notify_action = { "notify" ~ string_lit ~ notify_block? }
+notify_block = { "{" ~ (NEWLINE_CHAR | notify_prop)* ~ "}" }
+notify_prop = { notify_prop_key ~ ":" ~ value ~ NEWLINE_CHAR? }
+notify_prop_key = { "body" | "icon" }
 
 // -- Conditional: if expr { ... } else { ... }
 if_stmt = { "if" ~ expression ~ block ~ else_clause? }

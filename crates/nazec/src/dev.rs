@@ -57,6 +57,7 @@ const DEV_INDEX_HTML: &str = r#"<!DOCTYPE html>
 <body>
   <canvas id="naze-canvas"></canvas>
   <div class="dev-banner" id="dev-status">Connected</div>
+  {{SCRIPTS}}
   <script type="module">
     import init, { start, reset_and_reload } from './naze_runtime.js';
 
@@ -158,7 +159,15 @@ async fn run_async(
 
     // Write dev index.html (overwrites the normal one)
     let title = get_app_title(manifest)?;
-    let dev_html = DEV_INDEX_HTML.replace("{{TITLE}}", &title);
+    let script_tags: String = manifest
+        .scripts
+        .iter()
+        .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let dev_html = DEV_INDEX_HTML
+        .replace("{{TITLE}}", &title)
+        .replace("{{SCRIPTS}}", &script_tags);
     std::fs::write(output_dir.join("index.html"), dev_html)?;
 
     // Create broadcast channel for reload notifications
@@ -314,7 +323,15 @@ async fn watch_and_rebuild(
 
                         // Write dev index.html again
                         if let Ok(title) = get_app_title(&manifest) {
-                            let dev_html = DEV_INDEX_HTML.replace("{{TITLE}}", &title);
+                            let script_tags: String = manifest
+                                .scripts
+                                .iter()
+                                .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+                                .collect::<Vec<_>>()
+                                .join("\n");
+                            let dev_html = DEV_INDEX_HTML
+                                .replace("{{TITLE}}", &title)
+                                .replace("{{SCRIPTS}}", &script_tags);
                             let _ = std::fs::write(output_dir.join("index.html"), dev_html);
                         }
 

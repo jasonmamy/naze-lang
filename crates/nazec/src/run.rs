@@ -135,7 +135,31 @@ impl ApplicationHandler<AppEvent> for App {
                                 }
                             }
                         }
-                        Key::Named(NamedKey::Enter) | Key::Named(NamedKey::Escape) => {
+                        Key::Named(NamedKey::Enter) => {
+                            // For textarea, Enter inserts a newline
+                            if let Some(ref focus) = self.focused_input {
+                                if focus.input_type == "textarea" {
+                                    if let Some(RenderValue::Str(current)) =
+                                        self.state_store.get(&focus.bind_var)
+                                    {
+                                        let new_value = format!("{}\n", current);
+                                        self.state_store.insert(
+                                            focus.bind_var.clone(),
+                                            RenderValue::Str(new_value),
+                                        );
+                                        changed = true;
+                                    }
+                                } else {
+                                    // For regular inputs, unfocus
+                                    for handler in &focus.change_handlers {
+                                        execute_action(&handler.action, &mut self.state_store);
+                                    }
+                                    self.focused_input = None;
+                                    changed = true;
+                                }
+                            }
+                        }
+                        Key::Named(NamedKey::Escape) => {
                             // Execute change handlers before unfocusing
                             if let Some(ref focus) = self.focused_input {
                                 for handler in &focus.change_handlers {
@@ -470,7 +494,7 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                         };
                         props.insert("selected".to_string(), RenderValue::Bool(selected));
                     }
-                } else if node.kind == "input" {
+                } else if node.kind == "input" || node.kind == "textarea" {
                     if let Some(RenderValue::Bind(var)) = node.props.get("bind") {
                         let value = match state.get(var) {
                             Some(RenderValue::Str(s)) => s.clone(),
@@ -651,13 +675,22 @@ fn find_input_at_point(
         if let Some(result) = find_input_at_point(&node.children, x, y) {
             return Some(result);
         }
-        // Check if this is an input
-        if node.kind == "input" {
+        // Check if this is an input or textarea
+        if node.kind == "input" || node.kind == "textarea" {
             if let Some(RenderValue::Bind(bind_var)) = node.props.get("bind") {
-                let node_id = format!("input_{}_{}", node.x as i32, node.y as i32);
-                let input_type = match node.props.get("type") {
-                    Some(RenderValue::Str(s)) => s.clone(),
-                    _ => "text".to_string(),
+                let prefix = if node.kind == "textarea" {
+                    "textarea"
+                } else {
+                    "input"
+                };
+                let node_id = format!("{}_{}_{}", prefix, node.x as i32, node.y as i32);
+                let input_type = if node.kind == "textarea" {
+                    "textarea".to_string()
+                } else {
+                    match node.props.get("type") {
+                        Some(RenderValue::Str(s)) => s.clone(),
+                        _ => "text".to_string(),
+                    }
                 };
                 let change_handlers: Vec<_> = node
                     .handlers

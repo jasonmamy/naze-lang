@@ -654,6 +654,72 @@ pub mod canvas {
             }
         }
 
+        /// Draw a multi-line textarea element.
+        pub fn draw_textarea(
+            &self,
+            x: f64,
+            y: f64,
+            w: f64,
+            h: f64,
+            value: &str,
+            placeholder: &str,
+            focused: bool,
+            show_caret: bool,
+        ) {
+            // Background
+            self.ctx.set_fill_style_str("#ffffff");
+            self.draw_rounded_rect_path(x, y, w, h, 4.0);
+            self.ctx.fill();
+
+            // Border - blue when focused, gray otherwise
+            let border_color = if focused { "#2563eb" } else { "#d1d5db" };
+            self.ctx.set_stroke_style_str(border_color);
+            self.ctx.set_line_width(if focused { 2.0 } else { 1.0 });
+            self.draw_rounded_rect_path(x, y, w, h, 4.0);
+            self.ctx.stroke();
+
+            // Clip content to textarea bounds
+            self.ctx.save();
+            self.ctx.begin_path();
+            self.ctx.rect(x, y, w, h);
+            self.ctx.clip();
+
+            let text_x = x + 8.0;
+            let mut text_y = y + 4.0;
+            let line_height = 22.0;
+
+            if !value.is_empty() {
+                // Render multi-line text
+                for line in value.split('\n') {
+                    if text_y > y + h {
+                        break;
+                    }
+                    self.draw_text(line, text_x, text_y, 16.0, false, "#111827");
+                    text_y += line_height;
+                }
+            } else if !placeholder.is_empty() {
+                self.draw_text(placeholder, text_x, text_y, 16.0, false, "#9ca3af");
+            }
+
+            // Draw cursor when show_caret is true
+            if show_caret {
+                // Find cursor position at end of last line
+                let lines: Vec<&str> = value.split('\n').collect();
+                let last_line = lines.last().copied().unwrap_or("");
+                let (text_width, _) = self.measure_text(last_line, 16.0, false);
+                let cursor_x = text_x + text_width;
+                let cursor_y = y + 4.0 + (lines.len().saturating_sub(1) as f64) * line_height;
+                self.ctx.set_stroke_style_str("#111827");
+                self.ctx.set_line_width(1.0);
+                self.ctx.begin_path();
+                self.ctx.move_to(cursor_x, cursor_y + 2.0);
+                self.ctx.line_to(cursor_x, cursor_y + line_height - 2.0);
+                self.ctx.stroke();
+            }
+
+            self.ctx.restore();
+        }
+
         /// Draw a select/dropdown element.
         pub fn draw_select(
             &self,

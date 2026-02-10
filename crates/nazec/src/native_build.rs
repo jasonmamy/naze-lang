@@ -498,6 +498,8 @@ fn execute_action(
             println!("[log] {:?}", value);
             false
         }
+        // Trigger, Copy, Send, JsCall not supported in native build
+        _ => false,
     }
 }
 
@@ -1123,6 +1125,19 @@ fn draw_node(pixmap: &mut Pixmap, node: &PositionedNode, font: &fontdue::Font, f
             };
             let show_caret = focused;
             draw_input(pixmap, x, y, w, h, &value, &placeholder, focused, input_type, show_caret, font);
+        }
+        "textarea" => {
+            let placeholder = match node.props.get("placeholder") {
+                Some(RenderValue::Str(s)) => s.clone(),
+                _ => String::new(),
+            };
+            let value = match node.props.get("value") {
+                Some(RenderValue::Str(s)) => s.clone(),
+                _ => String::new(),
+            };
+            let node_id = format!("textarea_{}_{}", x as i32, y as i32);
+            let focused = focused_input_id == Some(node_id.as_str());
+            draw_input(pixmap, x, y, w, h, &value, &placeholder, focused, "text", focused, font);
         }
         "select" => {
             let selected_value = match node.props.get("selected") {

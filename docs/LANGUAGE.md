@@ -1,6 +1,6 @@
 # Naze Language Reference
 
-This documents what the Naze language supports today (Phase 1 + Phase 2) and planned additions (marked as *(planned)* or *not yet implemented*). For the long-term vision, see [PROTOTYPE.md](PROTOTYPE.md). For upcoming features, see [PHASE3.md](PHASE3.md) and [PHASE4.md](PHASE4.md). For the parity analysis that motivated the application logic primitives, see [PARITY.md](PARITY.md).
+This documents what the Naze language supports today (Phase 1 + Phase 2 + Phase 3). For the long-term vision, see [PROTOTYPE.md](PROTOTYPE.md). For upcoming features, see [PHASE4.md](PHASE4.md). For the parity analysis that motivated the application logic primitives, see [PARITY.md](PARITY.md).
 
 ## File Structure
 
@@ -17,7 +17,7 @@ A `.naze` file contains any combination of:
 - `computed` declarations (with pipeline expressions)
 - `shared state` declarations
 - `storage` declarations
-- `data` declarations (async fetch, streams)
+- `data` declarations (async fetch, streams, JS calls, device APIs)
 - `param` declarations
 - `timer` declarations
 - `match` statements (pattern matching)
@@ -462,8 +462,8 @@ rect width: 200px, height: 50px, color: #2563eb, radius: 8px {
 | `trigger` | `trigger data-name` | Trigger a manual `data` fetch |
 | `copy` | `copy expression` | Copy value to clipboard |
 | `send` | `send stream-name expression` | Send message on a WebSocket stream |
-| `js` | `js "function"(args)` or `js "function"(args) -> target` | Call a JavaScript function *(planned)* |
-| `notify` | `notify "title" { body: "text" }` | Send browser notification *(planned)* |
+| `js` | `js "function"(args)` or `js "function"(args) -> target` | Call a JavaScript function |
+| `notify` | `notify "title" { body: "text" }` | Send browser notification |
 
 ### Expressions
 
@@ -930,9 +930,9 @@ if upload-result.data { text "Upload complete" color: #16a34a }
 
 **Props:** `bind` (state variable), `accept` (MIME type filter, e.g., `"image/*"`), `max-size` (client-side limit, e.g., `5mb`, `100kb`)
 
-### Textarea (Planned — not yet implemented)
+### Textarea
 
-Multi-line text input for comments, descriptions, bios, and longer text content.
+Multi-line text input for comments, descriptions, bios, and longer text content. Supports the same two-way binding and validation as `input`.
 
 ```naze
 state bio = ""
@@ -943,12 +943,14 @@ if bio {
 }
 ```
 
-**Props:** `bind` (state variable), `placeholder`, `rows` (visible height in text rows, default: 3), `max-length` (character limit)
+**Props:** `bind` (state variable), `placeholder`, `rows` (visible height in text rows, default: 4), `max-length` (character limit), `width`, `height`, `font-size`, `color`, `border`, `border-color`, `radius`, `line-height`, `letter-spacing`, `opacity`, `tab-index`, `cursor`, `text-align`, `shadow`, `transform`, `validate`
 
 **Semantics:**
 - Same as `input` but supports multi-line text with line breaks
 - Two-way binding via `bind` (same as other form elements)
+- Enter key inserts a newline (unlike `input`, where Enter unfocuses)
 - Validation rules (`required`, `min-length`, `max-length`) work the same as `input`
+- Default sizing: 200px wide, height computed from `rows` * line_height + padding
 
 ## Drag & Drop
 
@@ -1157,7 +1159,14 @@ version = "0.1.0"
 [build]
 entry = "app.naze"
 output = "dist/"
+
+# Optional: third-party JS scripts for js interop
+[scripts]
+stripe = "https://js.stripe.com/v3/"
+analytics = "./js/analytics.js"
 ```
+
+The `[scripts]` section declares external JavaScript files to include in the generated HTML. Each entry maps a name to a URL (CDN or local path). These scripts are loaded via `<script>` tags before the Naze runtime, making their globals available for `js` actions.
 
 ## Grammar Summary
 
@@ -1210,6 +1219,8 @@ on_handler  = "on" event_name ":" action
 event_name  = "click" | "hover" | "keypress" | "change"
             | "drag-start" | "drag-over" | "drop" | "scroll"
 action      = set_action | navigate_action | scroll_to_action | log_action
+              | trigger_action | copy_action | send_action
+              | js_action | notify_action
 set_action  = "set" name "=" expression
 navigate_action = "navigate" string
 scroll_to_action = "scroll-to" string
@@ -1257,11 +1268,11 @@ timer_stmt      = "timer" name ":" ("after" | "every") duration block
 duration        = number ("ms" | "s" | "min")
 
 -- Enhanced data with optional block body
-data_stmt       = "data" name ":" "fetch" string data_block?
-                | "data" name ":" "stream" string data_block?
+data_stmt       = "data" name ":" data_source string data_block?
+data_source     = "fetch" | "stream" | "js" | "device"
 data_block      = "{" data_prop* "}"
 data_prop       = ("method" | "params" | "headers" | "body" | "cache"
-                | "retry" | "trigger" | "content-type" | "type") ":" value
+                | "retry" | "trigger" | "content-type" | "type" | "watch") ":" value
 
 -- Extended actions
 action         += trigger_action | copy_action | send_action
@@ -1301,36 +1312,56 @@ match_pattern   = "_" | string_lit | number_lit | bool_lit | name
 match_arm_body  = "{" statement* "}"
 ```
 
-### Planned Grammar Additions (M19e — not yet implemented)
+### JS Interop, Device API & Textarea Additions (M19e — Implemented)
 
 ```
--- JS interop
+-- JS interop actions
 action         += js_action | notify_action
 js_action       = "js" string "(" args? ")" ("->" name)?
 notify_action   = "notify" string notify_block?
-notify_block    = "{" ("body" | "icon") ":" value "}"
+notify_block    = "{" notify_prop* "}"
+notify_prop     = ("body" | "icon") ":" value
 
 -- Additional data sources
-data_stmt      += "data" name ":" "js" string "(" args? ")" data_block?
-                | "data" name ":" "device" device_api data_block?
-device_api      = "geolocation" | "camera"
+data_source    += "js" | "device"
+data_prop_key  += "watch"
 
--- Textarea element
-textarea_stmt   = "textarea" props
+-- Textarea element (generic element — no grammar change needed)
+-- textarea bind: name, placeholder: "...", rows: 4
 ```
 
-## Future Ideas
+## Phase 3 Features
 
-For upcoming language features (layout templates, server functions, etc.), see:
+The following features were added in Phase 3 milestones M15, M16, M19b, M19c, M19d, and M19e.
 
-- [PHASE3.md](PHASE3.md) — Language completion and developer experience
-- [PHASE4.md](PHASE4.md) — Ecosystem and external integration
-- [PARITY.md](PARITY.md) — Component and application logic parity analysis (includes design rationale for planned primitives)
-- [PROTOTYPE.md](PROTOTYPE.md) — Full architecture spec
-
-### Overlay System (Planned — M19b)
+### Overlay System (M19b — Implemented)
 
 An `overlay` element that renders content above normal layout flow, enabling dialogs, dropdowns, tooltips, popovers, toasts, and menus. Includes `focus-trap`, `scroll-lock`, `on click-outside`, and `anchor` positioning.
+
+```naze
+state show-dialog = false
+
+rect padding: 8px, radius: 4, color: #3b82f6 {
+  text "Open Dialog" color: #ffffff
+  on click: set show-dialog = true
+}
+
+if show-dialog {
+  overlay focus-trap: true, scroll-lock: true {
+    rect width: 400px, padding: 24px, radius: 12px, color: #ffffff, shadow: "xl" {
+      heading "Dialog Title"
+      text "Dialog content goes here"
+      rect padding: 8px, radius: 4, color: #ef4444 {
+        text "Close" color: #ffffff
+        on click: set show-dialog = false
+      }
+    }
+    on click-outside: set show-dialog = false
+  }
+}
+```
+
+**Props:** `focus-trap` (bool), `scroll-lock` (bool), `anchor` (positioning reference), `width`, `height`, `color`, `radius`, `padding`, `shadow`, `opacity`, `transform`
 
 ### Visual Properties (M19c — Implemented)
 
@@ -1450,7 +1481,7 @@ rect width: 60px, height: 60px, color: #10b981, transform: "translate(10px, -5px
 
 **Values:** `"rotate(Ndeg)"`, `"scale(N)"` or `"scale(X, Y)"`, `"translate(Xpx, Ypx)"`
 
-### JavaScript Interop (Planned — M19e)
+### JavaScript Interop (M19e — Implemented)
 
 Controlled escape hatch for calling third-party JavaScript SDKs (Stripe, Mapbox, analytics, auth providers) from Naze code. Functions must be on `globalThis` — no module imports, keeping it simple and auditable.
 
@@ -1494,36 +1525,43 @@ if checkout.error { text checkout.error color: #dc2626 }
 - `data name: js "functionName"(args)` — async JS call with `.loading`/`.error`/`.data` lifecycle
 - Type marshalling: `number` ↔ f64, `text` ↔ string, `bool` ↔ boolean, list ↔ Array, object ↔ Object
 - Functions must be on `globalThis` — no module imports, no `require()`
-- Opt-in via `naze.toml` `[scripts]` section; compiler warns on undeclared JS references
+- Opt-in via `naze.toml` `[scripts]` section
+- Not available in native mode (logs a warning)
 
 **Grammar:** 1 new action variant (`js_action`), 1 new data source variant (`data: js`).
 
-### Browser Device APIs (Planned — M19e)
+### Browser Device APIs (M19e — Implemented)
 
 Declarative access to browser hardware APIs (geolocation, camera, notifications) using the `data` lifecycle pattern.
 
 ```naze
 -- Geolocation (one-shot)
-data location: device geolocation
+data location: device "geolocation"
 -- location.loading → true while acquiring GPS
 -- location.error → "Permission denied" if blocked
 -- location.data → { latitude: 40.7, longitude: -74.0, accuracy: 10 }
 
 -- Geolocation (continuous watch)
-data location: device geolocation { watch: true }
+data location: device "geolocation" { watch: true }
 
 -- Camera
-data camera: device camera { facing: "user", width: 640, height: 480 }
+data camera: device "camera"
 
 -- Send browser notification (fire-and-forget action)
 on click: notify "Order Shipped!" { body: "Your order is on its way.", icon: "icon.png" }
+
+-- Simple notification (no block needed)
+on click: notify "Quick update!"
 ```
 
 **Semantics:**
-- `data: device API_NAME` — reuses `.loading`/`.error`/`.data` lifecycle
+- `data: device "api-name"` — reuses `.loading`/`.error`/`.data` lifecycle
 - `device` keyword signals "browser hardware API requiring permissions"
 - Permission handling is implicit — denied permissions surface as `.error`
 - `notify` action — requests notification permission on first use, then shows notification
+- `notify` accepts an optional block with `body` and `icon` properties
+- `watch: true` in data block enables continuous position updates (vs one-shot)
 - Supported APIs: `geolocation`, `camera`; extensible to `accelerometer`, `bluetooth`, etc.
+- Not available in native mode (logs a warning)
 
-**Grammar:** 1 new data source variant (`device`), 1 new action (`notify`).
+**Grammar:** 1 new data source variant (`device`), 1 new action (`notify`), 1 new data prop (`watch`).

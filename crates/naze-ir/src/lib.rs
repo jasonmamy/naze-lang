@@ -44,12 +44,13 @@ pub struct StateDecl {
 pub struct DataDecl {
     pub name: String,
     pub url: String,
-    pub source_type: u8,      // 0 = fetch, 1 = websocket, 2 = sse
+    pub source_type: u8,      // 0 = fetch, 1 = websocket, 2 = sse, 3 = js, 4 = device
     pub method: String,       // "get", "post", "put", "delete", "patch"
     pub cache_ms: u64,        // 0 = no cache
     pub retry_count: u32,     // 0 = no retry
     pub trigger_mode: u8,     // 0 = auto, 1 = manual
     pub content_type: String, // e.g. "application/json"
+    pub watch: bool,          // for device APIs: continuously watch vs one-shot
 }
 
 /// A computed (read-only, derived) state declaration.
@@ -163,6 +164,16 @@ pub enum IrAction {
         stream_name: String,
         expr: IrExpression,
     },
+    JsCall {
+        function_name: String,
+        args: Vec<IrExpression>,
+        target: Option<String>,
+    },
+    Notify {
+        title: String,
+        body: String,
+        icon: String,
+    },
 }
 
 /// An event handler on a render node.
@@ -255,6 +266,7 @@ pub fn serialize(tree: &RenderTree) -> Vec<u8> {
         write_u32(&mut buf, decl.retry_count);
         buf.push(decl.trigger_mode);
         write_string(&mut buf, &decl.content_type);
+        buf.push(if decl.watch { 1 } else { 0 });
     }
     // Computed declarations
     write_u32(&mut buf, tree.computed.len() as u32);
@@ -329,6 +341,7 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         let retry_count = cursor.read_u32()?;
         let trigger_mode = cursor.read_u8()?;
         let content_type = cursor.read_string()?;
+        let watch = cursor.read_u8()? != 0;
         data_decls.push(DataDecl {
             name,
             url,
@@ -338,6 +351,7 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
             retry_count,
             trigger_mode,
             content_type,
+            watch,
         });
     }
     // Computed declarations
@@ -591,6 +605,31 @@ fn write_action(buf: &mut Vec<u8>, action: &IrAction) {
             buf.push(6);
             write_string(buf, stream_name);
             write_expression(buf, expr);
+        }
+        IrAction::JsCall {
+            function_name,
+            args,
+            target,
+        } => {
+            buf.push(7);
+            write_string(buf, function_name);
+            write_u32(buf, args.len() as u32);
+            for arg in args {
+                write_expression(buf, arg);
+            }
+            match target {
+                Some(t) => {
+                    buf.push(1);
+                    write_string(buf, t);
+                }
+                None => buf.push(0),
+            }
+        }
+        IrAction::Notify { title, body, icon } => {
+            buf.push(8);
+            write_string(buf, title);
+            write_string(buf, body);
+            write_string(buf, icon);
         }
     }
 }
@@ -862,6 +901,31 @@ impl<'a> Cursor<'a> {
                 let stream_name = self.read_string()?;
                 let expr = self.read_expression()?;
                 Ok(IrAction::Send { stream_name, expr })
+            }
+            7 => {
+                let function_name = self.read_string()?;
+                let arg_count = self.read_u32()? as usize;
+                let mut args = Vec::with_capacity(arg_count);
+                for _ in 0..arg_count {
+                    args.push(self.read_expression()?);
+                }
+                let has_target = self.read_u8()?;
+                let target = if has_target != 0 {
+                    Some(self.read_string()?)
+                } else {
+                    None
+                };
+                Ok(IrAction::JsCall {
+                    function_name,
+                    args,
+                    target,
+                })
+            }
+            8 => {
+                let title = self.read_string()?;
+                let body = self.read_string()?;
+                let icon = self.read_string()?;
+                Ok(IrAction::Notify { title, body, icon })
             }
             _ => Err(format!("unknown action tag: {}", tag)),
         }

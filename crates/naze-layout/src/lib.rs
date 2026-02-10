@@ -241,6 +241,16 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             // Dropdown select: default 200px wide, 32px tall
             (explicit_w.unwrap_or(200.0), explicit_h.unwrap_or(32.0))
         }
+        "textarea" => {
+            // Multi-line text input: default 200px wide, height based on rows
+            let font_size = get_font_size(node);
+            let rows = get_num_prop(node, "rows").unwrap_or(4.0) as f32;
+            let line_height = get_num_prop(node, "line-height")
+                .map(|lh| lh as f32 * font_size)
+                .unwrap_or(font_size * 1.4);
+            let h: f32 = rows * line_height + 16.0; // 8px padding top + bottom
+            (explicit_w.unwrap_or(200.0), explicit_h.unwrap_or(h))
+        }
         "option" => {
             // Options are rendered in dropdown overlay, not laid out directly
             (0.0, 0.0)
@@ -415,7 +425,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
 
     let children = match node.kind.as_str() {
         "text" | "heading" | "rect" | "spacer" | "image" | "checkbox" | "radio" | "input"
-        | "select" | "option" => Vec::new(),
+        | "textarea" | "select" | "option" => Vec::new(),
         "row" => {
             let inner_x = x + padding;
             let inner_y = y + padding;

@@ -1,0 +1,33 @@
+app "JS Interop Demo" {
+  state result = ""
+  state count = 0
+
+  column padding: 20px, gap: 16px {
+    heading "JavaScript Interop"
+
+    text "Call JS functions from Naze:"
+
+    rect padding: 12px, radius: 8, color: #f1f5f9 {
+      column gap: 8px {
+        text "Alert Example"
+        rect padding: 8px, radius: 4, color: #3b82f6 {
+          text "Show Alert" color: #ffffff
+          on click: js "alert"("Hello from Naze!")
+        }
+
+        text "Analytics Example"
+        rect padding: 8px, radius: 4, color: #10b981 {
+          text "Track Event" color: #ffffff
+          on click: js "gtag"("event", "button_click")
+        }
+
+        text "JS with return value"
+        rect padding: 8px, radius: 4, color: #8b5cf6 {
+          text "Get Timestamp" color: #ffffff
+          on click: js "Date.now"() -> result
+        }
+        text "Result: {result}" color: #6b7280
+      }
+    }
+  }
+}

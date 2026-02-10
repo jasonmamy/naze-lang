@@ -227,6 +227,7 @@ const CATEGORIES: &[Category] = &[
         examples: &[
             "input",
             "input-types",
+            "textarea",
             "checkbox",
             "radio",
             "select",
@@ -883,7 +884,7 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                         };
                         props.insert("selected".to_string(), RenderValue::Bool(selected));
                     }
-                } else if node.kind == "input" {
+                } else if node.kind == "input" || node.kind == "textarea" {
                     if let Some(RenderValue::Bind(var)) = node.props.get("bind") {
                         let value = match state.get(var) {
                             Some(RenderValue::Str(s)) => s.clone(),

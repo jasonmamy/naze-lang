@@ -373,6 +373,8 @@ fn parse_data(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let source_pair = inner.next().unwrap();
     let source = match source_pair.as_str() {
         "stream" => DataSource::Stream,
+        "js" => DataSource::JsCall,
+        "device" => DataSource::Device,
         _ => DataSource::Fetch,
     };
     let url_pair = inner.next().unwrap();
@@ -412,6 +414,11 @@ fn parse_data(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
                         }
                         "body" => {
                             config.body = Some(parse_value(val_pair));
+                        }
+                        "watch" => {
+                            if let Value::Bool(b) = parse_value(val_pair) {
+                                config.watch = b;
+                            }
                         }
                         _ => {}
                     }
@@ -962,6 +969,71 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
             Action::Send {
                 stream_name,
                 expr,
+                span,
+            }
+        }
+        Rule::js_action => {
+            let mut inner = pair.into_inner();
+            let function_name = match parse_string_lit(inner.next().unwrap()) {
+                Value::Str(s) => s,
+                _ => String::new(),
+            };
+            let mut args = Vec::new();
+            let mut target = None;
+            for p in inner {
+                match p.as_rule() {
+                    Rule::call_args => {
+                        args = p.into_inner().map(parse_expression).collect();
+                    }
+                    Rule::ident => {
+                        target = Some(p.as_str().to_string());
+                    }
+                    _ => {}
+                }
+            }
+            Action::JsCall {
+                function_name,
+                args,
+                target,
+                span,
+            }
+        }
+        Rule::notify_action => {
+            let mut inner = pair.into_inner();
+            let title = match parse_string_lit(inner.next().unwrap()) {
+                Value::Str(s) => s,
+                _ => String::new(),
+            };
+            let mut body = None;
+            let mut icon = None;
+            if let Some(block) = inner.next() {
+                if block.as_rule() == Rule::notify_block {
+                    for prop_pair in block.into_inner() {
+                        if prop_pair.as_rule() == Rule::notify_prop {
+                            let mut prop_inner = prop_pair.into_inner();
+                            let key = prop_inner.next().unwrap().as_str();
+                            let val_pair = prop_inner.next().unwrap();
+                            match key {
+                                "body" => {
+                                    if let Value::Str(s) = parse_value(val_pair) {
+                                        body = Some(s);
+                                    }
+                                }
+                                "icon" => {
+                                    if let Value::Str(s) = parse_value(val_pair) {
+                                        icon = Some(s);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+            Action::Notify {
+                title,
+                body,
+                icon,
                 span,
             }
         }

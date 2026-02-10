@@ -107,6 +107,8 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                     source_type: match source {
                         DataSource::Fetch => 0,
                         DataSource::Stream => 1,
+                        DataSource::JsCall => 3,
+                        DataSource::Device => 4,
                     },
                     method: config.method.clone().unwrap_or_else(|| "get".to_string()),
                     cache_ms: config.cache_ms.unwrap_or(0),
@@ -117,6 +119,7 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                         0
                     },
                     content_type: config.content_type.clone().unwrap_or_default(),
+                    watch: config.watch,
                 });
             }
             Node::Computed { name, expr, .. } => {
@@ -218,6 +221,8 @@ fn collect_declarations(
                     source_type: match source {
                         DataSource::Fetch => 0,
                         DataSource::Stream => 1,
+                        DataSource::JsCall => 3,
+                        DataSource::Device => 4,
                     },
                     method: config.method.clone().unwrap_or_else(|| "get".to_string()),
                     cache_ms: config.cache_ms.unwrap_or(0),
@@ -228,6 +233,7 @@ fn collect_declarations(
                         0
                     },
                     content_type: config.content_type.clone().unwrap_or_default(),
+                    watch: config.watch,
                 });
             }
             Node::Computed { name, expr, .. } => {
@@ -304,8 +310,8 @@ fn collect_validation_state(nodes: &[Node], state: &mut Vec<StateDecl>) {
                 children,
                 ..
             } => {
-                // Check if this is an input with both bind and validate props
-                if name == "input" {
+                // Check if this is an input/textarea with both bind and validate props
+                if name == "input" || name == "textarea" {
                     let has_validate = props.iter().any(|p| p.key == "validate");
                     if has_validate {
                         // Find the bind variable
@@ -1140,6 +1146,26 @@ fn lower_action(a: &Action) -> IrAction {
         } => IrAction::Send {
             stream_name: stream_name.clone(),
             expr: lower_expression(expr),
+        },
+        Action::JsCall {
+            function_name,
+            args,
+            target,
+            ..
+        } => IrAction::JsCall {
+            function_name: function_name.clone(),
+            args: args.iter().map(lower_expression).collect(),
+            target: target.clone(),
+        },
+        Action::Notify {
+            title,
+            body,
+            icon,
+            ..
+        } => IrAction::Notify {
+            title: title.clone(),
+            body: body.clone().unwrap_or_default(),
+            icon: icon.clone().unwrap_or_default(),
         },
     }
 }
