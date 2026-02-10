@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use naze_parser::ast::{Node, Param, Span};
+use naze_parser::ast::{Node, Param, Prop, Span, Unit, Value};
 
 use crate::error::{CompileError, Severity};
 
@@ -172,61 +172,82 @@ pub fn resolve(project_dir: &Path, entry: &str) -> ResolvedProject {
     let mut components: HashMap<String, ComponentDef> = HashMap::new();
     for (import_path, source_file) in &all_files {
         for node in &source_file.nodes {
-            if let Node::Component {
-                name,
-                params,
-                children,
-                span,
-            } = node
-            {
-                let def = ComponentDef {
-                    import_path: import_path.clone(),
-                    name: name.clone(),
-                    params: params.clone(),
-                    children: children.clone(),
-                    span: span.clone(),
-                    file: source_file.path.clone(),
-                };
+            let (name, params, children, span) = match node {
+                Node::Component {
+                    name,
+                    params,
+                    children,
+                    span,
+                } => (name, params.clone(), children, span),
+                Node::Template {
+                    name,
+                    children,
+                    span,
+                    ..
+                } => (name, vec![], children, span),
+                _ => continue,
+            };
 
-                if let Some(existing) = components.get(import_path) {
-                    errors.push(CompileError {
-                        message: format!(
-                            "duplicate component '{}': already defined in {}",
-                            import_path,
-                            existing.file.display()
-                        ),
-                        file: span.file.clone(),
-                        line: span.line,
-                        column: span.col,
-                        severity: Severity::Error,
-                    });
-                } else {
-                    components.insert(import_path.clone(), def);
-                }
+            let def = ComponentDef {
+                import_path: import_path.clone(),
+                name: name.clone(),
+                params,
+                children: children.clone(),
+                span: span.clone(),
+                file: source_file.path.clone(),
+            };
+
+            if let Some(existing) = components.get(import_path) {
+                errors.push(CompileError {
+                    message: format!(
+                        "duplicate component '{}': already defined in {}",
+                        import_path,
+                        existing.file.display()
+                    ),
+                    file: span.file.clone(),
+                    line: span.line,
+                    column: span.col,
+                    severity: Severity::Error,
+                });
+            } else {
+                components.insert(import_path.clone(), def);
             }
         }
     }
 
-    // Also extract components defined inline in the entry file
+    // Also extract components and templates defined inline in the entry file
     for node in &entry_file.nodes {
-        if let Node::Component {
-            name,
+        let (name, params, children, span) = match node {
+            Node::Component {
+                name,
+                params,
+                children,
+                span,
+            } => (name, params.clone(), children, span),
+            Node::Template {
+                name,
+                children,
+                span,
+                ..
+            } => (name, vec![], children, span),
+            _ => continue,
+        };
+
+        let import_path = name.clone();
+        let def = ComponentDef {
+            import_path: import_path.clone(),
+            name: name.clone(),
             params,
-            children,
-            span,
-        } = node
-        {
-            let import_path = name.clone();
-            let def = ComponentDef {
-                import_path: import_path.clone(),
-                name: name.clone(),
-                params: params.clone(),
-                children: children.clone(),
-                span: span.clone(),
-                file: entry_file.path.clone(),
-            };
-            components.entry(import_path).or_insert(def);
-        }
+            children: children.clone(),
+            span: span.clone(),
+            file: entry_file.path.clone(),
+        };
+        components.entry(import_path).or_insert(def);
+    }
+
+    // 3b. Register built-in templates (user definitions take precedence)
+    for def in builtin_templates() {
+        components.entry(def.name.clone()).or_insert(def);
     }
 
     // 4. Resolve use statements in the entry file
@@ -347,6 +368,12 @@ fn discover_naze_files(
         if path.is_dir() {
             discover_naze_files(root, &path, files, errors);
         } else if path.extension().is_some_and(|ext| ext == "naze") {
+            // Skip .test.naze files (test grammar) and temp test entry files
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name.ends_with(".test.naze") || name == ".naze-test-entry.naze" {
+                    continue;
+                }
+            }
             // Build import path: relative to root, without extension
             // e.g., "components/card" for "project/components/card.naze"
             let rel = path.strip_prefix(root).unwrap_or(&path);
@@ -442,7 +469,7 @@ fn check_unresolved_elements(
             Node::App { children, .. } => {
                 check_unresolved_elements(children, imported_names, components, errors);
             }
-            Node::Component { children, .. } => {
+            Node::Component { children, .. } | Node::Template { children, .. } => {
                 check_unresolved_elements(children, imported_names, components, errors);
             }
             Node::If {
@@ -532,6 +559,200 @@ fn check_circular_deps(files: &HashMap<String, SourceFile>, errors: &mut Vec<Com
             }
         }
     }
+}
+
+/// Helper to build a synthetic AST element node.
+fn make_element(name: &str, props: Vec<Prop>, children: Vec<Node>) -> Node {
+    Node::Element {
+        name: name.to_string(),
+        props,
+        children,
+        handlers: vec![],
+        span: builtin_span(),
+    }
+}
+
+/// Helper to build a slot statement node.
+fn make_slot(name: &str) -> Node {
+    Node::Slot {
+        name: Some(name.to_string()),
+        default_children: vec![],
+        span: builtin_span(),
+    }
+}
+
+fn builtin_span() -> Span {
+    Span {
+        file: "<builtin>".to_string(),
+        line: 0,
+        col: 0,
+        offset: 0,
+        len: 0,
+    }
+}
+
+fn px_prop(key: &str, val: f64) -> Prop {
+    Prop {
+        key: key.to_string(),
+        value: Value::Num(val, Some(Unit::Px)),
+    }
+}
+
+fn num_prop(key: &str, val: f64) -> Prop {
+    Prop {
+        key: key.to_string(),
+        value: Value::Num(val, None),
+    }
+}
+
+/// Built-in layout templates available without `use` imports.
+fn builtin_templates() -> Vec<ComponentDef> {
+    vec![
+        // app-shell(toolbar, sidebar, main, footer)
+        // column: toolbar row 64px → row(sidebar 240px + main flex-grow) → footer row 48px
+        ComponentDef {
+            import_path: "app-shell".to_string(),
+            name: "app-shell".to_string(),
+            params: vec![],
+            children: vec![make_element(
+                "column",
+                vec![],
+                vec![
+                    make_element(
+                        "row",
+                        vec![px_prop("height", 64.0)],
+                        vec![make_slot("toolbar")],
+                    ),
+                    make_element(
+                        "row",
+                        vec![num_prop("grow", 1.0)],
+                        vec![
+                            make_element(
+                                "column",
+                                vec![px_prop("width", 240.0)],
+                                vec![make_slot("sidebar")],
+                            ),
+                            make_element(
+                                "column",
+                                vec![num_prop("grow", 1.0)],
+                                vec![make_slot("main")],
+                            ),
+                        ],
+                    ),
+                    make_element(
+                        "row",
+                        vec![px_prop("height", 48.0)],
+                        vec![make_slot("footer")],
+                    ),
+                ],
+            )],
+            span: builtin_span(),
+            file: PathBuf::from("<builtin>"),
+        },
+        // dashboard(header, cards, detail-panel)
+        // column: header row 64px → row(cards flex-grow + detail-panel 400px collapsible:1200px)
+        ComponentDef {
+            import_path: "dashboard".to_string(),
+            name: "dashboard".to_string(),
+            params: vec![],
+            children: vec![make_element(
+                "column",
+                vec![],
+                vec![
+                    make_element(
+                        "row",
+                        vec![px_prop("height", 64.0)],
+                        vec![make_slot("header")],
+                    ),
+                    make_element(
+                        "row",
+                        vec![num_prop("grow", 1.0)],
+                        vec![
+                            make_element(
+                                "column",
+                                vec![num_prop("grow", 1.0)],
+                                vec![make_slot("cards")],
+                            ),
+                            make_element(
+                                "column",
+                                vec![
+                                    px_prop("width", 400.0),
+                                    px_prop("collapsible", 1200.0),
+                                ],
+                                vec![make_slot("detail-panel")],
+                            ),
+                        ],
+                    ),
+                ],
+            )],
+            span: builtin_span(),
+            file: PathBuf::from("<builtin>"),
+        },
+        // sidebar-layout(nav, content)
+        // row: nav 240px + content flex-grow
+        ComponentDef {
+            import_path: "sidebar-layout".to_string(),
+            name: "sidebar-layout".to_string(),
+            params: vec![],
+            children: vec![make_element(
+                "row",
+                vec![],
+                vec![
+                    make_element(
+                        "column",
+                        vec![px_prop("width", 240.0)],
+                        vec![make_slot("nav")],
+                    ),
+                    make_element(
+                        "column",
+                        vec![num_prop("grow", 1.0)],
+                        vec![make_slot("content")],
+                    ),
+                ],
+            )],
+            span: builtin_span(),
+            file: PathBuf::from("<builtin>"),
+        },
+        // split-view(left, right)
+        // row: left flex-grow + right flex-grow
+        ComponentDef {
+            import_path: "split-view".to_string(),
+            name: "split-view".to_string(),
+            params: vec![],
+            children: vec![make_element(
+                "row",
+                vec![],
+                vec![
+                    make_element(
+                        "column",
+                        vec![num_prop("grow", 1.0)],
+                        vec![make_slot("left")],
+                    ),
+                    make_element(
+                        "column",
+                        vec![num_prop("grow", 1.0)],
+                        vec![make_slot("right")],
+                    ),
+                ],
+            )],
+            span: builtin_span(),
+            file: PathBuf::from("<builtin>"),
+        },
+        // centered(content)
+        // column with max-width 800px, centered content slot
+        ComponentDef {
+            import_path: "centered".to_string(),
+            name: "centered".to_string(),
+            params: vec![],
+            children: vec![make_element(
+                "column",
+                vec![px_prop("max-width", 800.0)],
+                vec![make_slot("content")],
+            )],
+            span: builtin_span(),
+            file: PathBuf::from("<builtin>"),
+        },
+    ]
 }
 
 #[cfg(test)]
@@ -714,7 +935,6 @@ app "Test" {
 
         let project = resolve(dir.path(), "app.naze");
         assert!(project.errors.is_empty(), "errors: {:?}", project.errors);
-        assert_eq!(project.components.len(), 2);
         assert!(project.components.contains_key("components/box"));
         assert!(project.components.contains_key("components/card"));
     }

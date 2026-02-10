@@ -188,6 +188,16 @@ fn build_navigation() {
     build_example("navigation.naze");
 }
 
+#[test]
+fn build_template_basic() {
+    build_example("template-basic.naze");
+}
+
+#[test]
+fn build_responsive_layout() {
+    build_example("responsive-layout.naze");
+}
+
 // --- Runtime WASM size check ---
 
 #[test]

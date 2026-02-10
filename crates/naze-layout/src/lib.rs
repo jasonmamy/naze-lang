@@ -81,6 +81,7 @@ where
         0.0,
         viewport_width,
         viewport_height,
+        viewport_width,
         &text_measure,
     );
 
@@ -90,6 +91,7 @@ where
         &positioned,
         viewport_width,
         viewport_height,
+        viewport_width,
         &text_measure,
     );
 
@@ -111,6 +113,7 @@ fn layout_children_column<F: Fn(&str, f32) -> (f32, f32)>(
     y: f32,
     available_w: f32,
     available_h: f32,
+    viewport_w: f32,
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     let mut out = Vec::with_capacity(nodes.len());
@@ -127,7 +130,7 @@ fn layout_children_column<F: Fn(&str, f32) -> (f32, f32)>(
             spacer_count += 1;
             child_sizes.push((0.0, 0.0));
         } else {
-            let (w, h) = measure_node(node, available_w, available_h, text_measure);
+            let (w, h) = measure_node(node, available_w, available_h, viewport_w, text_measure);
             child_sizes.push((w, h));
             total_fixed_h += h;
         }
@@ -160,6 +163,7 @@ fn layout_children_column<F: Fn(&str, f32) -> (f32, f32)>(
             h,
             available_w,
             available_h,
+            viewport_w,
             text_measure,
         );
         cursor_y += positioned.height;
@@ -186,8 +190,16 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
     node: &RenderNode,
     available_w: f32,
     available_h: f32,
+    viewport_w: f32,
     text_measure: &F,
 ) -> (f32, f32) {
+    // Collapsible: hide element when viewport is below breakpoint
+    if let Some(bp) = get_num_prop(node, "collapsible") {
+        if viewport_w < bp as f32 {
+            return (0.0, 0.0);
+        }
+    }
+
     // Resolve dimensions with percentage support
     let explicit_w = resolve_dimension(node, "width", available_w);
     let explicit_h = resolve_dimension(node, "height", available_h);
@@ -261,59 +273,78 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
         }
         "spacer" => (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0)),
         "row" => {
-            let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
-            let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
-            let inner_h = explicit_h.map(|h| h - padding * 2.0).unwrap_or(available_h);
+            // Responsive: below breakpoint, measure as column instead
+            let responsive_bp = get_num_prop(node, "responsive").map(|v| v as f32);
+            let measure_as_column = responsive_bp.is_some_and(|bp| viewport_w < bp);
 
-            if wrap {
-                // Wrapping row: calculate height based on wrapped lines
-                let mut row_w: f32 = 0.0;
-                let mut row_h: f32 = 0.0;
+            if measure_as_column {
+                // Measure as column (sum heights)
+                let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
+                let inner_h = explicit_h.map(|h| h - padding * 2.0).unwrap_or(available_h);
+                let mut max_w: f32 = 0.0;
                 let mut total_h: f32 = 0.0;
-                let mut row_count = 0;
-
-                for child in node.children.iter() {
-                    let (cw, ch) = measure_node(child, inner_w, inner_h, text_measure);
-                    let item_gap = if row_w > 0.0 { gap } else { 0.0 };
-
-                    if row_w > 0.0 && row_w + item_gap + cw > inner_w {
-                        // Wrap to next row
-                        if row_count > 0 {
-                            total_h += gap;
-                        }
-                        total_h += row_h;
-                        row_count += 1;
-                        row_w = cw;
-                        row_h = ch;
-                    } else {
-                        row_w += item_gap + cw;
-                        row_h = row_h.max(ch);
+                for (i, child) in node.children.iter().enumerate() {
+                    let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
+                    max_w = max_w.max(cw);
+                    total_h += ch;
+                    if i > 0 {
+                        total_h += gap;
                     }
                 }
-                // Add final row
-                if row_count > 0 {
-                    total_h += gap;
-                }
-                total_h += row_h;
-
-                let w = explicit_w.unwrap_or(inner_w + padding * 2.0);
+                let w = explicit_w.unwrap_or(max_w + padding * 2.0);
                 let h = explicit_h.unwrap_or(total_h + padding * 2.0);
                 (w, h)
             } else {
-                // Non-wrapping row
-                let mut total_w: f32 = 0.0;
-                let mut max_h: f32 = 0.0;
-                for (i, child) in node.children.iter().enumerate() {
-                    let (cw, ch) = measure_node(child, inner_w, inner_h, text_measure);
-                    total_w += cw;
-                    if i > 0 {
-                        total_w += gap;
+                let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
+                let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
+                let inner_h = explicit_h.map(|h| h - padding * 2.0).unwrap_or(available_h);
+
+                if wrap {
+                    let mut row_w: f32 = 0.0;
+                    let mut row_h: f32 = 0.0;
+                    let mut total_h: f32 = 0.0;
+                    let mut row_count = 0;
+
+                    for child in node.children.iter() {
+                        let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
+                        let item_gap = if row_w > 0.0 { gap } else { 0.0 };
+
+                        if row_w > 0.0 && row_w + item_gap + cw > inner_w {
+                            if row_count > 0 {
+                                total_h += gap;
+                            }
+                            total_h += row_h;
+                            row_count += 1;
+                            row_w = cw;
+                            row_h = ch;
+                        } else {
+                            row_w += item_gap + cw;
+                            row_h = row_h.max(ch);
+                        }
                     }
-                    max_h = max_h.max(ch);
+                    if row_count > 0 {
+                        total_h += gap;
+                    }
+                    total_h += row_h;
+
+                    let w = explicit_w.unwrap_or(inner_w + padding * 2.0);
+                    let h = explicit_h.unwrap_or(total_h + padding * 2.0);
+                    (w, h)
+                } else {
+                    let mut total_w: f32 = 0.0;
+                    let mut max_h: f32 = 0.0;
+                    for (i, child) in node.children.iter().enumerate() {
+                        let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
+                        total_w += cw;
+                        if i > 0 {
+                            total_w += gap;
+                        }
+                        max_h = max_h.max(ch);
+                    }
+                    let w = explicit_w.unwrap_or(total_w + padding * 2.0);
+                    let h = explicit_h.unwrap_or(max_h + padding * 2.0);
+                    (w, h)
                 }
-                let w = explicit_w.unwrap_or(total_w + padding * 2.0);
-                let h = explicit_h.unwrap_or(max_h + padding * 2.0);
-                (w, h)
             }
         }
         "column" | "container" | "stack" => {
@@ -322,7 +353,7 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             let mut max_w: f32 = 0.0;
             let mut total_h: f32 = 0.0;
             for (i, child) in node.children.iter().enumerate() {
-                let (cw, ch) = measure_node(child, inner_w, inner_h, text_measure);
+                let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
                 max_w = max_w.max(cw);
                 total_h += ch;
                 if i > 0 {
@@ -334,7 +365,13 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             (w, h)
         }
         "grid" => {
-            let cols = get_num_prop(node, "columns").unwrap_or(2.0) as usize;
+            // Responsive: below breakpoint, force single column
+            let responsive_bp = get_num_prop(node, "responsive").map(|v| v as f32);
+            let cols = if responsive_bp.is_some_and(|bp| viewport_w < bp) {
+                1
+            } else {
+                get_num_prop(node, "columns").unwrap_or(2.0) as usize
+            };
             let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
             let col_w = if cols > 0 {
                 (inner_w - gap * (cols as f32 - 1.0).max(0.0)) / cols as f32
@@ -345,7 +382,7 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             let mut total_h: f32 = 0.0;
             let mut rows: usize = 0;
             for (i, child) in node.children.iter().enumerate() {
-                let (_cw, ch) = measure_node(child, col_w, available_h, text_measure);
+                let (_cw, ch) = measure_node(child, col_w, available_h, viewport_w, text_measure);
                 row_h = row_h.max(ch);
                 if (i + 1) % cols == 0 || i == node.children.len() - 1 {
                     if rows > 0 {
@@ -361,8 +398,6 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             (w, h)
         }
         "scroll" => {
-            // Scroll containers use explicit dimensions or available space
-            // Content is measured but doesn't affect container size
             let w = explicit_w.unwrap_or(available_w);
             let h = explicit_h.unwrap_or(available_h);
             (w, h)
@@ -374,7 +409,7 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             let mut max_w: f32 = 0.0;
             let mut total_h: f32 = 0.0;
             for child in &node.children {
-                let (cw, ch) = measure_node(child, inner_w, inner_h, text_measure);
+                let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
                 max_w = max_w.max(cw);
                 total_h += ch;
             }
@@ -400,8 +435,26 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
     height: f32,
     _available_w: f32,
     available_h: f32,
+    viewport_w: f32,
     text_measure: &F,
 ) -> PositionedNode {
+    // Collapsible: hide element when viewport is below breakpoint
+    if let Some(bp) = get_num_prop(node, "collapsible") {
+        if viewport_w < bp as f32 {
+            return PositionedNode {
+                kind: node.kind.clone(),
+                props: node.props.clone(),
+                handlers: node.handlers.clone(),
+                x,
+                y,
+                width: 0.0,
+                height: 0.0,
+                children: Vec::new(),
+                scroll_info: None,
+            };
+        }
+    }
+
     let padding = get_num_prop(node, "padding").unwrap_or(0.0) as f32;
     let gap = get_num_prop(node, "gap").unwrap_or(0.0) as f32;
     let align = get_str_prop(node, "align").unwrap_or("stretch");
@@ -419,6 +472,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
             gap,
             align,
             justify,
+            viewport_w,
             text_measure,
         );
     }
@@ -431,20 +485,11 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
             let inner_y = y + padding;
             let inner_w = width - padding * 2.0;
             let inner_h = height - padding * 2.0;
-            let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
-            if wrap {
-                layout_row_wrap(
-                    &node.children,
-                    inner_x,
-                    inner_y,
-                    inner_w,
-                    inner_h,
-                    gap,
-                    align,
-                    text_measure,
-                )
-            } else {
-                layout_row(
+
+            // Responsive: below breakpoint, layout as column
+            let responsive_bp = get_num_prop(node, "responsive").map(|v| v as f32);
+            if responsive_bp.is_some_and(|bp| viewport_w < bp) {
+                layout_column(
                     &node.children,
                     inner_x,
                     inner_y,
@@ -453,15 +498,50 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
                     gap,
                     align,
                     justify,
+                    viewport_w,
                     text_measure,
                 )
+            } else {
+                let wrap = get_bool_prop(node, "wrap").unwrap_or(false);
+                if wrap {
+                    layout_row_wrap(
+                        &node.children,
+                        inner_x,
+                        inner_y,
+                        inner_w,
+                        inner_h,
+                        gap,
+                        align,
+                        viewport_w,
+                        text_measure,
+                    )
+                } else {
+                    layout_row(
+                        &node.children,
+                        inner_x,
+                        inner_y,
+                        inner_w,
+                        inner_h,
+                        gap,
+                        align,
+                        justify,
+                        viewport_w,
+                        text_measure,
+                    )
+                }
             }
         }
         "grid" => {
             let inner_x = x + padding;
             let inner_y = y + padding;
             let inner_w = width - padding * 2.0;
-            let cols = get_num_prop(node, "columns").unwrap_or(2.0) as usize;
+            // Responsive: below breakpoint, force single column
+            let responsive_bp = get_num_prop(node, "responsive").map(|v| v as f32);
+            let cols = if responsive_bp.is_some_and(|bp| viewport_w < bp) {
+                1
+            } else {
+                get_num_prop(node, "columns").unwrap_or(2.0) as usize
+            };
             layout_grid(
                 &node.children,
                 inner_x,
@@ -470,6 +550,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
                 available_h,
                 cols,
                 gap,
+                viewport_w,
                 text_measure,
             )
         }
@@ -488,6 +569,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
                 gap,
                 align,
                 justify,
+                viewport_w,
                 text_measure,
             )
         }
@@ -518,6 +600,7 @@ fn layout_scroll_node<F: Fn(&str, f32) -> (f32, f32)>(
     gap: f32,
     align: &str,
     justify: &str,
+    viewport_w: f32,
     text_measure: &F,
 ) -> PositionedNode {
     let inner_x = x + padding;
@@ -546,6 +629,7 @@ fn layout_scroll_node<F: Fn(&str, f32) -> (f32, f32)>(
             gap,
             align,
             justify,
+            viewport_w,
             text_measure,
         )
     } else {
@@ -559,6 +643,7 @@ fn layout_scroll_node<F: Fn(&str, f32) -> (f32, f32)>(
             gap,
             align,
             justify,
+            viewport_w,
             text_measure,
         )
     };
@@ -605,6 +690,7 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
     gap: f32,
     align: &str,   // cross-axis: "start", "center", "end", "stretch" (default)
     justify: &str, // main-axis: "start" (default), "center", "end", "space-between", "space-around", "space-evenly"
+    viewport_w: f32,
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     if nodes.is_empty() {
@@ -638,7 +724,7 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
             if flex_grow > 0.0 {
                 total_flex_grow += flex_grow;
             }
-            let (w, h) = measure_node(node, available_w, available_h, text_measure);
+            let (w, h) = measure_node(node, available_w, available_h, viewport_w, text_measure);
             child_sizes.push((w, h));
             total_fixed_h += h;
             // Track shrinkable size (flex-shrink * size)
@@ -735,6 +821,7 @@ fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
             h,
             available_w,
             available_h,
+            viewport_w,
             text_measure,
         );
         cursor_y += positioned.height;
@@ -787,6 +874,7 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
     gap: f32,
     align: &str,   // cross-axis: "start", "center", "end", "stretch" (default)
     justify: &str, // main-axis: "start" (default), "center", "end", "space-between", etc.
+    viewport_w: f32,
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     if nodes.is_empty() {
@@ -819,7 +907,7 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
             if flex_grow > 0.0 {
                 total_flex_grow += flex_grow;
             }
-            let (w, h) = measure_node(node, available_w, available_h, text_measure);
+            let (w, h) = measure_node(node, available_w, available_h, viewport_w, text_measure);
             child_sizes.push((w, h));
             total_fixed_w += w;
             total_flex_shrink += flex_shrink * w;
@@ -915,6 +1003,7 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
             h,
             available_w,
             available_h,
+            viewport_w,
             text_measure,
         );
         cursor_x += positioned.width;
@@ -933,6 +1022,7 @@ fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
     available_h: f32,
     gap: f32,
     align: &str,
+    viewport_w: f32,
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     if nodes.is_empty() {
@@ -944,7 +1034,7 @@ fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
     // First pass: measure all children
     let child_sizes: Vec<(f32, f32)> = nodes
         .iter()
-        .map(|node| measure_node(node, available_w, available_h, text_measure))
+        .map(|node| measure_node(node, available_w, available_h, viewport_w, text_measure))
         .collect();
 
     // Second pass: arrange into rows
@@ -984,6 +1074,7 @@ fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
                     *item_h,
                     available_w,
                     available_h,
+                    viewport_w,
                     text_measure,
                 );
                 out.push(positioned);
@@ -1018,6 +1109,7 @@ fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
             *item_h,
             available_w,
             available_h,
+            viewport_w,
             text_measure,
         );
         item_x += item_w + gap;
@@ -1036,6 +1128,7 @@ fn layout_grid<F: Fn(&str, f32) -> (f32, f32)>(
     available_h: f32,
     cols: usize,
     gap: f32,
+    viewport_w: f32,
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     if cols == 0 || nodes.is_empty() {
@@ -1050,7 +1143,7 @@ fn layout_grid<F: Fn(&str, f32) -> (f32, f32)>(
     let mut row_heights = vec![0.0f32; num_rows];
     for (i, node) in nodes.iter().enumerate() {
         let row = i / cols;
-        let (_cw, ch) = measure_node(node, col_w, available_h, text_measure);
+        let (_cw, ch) = measure_node(node, col_w, available_h, viewport_w, text_measure);
         row_heights[row] = row_heights[row].max(ch);
     }
 
@@ -1064,8 +1157,8 @@ fn layout_grid<F: Fn(&str, f32) -> (f32, f32)>(
         }
 
         let cx = x + col as f32 * (col_w + gap);
-        let (w, h) = measure_node(node, col_w, available_h, text_measure);
-        let positioned = layout_node(node, cx, cursor_y, w, h, col_w, available_h, text_measure);
+        let (w, h) = measure_node(node, col_w, available_h, viewport_w, text_measure);
+        let positioned = layout_node(node, cx, cursor_y, w, h, col_w, available_h, viewport_w, text_measure);
         out.push(positioned);
     }
 
@@ -1170,6 +1263,7 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
     positioned_root: &[PositionedNode],
     viewport_width: f32,
     viewport_height: f32,
+    viewport_w: f32,
     text_measure: &F,
 ) -> Vec<PositionedNode> {
     let mut overlays = Vec::new();
@@ -1198,7 +1292,7 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                         let mut max_w: f32 = 0.0;
                         for child in &node.children {
                             let (cw, _) =
-                                measure_node(child, viewport_width, viewport_height, text_measure);
+                                measure_node(child, viewport_width, viewport_height, viewport_w, text_measure);
                             max_w = max_w.max(cw);
                         }
                         max_w + padding * 2.0
@@ -1208,7 +1302,7 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                         let mut total_h: f32 = 0.0;
                         for (i, child) in node.children.iter().enumerate() {
                             let (_, ch) =
-                                measure_node(child, content_w, viewport_height, text_measure);
+                                measure_node(child, content_w, viewport_height, viewport_w, text_measure);
                             total_h += ch;
                             if i > 0 {
                                 total_h += gap;
@@ -1252,6 +1346,7 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                     gap,
                     align,
                     justify,
+                    viewport_w,
                     text_measure,
                 );
 
@@ -1279,6 +1374,7 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                 gap,
                 align,
                 justify,
+                viewport_w,
                 text_measure,
             );
 
@@ -1564,6 +1660,8 @@ mod tests {
             "component-basic.naze",
             "component-props.naze",
             "multi-component.naze",
+            "template-basic.naze",
+            "responsive-layout.naze",
         ] {
             let project = resolve(&examples_dir, name);
             let render_tree = codegen::lower(&project);
@@ -1945,5 +2043,159 @@ mod tests {
         let json = serde_json::to_string(&tree).unwrap();
         let restored: LayoutTree = serde_json::from_str(&json).unwrap();
         assert_eq!(tree, restored);
+    }
+
+    #[test]
+    fn layout_row_responsive_stacks_below_breakpoint() {
+        // viewport 600 < breakpoint 768 → children should stack vertically
+        let tree = setup_and_layout(
+            &[(
+                "app.naze",
+                r#"app "Responsive" {
+  row responsive: 768px {
+    rect width: 100px, height: 50px, color: #ff0000
+    rect width: 100px, height: 50px, color: #00ff00
+  }
+}"#,
+            )],
+            600.0,
+            400.0,
+        );
+        let row = &tree.root[0];
+        assert_eq!(row.children.len(), 2);
+        let c0 = &row.children[0];
+        let c1 = &row.children[1];
+        // Stacked vertically: c1 should be below c0
+        assert!(
+            c1.y > c0.y,
+            "below breakpoint, children should stack vertically: c0.y={}, c1.y={}",
+            c0.y,
+            c1.y
+        );
+    }
+
+    #[test]
+    fn layout_row_responsive_stays_row_above_breakpoint() {
+        // viewport 1024 > breakpoint 768 → children should be side by side
+        let tree = setup_and_layout(
+            &[(
+                "app.naze",
+                r#"app "Responsive" {
+  row responsive: 768px {
+    rect width: 100px, height: 50px, color: #ff0000
+    rect width: 100px, height: 50px, color: #00ff00
+  }
+}"#,
+            )],
+            1024.0,
+            768.0,
+        );
+        let row = &tree.root[0];
+        assert_eq!(row.children.len(), 2);
+        let c0 = &row.children[0];
+        let c1 = &row.children[1];
+        // Side by side: same y, c1 to the right
+        assert_eq!(c0.y, c1.y, "above breakpoint, children should be in a row");
+        assert!(
+            c1.x > c0.x,
+            "c1 should be to the right of c0: c0.x={}, c1.x={}",
+            c0.x,
+            c1.x
+        );
+    }
+
+    #[test]
+    fn layout_collapsible_hides_below_breakpoint() {
+        // viewport 800 < breakpoint 1200 → element should be zero-size
+        let tree = setup_and_layout(
+            &[(
+                "app.naze",
+                r#"app "Collapsible" {
+  row {
+    column {
+      text "main"
+    }
+    column collapsible: 1200px, width: 300px {
+      text "sidebar"
+    }
+  }
+}"#,
+            )],
+            800.0,
+            600.0,
+        );
+        let row = &tree.root[0];
+        assert_eq!(row.children.len(), 2);
+        let sidebar = &row.children[1];
+        assert_eq!(
+            sidebar.width, 0.0,
+            "below breakpoint, collapsible should be hidden"
+        );
+        assert_eq!(
+            sidebar.height, 0.0,
+            "below breakpoint, collapsible should be hidden"
+        );
+    }
+
+    #[test]
+    fn layout_collapsible_shows_above_breakpoint() {
+        // viewport 1400 > breakpoint 1200 → element should have normal size
+        let tree = setup_and_layout(
+            &[(
+                "app.naze",
+                r#"app "Collapsible" {
+  row {
+    column {
+      text "main"
+    }
+    column collapsible: 1200px, width: 300px {
+      text "sidebar"
+    }
+  }
+}"#,
+            )],
+            1400.0,
+            800.0,
+        );
+        let row = &tree.root[0];
+        assert_eq!(row.children.len(), 2);
+        let sidebar = &row.children[1];
+        assert_eq!(
+            sidebar.width, 300.0,
+            "above breakpoint, collapsible should be visible"
+        );
+        assert!(
+            sidebar.height > 0.0,
+            "above breakpoint, collapsible should have height"
+        );
+    }
+
+    #[test]
+    fn layout_grid_responsive_single_column() {
+        // viewport 600 < breakpoint 768 → grid should use 1 column
+        let tree = setup_and_layout(
+            &[(
+                "app.naze",
+                r#"app "Grid" {
+  grid columns: 3, responsive: 768px {
+    rect width: 100px, height: 50px, color: #ff0000
+    rect width: 100px, height: 50px, color: #00ff00
+    rect width: 100px, height: 50px, color: #0000ff
+  }
+}"#,
+            )],
+            600.0,
+            400.0,
+        );
+        let grid = &tree.root[0];
+        assert_eq!(grid.children.len(), 3);
+        let c0 = &grid.children[0];
+        let c1 = &grid.children[1];
+        let c2 = &grid.children[2];
+        // Single column: all same x, stacked vertically
+        assert_eq!(c0.x, c1.x, "single column: same x");
+        assert_eq!(c1.x, c2.x, "single column: same x");
+        assert!(c1.y > c0.y, "stacked vertically");
+        assert!(c2.y > c1.y, "stacked vertically");
     }
 }

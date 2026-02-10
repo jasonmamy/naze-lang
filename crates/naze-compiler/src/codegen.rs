@@ -360,7 +360,7 @@ fn collect_validation_state(nodes: &[Node], state: &mut Vec<StateDecl>) {
             Node::App { children, .. } => {
                 collect_validation_state(children, state);
             }
-            Node::Component { children, .. } => {
+            Node::Component { children, .. } | Node::Template { children, .. } => {
                 collect_validation_state(children, state);
             }
             Node::Slot {
@@ -701,6 +701,7 @@ fn lower_nodes(
             Node::Comment(_)
             | Node::UseStmt { .. }
             | Node::Component { .. }
+            | Node::Template { .. }
             | Node::Let { .. }
             | Node::State { .. }
             | Node::Data { .. }
@@ -1043,12 +1044,42 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
                 .map(|p| match p {
                     StringPart::Literal(s) => TextPart::Literal(s.clone()),
                     StringPart::Interpolation(segments) => {
-                        // For now, join segments with "." for multi-part refs
-                        TextPart::StateRef(segments.join("."))
+                        let key = segments.join(".");
+                        // Inline let-scope values at compile time
+                        if let Some(val) = scope.get(&key) {
+                            match val {
+                                RenderValue::Str(s) => TextPart::Literal(s.clone()),
+                                RenderValue::Num(n, _) => {
+                                    if n.fract() == 0.0 {
+                                        TextPart::Literal(format!("{}", *n as i64))
+                                    } else {
+                                        TextPart::Literal(format!("{}", n))
+                                    }
+                                }
+                                RenderValue::Bool(b) => {
+                                    TextPart::Literal(if *b { "true" } else { "false" }.to_string())
+                                }
+                                _ => TextPart::StateRef(key),
+                            }
+                        } else {
+                            TextPart::StateRef(key)
+                        }
                     }
                 })
                 .collect();
-            RenderValue::InterpolatedStr(text_parts)
+            // If all parts are now literals, collapse to a plain string
+            if text_parts.iter().all(|p| matches!(p, TextPart::Literal(_))) {
+                let s: String = text_parts
+                    .into_iter()
+                    .map(|p| match p {
+                        TextPart::Literal(s) => s,
+                        _ => unreachable!(),
+                    })
+                    .collect();
+                RenderValue::Str(s)
+            } else {
+                RenderValue::InterpolatedStr(text_parts)
+            }
         }
         Value::Num(n, unit) => RenderValue::Num(*n, unit.as_ref().map(unit_str)),
         Value::Color(c) => RenderValue::Color(*c),

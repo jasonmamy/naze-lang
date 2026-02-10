@@ -1,0 +1,37 @@
+-- Template definition and usage example
+-- Templates are reusable layout scaffolds with named content regions (slots)
+
+template two-panel(left, right) {
+  row gap: 16px {
+    column width: 300px {
+      slot "left"
+    }
+    column grow: 1 {
+      slot "right"
+    }
+  }
+}
+
+app "Template Demo" {
+  column padding: 20px, gap: 16px {
+    heading "Template Example"
+
+    two-panel {
+      fill "left" {
+        column gap: 8px {
+          text "Navigation"
+          text "Item 1"
+          text "Item 2"
+          text "Item 3"
+        }
+      }
+      fill "right" {
+        column gap: 8px {
+          heading "Main Content"
+          text "This is the main content area."
+          text "It uses a template for consistent layout."
+        }
+      }
+    }
+  }
+}

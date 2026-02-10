@@ -417,33 +417,33 @@ data upload: fetch "/api/upload" { method: post, body: { file: avatar }, content
 on click: trigger upload
 ```
 
-### M19e: Remaining Gap Closures (Textarea, JS Interop, Browser APIs)
+### M19e: Remaining Gap Closures (Textarea, JS Interop, Browser APIs) ✅
 **Crates:** `naze-parser`, `naze-compiler`, `naze-ir`, `naze-runtime`, `nazec`
 
 Three additions that close the final parity gaps from ~97% to ~99%. Total grammar expansion: ~3 new rules. See [PARITY.md](PARITY.md) for the full analysis.
 
 #### Textarea Element
 
-- [ ] Parser: `textarea` element keyword (same prop pattern as `input`)
-- [ ] IR: textarea node kind in `RenderNode`
-- [ ] Runtime: multi-line text input rendering with line breaks
-- [ ] Runtime: two-way binding via `bind` (same as `input`)
-- [ ] Runtime: `rows` prop for visible height, `max-length` for character limit
-- [ ] Runtime: validation rules (`required`, `min-length`, `max-length`) same as `input`
+- [x] Parser: `textarea` element keyword (same prop pattern as `input`)
+- [x] IR: textarea node kind in `RenderNode`
+- [x] Runtime: multi-line text input rendering with line breaks
+- [x] Runtime: two-way binding via `bind` (same as `input`)
+- [x] Runtime: `rows` prop for visible height, `max-length` for character limit
+- [x] Runtime: validation rules (`required`, `min-length`, `max-length`) same as `input`
 
 #### JS Interop
 
-- [ ] Grammar: `js_action` rule (`js "functionName"(args)` and `js "name"(args) -> target`)
-- [ ] Grammar: `data: js` variant (`data name: js "functionName"(args)`)
-- [ ] AST: `Action::JsCall` variant, `DataSource::JsCall` variant
-- [ ] IR: JS call action and data source types
-- [ ] Compiler: validate `js` references against `naze.toml` `[scripts]` declarations (warn on undeclared)
-- [ ] Build pipeline: embed `<script>` tags from `naze.toml` `[scripts]` into generated `index.html`
-- [ ] Runtime: sync JS calls via `js_sys::Function` or `wasm_bindgen` `eval`
-- [ ] Runtime: type marshalling (number↔f64, text↔string, bool↔boolean, list↔Array, object↔Object)
-- [ ] Runtime: `js "name"(args) -> target` — store return value in state, trigger re-render
-- [ ] Runtime: `data: js` async variant — `.loading`/`.error`/`.data` lifecycle for Promise-returning functions
-- [ ] Runtime: return value conversion — unconvertible values JSON-stringified to text
+- [x] Grammar: `js_action` rule (`js "functionName"(args)` and `js "name"(args) -> target`)
+- [x] Grammar: `data: js` variant (`data name: js "functionName"(args)`)
+- [x] AST: `Action::JsCall` variant, `DataSource::JsCall` variant
+- [x] IR: JS call action and data source types
+- [ ] Compiler: validate `js` references against `naze.toml` `[scripts]` declarations (warn on undeclared) *(deferred — runtime responsibility)*
+- [x] Build pipeline: embed `<script>` tags from `naze.toml` `[scripts]` into generated `index.html`
+- [x] Runtime: sync JS calls via `js_sys::Function` or `wasm_bindgen` `eval`
+- [x] Runtime: type marshalling (number↔f64, text↔string, bool↔boolean, list↔Array, object↔Object)
+- [x] Runtime: `js "name"(args) -> target` — store return value in state, trigger re-render
+- [x] Runtime: `data: js` async variant — `.loading`/`.error`/`.data` lifecycle for Promise-returning functions
+- [x] Runtime: return value conversion — unconvertible values JSON-stringified to text
 
 **Example syntax:**
 ```naze
@@ -462,16 +462,16 @@ if checkout.loading { text "Processing payment..." }
 
 #### Browser Device APIs
 
-- [ ] Grammar: `device` keyword as data source (`data name: device API_NAME`)
-- [ ] Grammar: `notify_action` rule (`notify "title" { body: "text", icon: "url" }`)
-- [ ] AST: `DataSource::Device` variant, `Action::Notify` variant
-- [ ] IR: device data source type, notify action type
-- [ ] Runtime: geolocation one-shot (`navigator.geolocation.getCurrentPosition`)
-- [ ] Runtime: geolocation watch (`navigator.geolocation.watchPosition`) with `{ watch: true }`
-- [ ] Runtime: camera access (`navigator.mediaDevices.getUserMedia`) — store stream in state
-- [ ] Runtime: permission handling — denied permissions surface as `.error` state
-- [ ] Runtime: `notify` action — request notification permission on first use, show `Notification`
-- [ ] Runtime: device data `.loading`/`.error`/`.data` lifecycle (same as fetch/stream)
+- [x] Grammar: `device` keyword as data source (`data name: device API_NAME`)
+- [x] Grammar: `notify_action` rule (`notify "title" { body: "text", icon: "url" }`)
+- [x] AST: `DataSource::Device` variant, `Action::Notify` variant
+- [x] IR: device data source type, notify action type
+- [x] Runtime: geolocation one-shot (`navigator.geolocation.getCurrentPosition`)
+- [x] Runtime: geolocation watch (`navigator.geolocation.watchPosition`) with `{ watch: true }`
+- [x] Runtime: camera access (`navigator.mediaDevices.getUserMedia`) — store stream in state
+- [x] Runtime: permission handling — denied permissions surface as `.error` state
+- [x] Runtime: `notify` action — request notification permission on first use, show `Notification`
+- [x] Runtime: device data `.loading`/`.error`/`.data` lifecycle (same as fetch/stream)
 
 **Example syntax:**
 ```naze
@@ -564,7 +564,7 @@ Track B (layout):      M17 (independent)
 Track C (animation):   M18 (independent, builds on M14)
 Track D (components):  M19 → M19b ✅ (overlay builds on M19 component events)
 Track E (visual):      M19c ✅
-Track F (app logic):   M19d ✅ → M19e (M19e extends M19d's data/action infrastructure)
+Track F (app logic):   M19d ✅ → M19e ✅ (M19e extends M19d's data/action infrastructure)
 Track G (testing):     M20 (independent, can start immediately)
 Track H (tooling):     M21, M22 (parallel with everything)
 ```
@@ -577,7 +577,7 @@ M19d's state/data extensions are independent of other milestones. M19e extends M
 3. ~~M19c (visual properties)~~ — **Complete**
 4. ~~M15 (pipeline operators + pure functions)~~ — **Complete**
 5. ~~M16 (pattern matching)~~ — **Complete**
-6. M19e (remaining gap closures) — textarea, JS interop, browser device APIs
+6. ~~M19e (remaining gap closures)~~ — **Complete**
 7. M20 (testing framework) — enables CI/CD, validates other milestones
 8. M17 (templates/responsive) — production layout quality
 9. M19 (component events, theme inheritance) — component model completion

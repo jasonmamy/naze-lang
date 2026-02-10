@@ -11,7 +11,7 @@ NEWLINE_CHAR = _{ "\n" }
 
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
-statement = _{ comment | use_stmt | function_def | component_def | app_block | page_block | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | data_stmt | timer_stmt | param_stmt | if_stmt | match_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
+statement = _{ comment | use_stmt | function_def | component_def | template_def | app_block | page_block | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | data_stmt | timer_stmt | param_stmt | if_stmt | match_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
 
 // -- Comments
 comment = @{ "--" ~ (!NEWLINE_CHAR ~ ANY)* }
@@ -34,6 +34,10 @@ component_def = { "component" ~ ident ~ param_list? ~ block }
 param_list = { "(" ~ param ~ ("," ~ param)* ~ ")" }
 param = { ident ~ ":" ~ type_name ~ ("=" ~ value)? }
 type_name = { "text" | "number" | "bool" | "color" }
+
+// -- Template definition: template name(slot-name, slot-name) { ... }
+template_def = { "template" ~ ident ~ template_slot_list? ~ block }
+template_slot_list = { "(" ~ ident ~ ("," ~ ident)* ~ ")" }
 
 // -- Theme definition: theme { colors { ... } spacing { ... } }
 theme_def = { "theme" ~ theme_block }
@@ -178,3 +182,27 @@ ref_path = @{ ident_raw ~ ("." ~ ident_raw)+ }
 // -- Identifiers
 ident = @{ ident_raw }
 ident_raw = _{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-")* }
+
+// ─── Test file grammar (for .test.naze files) ───────────────────────────────
+
+test_file = { SOI ~ (NEWLINE_CHAR | comment | test_use_stmt | test_block | flow_block)* ~ EOI }
+test_use_stmt = { "use" ~ use_path ~ NEWLINE_CHAR }
+
+test_block = { "test" ~ string_lit ~ "{" ~ (NEWLINE_CHAR | test_step)* ~ "}" }
+flow_block = { "flow" ~ string_lit ~ "{" ~ (NEWLINE_CHAR | test_step)* ~ "}" }
+
+test_step = _{ test_render | test_click | test_fill | test_navigate | test_wait | test_assert | comment }
+test_render = { "render" ~ ident ~ inline_props? ~ NEWLINE_CHAR }
+test_click = { "click" ~ string_lit ~ NEWLINE_CHAR }
+test_fill = { "fill" ~ string_lit ~ "with" ~ string_lit ~ NEWLINE_CHAR }
+test_navigate = { "navigate" ~ string_lit ~ NEWLINE_CHAR }
+test_wait = { "wait" ~ duration_lit ~ NEWLINE_CHAR }
+
+test_assert = { "assert" ~ assert_kind ~ NEWLINE_CHAR }
+assert_kind = _{ assert_text_not_visible | assert_text_visible | assert_page | assert_state | assert_emitted | assert_a11y }
+assert_text_visible = { "text" ~ string_lit ~ "is" ~ "visible" }
+assert_text_not_visible = { "text" ~ string_lit ~ "is" ~ "not" ~ "visible" }
+assert_page = { "page" ~ "is" ~ string_lit }
+assert_state = { "state" ~ ident ~ "is" ~ value }
+assert_emitted = { "emitted" ~ ident }
+assert_a11y = { "no" ~ "accessibility" ~ "violations" }

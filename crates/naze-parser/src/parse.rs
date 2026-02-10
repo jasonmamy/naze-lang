@@ -54,6 +54,7 @@ pub fn parse(source: &str, file: &str) -> Result<Vec<Node>, ParseError> {
             Rule::app_block => nodes.push(parse_app(pair, file)),
             Rule::page_block => nodes.push(parse_page(pair, file)),
             Rule::component_def => nodes.push(parse_component(pair, file)),
+            Rule::template_def => nodes.push(parse_template(pair, file)),
             Rule::theme_def => nodes.push(parse_theme(pair, file)),
             Rule::use_stmt => nodes.push(parse_use(pair, file)),
             Rule::let_stmt => nodes.push(parse_let(pair, file)),
@@ -220,6 +221,38 @@ fn parse_component(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     Node::Component {
         name,
         params,
+        children,
+        span,
+    }
+}
+
+fn parse_template(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let name = inner.next().unwrap().as_str().to_string();
+
+    let mut slots = Vec::new();
+    let mut children = Vec::new();
+
+    for p in inner {
+        match p.as_rule() {
+            Rule::template_slot_list => {
+                for slot_ident in p.into_inner() {
+                    slots.push(slot_ident.as_str().to_string());
+                }
+            }
+            Rule::block => {
+                let contents = parse_block(p, file);
+                children = contents.nodes;
+            }
+            _ => {}
+        }
+    }
+
+    Node::Template {
+        name,
+        slots,
         children,
         span,
     }
@@ -865,6 +898,7 @@ fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> BlockContents {
             Rule::app_block => nodes.push(parse_app(p, file)),
             Rule::page_block => nodes.push(parse_page(p, file)),
             Rule::component_def => nodes.push(parse_component(p, file)),
+            Rule::template_def => nodes.push(parse_template(p, file)),
             Rule::use_stmt => nodes.push(parse_use(p, file)),
             Rule::let_stmt => nodes.push(parse_let(p, file)),
             Rule::state_stmt => nodes.push(parse_state(p, file)),
@@ -1208,6 +1242,184 @@ fn build_expr_tree(atoms: &[Expression], ops: &[BinOp]) -> Expression {
     }
 }
 
+// ─── Test file parser (for .test.naze files) ────────────────────────────────
+
+/// Parse a .test.naze source string into a TestFile AST.
+pub fn parse_test_file(source: &str, file: &str) -> Result<TestFile, ParseError> {
+    let pairs = NazeParser::parse(Rule::test_file, source).map_err(|e| {
+        let (line, column) = match e.line_col {
+            pest::error::LineColLocation::Pos((l, c)) => (l, c),
+            pest::error::LineColLocation::Span((l, c), _) => (l, c),
+        };
+        let message = match &e.variant {
+            pest::error::ErrorVariant::ParsingError {
+                positives,
+                negatives,
+            } => {
+                let mut parts = Vec::new();
+                if !positives.is_empty() {
+                    let names: Vec<_> = positives.iter().map(|r| format!("{:?}", r)).collect();
+                    parts.push(format!("expected {}", names.join(", ")));
+                }
+                if !negatives.is_empty() {
+                    let names: Vec<_> = negatives.iter().map(|r| format!("{:?}", r)).collect();
+                    parts.push(format!("unexpected {}", names.join(", ")));
+                }
+                if parts.is_empty() {
+                    "unexpected input".to_string()
+                } else {
+                    parts.join("; ")
+                }
+            }
+            pest::error::ErrorVariant::CustomError { message } => message.clone(),
+        };
+        ParseError {
+            message,
+            file: file.to_string(),
+            line,
+            column,
+        }
+    })?;
+
+    let file_pair = pairs.into_iter().next().unwrap();
+    let mut uses = Vec::new();
+    let mut tests = Vec::new();
+    let mut flows = Vec::new();
+
+    for pair in file_pair.into_inner() {
+        match pair.as_rule() {
+            Rule::test_use_stmt => {
+                let path_pair = pair.into_inner().next().unwrap();
+                uses.push(path_pair.as_str().to_string());
+            }
+            Rule::test_block => tests.push(parse_test_block(pair, file)),
+            Rule::flow_block => flows.push(parse_flow_block(pair, file)),
+            Rule::comment | Rule::EOI => {}
+            _ => {}
+        }
+    }
+
+    Ok(TestFile { uses, tests, flows })
+}
+
+fn parse_test_block(pair: pest::iterators::Pair<Rule>, file: &str) -> TestBlock {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = extract_plain_string(inner.next().unwrap());
+    let mut steps = Vec::new();
+    for p in inner {
+        if let Some(step) = parse_test_step(p, file) {
+            steps.push(step);
+        }
+    }
+    TestBlock { name, steps, span }
+}
+
+fn parse_flow_block(pair: pest::iterators::Pair<Rule>, file: &str) -> FlowBlock {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = extract_plain_string(inner.next().unwrap());
+    let mut steps = Vec::new();
+    for p in inner {
+        if let Some(step) = parse_test_step(p, file) {
+            steps.push(step);
+        }
+    }
+    FlowBlock { name, steps, span }
+}
+
+fn parse_test_step(pair: pest::iterators::Pair<Rule>, file: &str) -> Option<TestStep> {
+    let span = span_from_pair(&pair, file);
+    match pair.as_rule() {
+        Rule::test_render => {
+            let mut inner = pair.into_inner();
+            let component = inner.next().unwrap().as_str().to_string();
+            let props = match inner.next() {
+                Some(p) if p.as_rule() == Rule::inline_props => parse_inline_props(p),
+                _ => Vec::new(),
+            };
+            Some(TestStep::Render {
+                component,
+                props,
+                span,
+            })
+        }
+        Rule::test_click => {
+            let text = extract_plain_string(pair.into_inner().next().unwrap());
+            Some(TestStep::Click { text, span })
+        }
+        Rule::test_fill => {
+            let mut inner = pair.into_inner();
+            let target = extract_plain_string(inner.next().unwrap());
+            let value = extract_plain_string(inner.next().unwrap());
+            Some(TestStep::Fill {
+                target,
+                value,
+                span,
+            })
+        }
+        Rule::test_navigate => {
+            let path = extract_plain_string(pair.into_inner().next().unwrap());
+            Some(TestStep::Navigate { path, span })
+        }
+        Rule::test_wait => {
+            let duration_ms = parse_duration_ms(pair.into_inner().next().unwrap());
+            Some(TestStep::Wait { duration_ms, span })
+        }
+        Rule::test_assert => {
+            let kind_pair = pair.into_inner().next().unwrap();
+            let kind = parse_assert_kind(kind_pair);
+            Some(TestStep::Assert { kind, span })
+        }
+        Rule::comment => None,
+        _ => None,
+    }
+}
+
+fn parse_assert_kind(pair: pest::iterators::Pair<Rule>) -> AssertKind {
+    match pair.as_rule() {
+        Rule::assert_text_visible => {
+            let text = extract_plain_string(pair.into_inner().next().unwrap());
+            AssertKind::TextVisible(text)
+        }
+        Rule::assert_text_not_visible => {
+            let text = extract_plain_string(pair.into_inner().next().unwrap());
+            AssertKind::TextNotVisible(text)
+        }
+        Rule::assert_page => {
+            let path = extract_plain_string(pair.into_inner().next().unwrap());
+            AssertKind::PageIs(path)
+        }
+        Rule::assert_state => {
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let value = parse_value(inner.next().unwrap());
+            AssertKind::StateIs { name, value }
+        }
+        Rule::assert_emitted => {
+            let name = pair.into_inner().next().unwrap().as_str().to_string();
+            AssertKind::Emitted(name)
+        }
+        Rule::assert_a11y => AssertKind::NoA11yViolations,
+        _ => panic!("unexpected assert kind: {:?}", pair.as_rule()),
+    }
+}
+
+/// Extract a plain string from a string_lit pair (ignoring interpolation).
+fn extract_plain_string(pair: pest::iterators::Pair<Rule>) -> String {
+    match parse_string_lit(pair) {
+        Value::Str(s) => s,
+        Value::InterpolatedStr(parts) => parts
+            .into_iter()
+            .map(|p| match p {
+                StringPart::Literal(s) => s,
+                StringPart::Interpolation(segs) => format!("{{{}}}", segs.join(".")),
+            })
+            .collect(),
+        _ => String::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1318,6 +1530,56 @@ mod tests {
                 assert_eq!(children.len(), 1);
             }
             _ => panic!("expected Component"),
+        }
+    }
+
+    #[test]
+    fn parse_template_def() {
+        let source = r#"template my-layout(header, main, footer) {
+  column {
+    slot "header"
+    slot "main"
+    slot "footer"
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Template {
+                name,
+                slots,
+                children,
+                ..
+            } => {
+                assert_eq!(name, "my-layout");
+                assert_eq!(slots, &["header", "main", "footer"]);
+                assert_eq!(children.len(), 1); // the column element
+            }
+            _ => panic!("expected Template"),
+        }
+    }
+
+    #[test]
+    fn parse_template_no_slots() {
+        let source = r#"template centered {
+  column max-width: 800px {
+    slot
+  }
+}"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Template {
+                name,
+                slots,
+                children,
+                ..
+            } => {
+                assert_eq!(name, "centered");
+                assert!(slots.is_empty());
+                assert_eq!(children.len(), 1);
+            }
+            _ => panic!("expected Template"),
         }
     }
 

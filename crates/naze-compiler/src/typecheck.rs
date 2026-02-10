@@ -38,6 +38,7 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
             "padding" | "gap" | "width" | "height" | "opacity" => Some(Expected::Number),
             "min-width" | "max-width" | "min-height" | "max-height" => Some(Expected::Number),
             "flex-grow" | "flex-shrink" => Some(Expected::Number),
+            "responsive" | "collapsible" => Some(Expected::Number),
             "color" => Some(Expected::Color),
             "columns" => Some(Expected::Number),
             "align" | "justify" => Some(Expected::Text),
@@ -77,7 +78,7 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
             _ => None,
         },
         "container" => match prop {
-            "padding" | "width" | "height" | "radius" | "border" | "opacity" => {
+            "padding" | "width" | "height" | "radius" | "border" | "opacity" | "collapsible" => {
                 Some(Expected::Number)
             }
             "color" | "border-color" => Some(Expected::Color),
@@ -238,7 +239,9 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
                 names.insert(format!("{}.error", name));
                 names.insert(format!("{}.data", name));
             }
-            Node::App { children, .. } | Node::Component { children, .. } => {
+            Node::App { children, .. }
+            | Node::Component { children, .. }
+            | Node::Template { children, .. } => {
                 names.extend(collect_state_names(children));
             }
             Node::Element {
@@ -309,6 +312,7 @@ fn collect_computed_names(nodes: &[Node]) -> HashSet<String> {
             }
             Node::App { children, .. }
             | Node::Component { children, .. }
+            | Node::Template { children, .. }
             | Node::Each { children, .. }
             | Node::Fill { children, .. }
             | Node::Page { children, .. }
@@ -347,6 +351,7 @@ fn collect_data_names(nodes: &[Node]) -> HashSet<String> {
             }
             Node::App { children, .. }
             | Node::Component { children, .. }
+            | Node::Template { children, .. }
             | Node::Each { children, .. }
             | Node::Fill { children, .. }
             | Node::Page { children, .. }
@@ -438,6 +443,17 @@ fn check_nodes(
                     children,
                     components,
                     params,
+                    state_names,
+                    computed_names,
+                    data_names,
+                    errors,
+                );
+            }
+            Node::Template { children, .. } => {
+                check_nodes(
+                    children,
+                    components,
+                    in_scope_params,
                     state_names,
                     computed_names,
                     data_names,

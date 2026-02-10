@@ -1,4 +1,4 @@
-use naze_parser::parse;
+use naze_parser::{parse, parse_test_file};
 use std::fs;
 use std::path::Path;
 
@@ -222,4 +222,85 @@ fn parse_functions() {
 #[test]
 fn parse_match() {
     parse_example("match.naze");
+}
+
+#[test]
+fn parse_template_basic() {
+    parse_example("template-basic.naze");
+}
+
+#[test]
+fn parse_responsive_layout() {
+    parse_example("responsive-layout.naze");
+}
+
+// ─── Test file parsing (.test.naze) ──────────────────────────────────────────
+
+fn parse_test_example(name: &str) {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("examples")
+        .join(name);
+    let source = fs::read_to_string(&path).unwrap_or_else(|e| panic!("can't read {name}: {e}"));
+    let test_file =
+        parse_test_file(&source, name).unwrap_or_else(|e| panic!("parse failed for {name}: {e}"));
+
+    // Verify it produced test blocks
+    assert!(
+        !test_file.tests.is_empty() || !test_file.flows.is_empty(),
+        "{name} produced no test or flow blocks"
+    );
+
+    // Verify JSON serialization round-trips
+    let json = serde_json::to_string_pretty(&test_file).unwrap();
+    assert!(!json.is_empty());
+}
+
+#[test]
+fn parse_test_counter() {
+    parse_test_example("tests/counter.test.naze");
+}
+
+#[test]
+fn parse_test_input() {
+    parse_test_example("tests/input.test.naze");
+}
+
+#[test]
+fn parse_test_inline() {
+    // Parse a test file from an inline string to verify all step types
+    let source = r#"
+use counter
+
+test "basic assertions" {
+  render counter
+  assert text "hello" is visible
+  assert text "gone" is not visible
+  click "Submit"
+  fill "email" with "user@example.com"
+  assert state count is 5
+  navigate "/home"
+  assert page is "/home"
+  wait 100ms
+}
+
+flow "user journey" {
+  render counter
+  click "Start"
+  assert text "welcome" is visible
+}
+"#;
+    let test_file = parse_test_file(source, "inline.test.naze")
+        .unwrap_or_else(|e| panic!("parse failed: {e}"));
+    assert_eq!(test_file.uses.len(), 1);
+    assert_eq!(test_file.uses[0], "counter");
+    assert_eq!(test_file.tests.len(), 1);
+    assert_eq!(test_file.flows.len(), 1);
+    assert_eq!(test_file.tests[0].name, "basic assertions");
+    assert_eq!(test_file.tests[0].steps.len(), 9);
+    assert_eq!(test_file.flows[0].name, "user journey");
+    assert_eq!(test_file.flows[0].steps.len(), 3);
 }

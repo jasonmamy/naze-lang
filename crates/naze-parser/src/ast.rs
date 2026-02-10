@@ -24,6 +24,12 @@ pub enum Node {
         children: Vec<Node>,
         span: Span,
     },
+    Template {
+        name: String,
+        slots: Vec<String>,
+        children: Vec<Node>,
+        span: Span,
+    },
     UseStmt {
         path: Vec<String>,
         span: Span,
@@ -387,4 +393,72 @@ pub enum Type {
     Number,
     Bool,
     Color,
+}
+
+// ─── Test file AST types ─────────────────────────────────────────────────────
+
+/// A parsed `.test.naze` file containing test and flow blocks.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestFile {
+    pub uses: Vec<String>,
+    pub tests: Vec<TestBlock>,
+    pub flows: Vec<FlowBlock>,
+}
+
+/// A single test block: `test "description" { steps }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestBlock {
+    pub name: String,
+    pub steps: Vec<TestStep>,
+    pub span: Span,
+}
+
+/// A flow block: `flow "description" { steps }`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FlowBlock {
+    pub name: String,
+    pub steps: Vec<TestStep>,
+    pub span: Span,
+}
+
+/// A single step in a test or flow block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TestStep {
+    Render {
+        component: String,
+        props: Vec<Prop>,
+        span: Span,
+    },
+    Click {
+        text: String,
+        span: Span,
+    },
+    Fill {
+        target: String,
+        value: String,
+        span: Span,
+    },
+    Navigate {
+        path: String,
+        span: Span,
+    },
+    Wait {
+        duration_ms: u64,
+        span: Span,
+    },
+    Assert {
+        kind: AssertKind,
+        span: Span,
+    },
+}
+
+/// The different assertion types.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AssertKind {
+    TextVisible(String),
+    TextNotVisible(String),
+    PageIs(String),
+    StateIs { name: String, value: Value },
+    Emitted(String),
+    NoA11yViolations,
 }
