@@ -1,0 +1,23 @@
+# Rust build output
+/target
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Claude Code local settings
+.claude/
+
+# Environment / secrets
+.env
+.env.*
+
+# Build artifacts
+*.wasm.map
