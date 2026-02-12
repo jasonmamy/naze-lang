@@ -1,8 +1,8 @@
-# Phase 5B: Extensions (M39-M40)
+# Phase 5B: Extensions (M39-M41)
 
-**Goal:** Close remaining gaps after Phase 5 core (M31-M38). M39 adds declarative database queries. M40 completes browser API parity by implementing the four features that had parser+IR+codegen but missing/stub runtime implementations.
+**Goal:** Close remaining gaps after Phase 5 core (M31-M38). M39 adds declarative database queries. M40 completes browser API parity. M41 optimizes WASM binary size.
 
-**Phase 5 status:** M31-M38 all complete. M39 complete. M40 complete. 382 workspace tests passing. WASM binary: 406KB. See [PHASE5.md](PHASE5.md).
+**Phase 5 status:** M31-M38 all complete. M39-M41 complete. 382 workspace tests passing. WASM binary: 374KB. See [PHASE5.md](PHASE5.md).
 
 ---
 
@@ -123,3 +123,37 @@ Four features had full parser + IR + codegen support but missing or stub runtime
 | `crates/nazec/tests/build_examples.rs` | WASM size limit 360KB → 420KB |
 | `examples/device-geolocation.naze` | New example: one-shot + watch mode geolocation |
 | `examples/device-accelerometer.naze` | New example: motion data display |
+
+---
+
+## M41: WASM Binary Size Optimization
+**Crates:** `naze-runtime` (WASM), workspace config
+
+Reverse the binary size growth from M40 (406KB) with targeted optimizations: enable wasm-opt, remove unused web-sys features, reduce format!() string bloat, and fix unsafe strip setting.
+
+- [x] **Enable wasm-opt** — changed `wasm-opt = false` to `wasm-opt = ['-Os']` in runtime Cargo.toml; installed binaryen via npm
+- [x] **Remove 14 unused web-sys features** — removed HtmlDivElement, HtmlBodyElement, HashChangeEvent, Node, CloseEvent, EventSource, EventSourceInit, FileReader, Blob, FormData, History, PopStateEvent, Url, UrlSearchParams (40 features retained)
+- [x] **Fix strip setting** — changed workspace `strip = true` (unsafe for WASM, maps to "symbols") to `strip = "debuginfo"`
+- [x] **Reduce format!() string bloat** — added `state_key()` helper, replaced 48 `format!("{}.loading/error/data", name)` patterns
+- [x] WASM binary: 374KB (was 406KB, -32KB / -8%)
+- [x] WASM size budget updated to 390KB
+- [x] 382 workspace tests passing
+
+### Size Profile (twiggy)
+
+| Metric | Before (M40) | After (M41) |
+|--------|-------------|-------------|
+| Binary size | 415,795B (406KB) | 382,942B (374KB) |
+| Total items | 1,959 | 1,335 |
+| Largest data segment | 59,830B (14.4%) | 27,621B (7.2%) |
+| web-sys features | 52 | 40 |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/naze-runtime/Cargo.toml` | Enable wasm-opt, remove 14 unused web-sys features |
+| `Cargo.toml` (workspace) | `strip = true` → `strip = "debuginfo"` |
+| `crates/naze-runtime/src/lib.rs` | Add `state_key()` helper, replace 48 format!() patterns |
+| `crates/nazec/tests/build_examples.rs` | WASM size limit 420KB → 390KB |
+| `crates/naze-runtime/pkg/*` | Rebuilt WASM binary |

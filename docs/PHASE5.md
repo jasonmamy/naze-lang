@@ -2,7 +2,7 @@
 
 **Goal:** Close the critical gaps vs Next.js/React for production SaaS applications. After Phase 5, Naze apps can have configurable deployments, dynamic URL-driven pages, server-side data access with databases, protected routes, graceful error handling, and per-page SEO metadata.
 
-**Status:** M31-M38 all complete. M39-M40 complete (see [PHASE5B.md](PHASE5B.md)). 382 workspace tests passing. WASM binary: 406KB.
+**Status:** M31-M38 all complete. M39-M41 complete (see [PHASE5B.md](PHASE5B.md)). 382 workspace tests passing. WASM binary: 374KB.
 
 **Architecture shift:** Phase 4 added server-side capabilities (SSR/SSG, server functions, AI prompts) and the package ecosystem. Phase 5 deepens the server story (multi-statement server functions, database queries, auth) and adds production infrastructure (env vars, dynamic routing, guards, error boundaries, head management).
 
@@ -17,9 +17,10 @@ M31 (Env Vars) ─────────────────────�
   ├── M33 (Server Fns) ──────── M38 (Database) ── M39 (Declarative Queries)
   └── M35 (Error Boundaries) ── independent
                                                    M40 (Browser API Parity) ── independent
+                                                   M41 (WASM Size Optimization) ── independent
 ```
 
-**Implementation order:** M31 → M32 → M35 → M33 → M34 → M36 → M37 → M38 → M39 → M40
+**Implementation order:** M31 → M32 → M35 → M33 → M34 → M36 → M37 → M38 → M39 → M40 → M41
 
 ---
 
@@ -138,7 +139,7 @@ SQL queries inside server function bodies, with parameterized queries preventing
 
 | Metric | Value |
 |--------|-------|
-| Milestones | 10 (M31-M40) |
+| Milestones | 11 (M31-M41) |
 | Workspace tests | 382 |
-| WASM binary | 406KB |
+| WASM binary | 374KB |
 | Grammar rules | ~138 |

@@ -12,6 +12,18 @@ use naze_ir::{
 use naze_layout::{self, LayoutTree, PositionedNode, ScrollInfo};
 use naze_renderer::{self, canvas::Renderer};
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/// Build a dotted state key like "name.loading" without format! overhead.
+#[inline]
+fn state_key(base: &str, suffix: &str) -> String {
+    let mut s = String::with_capacity(base.len() + 1 + suffix.len());
+    s.push_str(base);
+    s.push('.');
+    s.push_str(suffix);
+    s
+}
+
 // ─── App state ──────────────────────────────────────────────────────────────
 
 /// Tracks which text input is currently focused.
@@ -530,32 +542,32 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
 
     // 3. Initialize data state variables (loading=true, error=null, data=null)
     for decl in &render_tree.data {
-        state_store.insert(format!("{}.loading", decl.name), RenderValue::Bool(true));
+        state_store.insert(state_key(&decl.name, "loading"), RenderValue::Bool(true));
         state_store.insert(
-            format!("{}.error", decl.name),
+            state_key(&decl.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
+        state_store.insert(state_key(&decl.name, "data"), RenderValue::List(vec![]));
     }
 
     // 3a2. Initialize server call state variables (same three-state pattern)
     for call in &render_tree.server_calls {
-        state_store.insert(format!("{}.loading", call.name), RenderValue::Bool(true));
+        state_store.insert(state_key(&call.name, "loading"), RenderValue::Bool(true));
         state_store.insert(
-            format!("{}.error", call.name),
+            state_key(&call.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(format!("{}.data", call.name), RenderValue::List(vec![]));
+        state_store.insert(state_key(&call.name, "data"), RenderValue::List(vec![]));
     }
 
     // 3a3. Initialize prompt state variables (same three-state pattern)
     for prompt in &render_tree.prompts {
-        state_store.insert(format!("{}.loading", prompt.name), RenderValue::Bool(true));
+        state_store.insert(state_key(&prompt.name, "loading"), RenderValue::Bool(true));
         state_store.insert(
-            format!("{}.error", prompt.name),
+            state_key(&prompt.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(format!("{}.data", prompt.name), RenderValue::Str(String::new()));
+        state_store.insert(state_key(&prompt.name, "data"), RenderValue::Str(String::new()));
     }
 
     // 3b. Initialize storage-backed state (read from localStorage/sessionStorage)
@@ -745,32 +757,32 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
 
     // 2b. Initialize data state variables (loading=true, error=null, data=null)
     for decl in &render_tree.data {
-        state_store.insert(format!("{}.loading", decl.name), RenderValue::Bool(true));
+        state_store.insert(state_key(&decl.name, "loading"), RenderValue::Bool(true));
         state_store.insert(
-            format!("{}.error", decl.name),
+            state_key(&decl.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
+        state_store.insert(state_key(&decl.name, "data"), RenderValue::List(vec![]));
     }
 
     // 2b2. Initialize server call state variables
     for call in &render_tree.server_calls {
-        state_store.insert(format!("{}.loading", call.name), RenderValue::Bool(true));
+        state_store.insert(state_key(&call.name, "loading"), RenderValue::Bool(true));
         state_store.insert(
-            format!("{}.error", call.name),
+            state_key(&call.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(format!("{}.data", call.name), RenderValue::List(vec![]));
+        state_store.insert(state_key(&call.name, "data"), RenderValue::List(vec![]));
     }
 
     // 2b3. Initialize prompt state variables
     for prompt in &render_tree.prompts {
-        state_store.insert(format!("{}.loading", prompt.name), RenderValue::Bool(true));
+        state_store.insert(state_key(&prompt.name, "loading"), RenderValue::Bool(true));
         state_store.insert(
-            format!("{}.error", prompt.name),
+            state_key(&prompt.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(format!("{}.data", prompt.name), RenderValue::Str(String::new()));
+        state_store.insert(state_key(&prompt.name, "data"), RenderValue::Str(String::new()));
     }
 
     // 2c. Initialize storage-backed state
@@ -3565,8 +3577,8 @@ fn init_device_data(name: &str, api: &str, watch: bool) {
         "accelerometer" => init_accelerometer(name, watch),
         _ => {
             // Unknown device API — set error state
-            let err_key = format!("{}.error", name);
-            let loading_key = format!("{}.loading", name);
+            let err_key = state_key(&name, "error");
+            let loading_key = state_key(&name, "loading");
             APP.with(|cell| {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
@@ -3593,8 +3605,8 @@ fn init_geolocation(name: &str, watch: bool) {
     let geolocation = match navigator.geolocation() {
         Ok(g) => g,
         Err(_) => {
-            let err_key = format!("{}.error", name);
-            let loading_key = format!("{}.loading", name);
+            let err_key = state_key(&name, "error");
+            let loading_key = state_key(&name, "loading");
             APP.with(|cell| {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
@@ -3616,9 +3628,9 @@ fn init_geolocation(name: &str, watch: bool) {
             ("longitude".to_string(), RenderValue::Num(coords.longitude(), None)),
             ("accuracy".to_string(), RenderValue::Num(coords.accuracy(), None)),
         ]);
-        let data_key = format!("{}.data", name_ok);
-        let loading_key = format!("{}.loading", name_ok);
-        let err_key = format!("{}.error", name_ok);
+        let data_key = state_key(&name_ok, "data");
+        let loading_key = state_key(&name_ok, "loading");
+        let err_key = state_key(&name_ok, "error");
         APP.with(|cell| {
             let mut borrow = cell.borrow_mut();
             if let Some(app) = borrow.as_mut() {
@@ -3639,8 +3651,8 @@ fn init_geolocation(name: &str, watch: bool) {
                 3 => "Geolocation timeout".to_string(),
                 _ => format!("Geolocation error: {}", err.message()),
             };
-            let err_key = format!("{}.error", name_err);
-            let loading_key = format!("{}.loading", name_err);
+            let err_key = state_key(&name_err, "error");
+            let loading_key = state_key(&name_err, "loading");
             APP.with(|cell| {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
@@ -3707,9 +3719,9 @@ fn init_accelerometer(name: &str, watch: bool) {
                 ("y".to_string(), RenderValue::Num(y, None)),
                 ("z".to_string(), RenderValue::Num(z, None)),
             ]);
-            let data_key = format!("{}.data", name_cb);
-            let loading_key = format!("{}.loading", name_cb);
-            let err_key = format!("{}.error", name_cb);
+            let data_key = state_key(&name_cb, "data");
+            let loading_key = state_key(&name_cb, "loading");
+            let err_key = state_key(&name_cb, "error");
             APP.with(|cell| {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
@@ -3757,9 +3769,9 @@ fn init_js_call_data(name: &str, func_name: &str) {
         }
     }
 
-    let data_key = format!("{}.data", name);
-    let loading_key = format!("{}.loading", name);
-    let err_key = format!("{}.error", name);
+    let data_key = state_key(&name, "data");
+    let loading_key = state_key(&name, "loading");
+    let err_key = state_key(&name, "error");
 
     if found {
         let fn_name = parts.last().unwrap_or(&"");
@@ -6306,19 +6318,19 @@ fn fetch_data(name: &str, url: &str, method: &str) {
             if let Some(app) = borrow.as_mut() {
                 // Set loading to false
                 app.state_store
-                    .insert(format!("{}.loading", name), RenderValue::Bool(false));
+                    .insert(state_key(&name, "loading"), RenderValue::Bool(false));
 
                 match result {
                     Ok(data) => {
                         // Success: populate data, clear error
-                        app.state_store.insert(format!("{}.data", name), data);
+                        app.state_store.insert(state_key(&name, "data"), data);
                         app.state_store
-                            .insert(format!("{}.error", name), RenderValue::Str(String::new()));
+                            .insert(state_key(&name, "error"), RenderValue::Str(String::new()));
                     }
                     Err(err) => {
                         // Error: set error message, keep data empty
                         app.state_store
-                            .insert(format!("{}.error", name), RenderValue::Str(err));
+                            .insert(state_key(&name, "error"), RenderValue::Str(err));
                     }
                 }
             }
@@ -6344,17 +6356,17 @@ fn call_server_function(name: &str, func_name: &str, args: Vec<RenderValue>) {
             if let Some(app) = borrow.as_mut() {
                 // Set loading to false
                 app.state_store
-                    .insert(format!("{}.loading", name), RenderValue::Bool(false));
+                    .insert(state_key(&name, "loading"), RenderValue::Bool(false));
 
                 match result {
                     Ok(data) => {
-                        app.state_store.insert(format!("{}.data", name), data);
+                        app.state_store.insert(state_key(&name, "data"), data);
                         app.state_store
-                            .insert(format!("{}.error", name), RenderValue::Str(String::new()));
+                            .insert(state_key(&name, "error"), RenderValue::Str(String::new()));
                     }
                     Err(err) => {
                         app.state_store
-                            .insert(format!("{}.error", name), RenderValue::Str(err));
+                            .insert(state_key(&name, "error"), RenderValue::Str(err));
                     }
                 }
             }
@@ -6483,18 +6495,18 @@ fn call_prompt(name: &str, vars: HashMap<String, String>) {
             let mut borrow = cell.borrow_mut();
             if let Some(app) = borrow.as_mut() {
                 app.state_store
-                    .insert(format!("{}.loading", name), RenderValue::Bool(false));
+                    .insert(state_key(&name, "loading"), RenderValue::Bool(false));
 
                 match result {
                     Ok(text) => {
                         app.state_store
-                            .insert(format!("{}.data", name), RenderValue::Str(text));
+                            .insert(state_key(&name, "data"), RenderValue::Str(text));
                         app.state_store
-                            .insert(format!("{}.error", name), RenderValue::Str(String::new()));
+                            .insert(state_key(&name, "error"), RenderValue::Str(String::new()));
                     }
                     Err(err) => {
                         app.state_store
-                            .insert(format!("{}.error", name), RenderValue::Str(err));
+                            .insert(state_key(&name, "error"), RenderValue::Str(err));
                     }
                 }
             }
@@ -6630,7 +6642,7 @@ fn connect_stream(name: &str, url: &str) {
             let mut borrow = cell.borrow_mut();
             if let Some(app) = borrow.as_mut() {
                 app.state_store
-                    .insert(format!("{}.loading", name_open), RenderValue::Bool(false));
+                    .insert(state_key(&name_open, "loading"), RenderValue::Bool(false));
             }
         });
         schedule_render();
@@ -6645,7 +6657,7 @@ fn connect_stream(name: &str, url: &str) {
             APP.with(|cell| {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
-                    let key = format!("{}.data", name_msg);
+                    let key = state_key(&name_msg, "data");
                     let current = app
                         .state_store
                         .get(&key)
@@ -6672,11 +6684,11 @@ fn connect_stream(name: &str, url: &str) {
             let mut borrow = cell.borrow_mut();
             if let Some(app) = borrow.as_mut() {
                 app.state_store.insert(
-                    format!("{}.error", name_err),
+                    state_key(&name_err, "error"),
                     RenderValue::Str("WebSocket error".to_string()),
                 );
                 app.state_store
-                    .insert(format!("{}.loading", name_err), RenderValue::Bool(false));
+                    .insert(state_key(&name_err, "loading"), RenderValue::Bool(false));
             }
         });
         schedule_render();
