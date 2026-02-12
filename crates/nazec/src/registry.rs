@@ -23,7 +23,10 @@ impl std::fmt::Display for RegistryError {
             Self::NotFound(name) => write!(f, "package '{name}' not found in registry"),
             Self::InvalidSemver(s) => write!(f, "invalid semver constraint: {s}"),
             Self::NoMatchingVersion { name, constraint } => {
-                write!(f, "no version of '{name}' matches constraint '{constraint}'")
+                write!(
+                    f,
+                    "no version of '{name}' matches constraint '{constraint}'"
+                )
             }
             Self::PublishFailed(e) => write!(f, "publish failed: {e}"),
             Self::Api(e) => write!(f, "registry API error: {e}"),
@@ -34,6 +37,7 @@ impl std::fmt::Display for RegistryError {
 impl std::error::Error for RegistryError {}
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct PackageInfo {
     pub name: String,
     pub description: String,
@@ -42,6 +46,7 @@ pub struct PackageInfo {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct VersionInfo {
     pub version: String,
     pub checksum: String,
@@ -130,10 +135,8 @@ impl RegistryClient {
         let mut best: Option<(semver::Version, &VersionInfo)> = None;
         for vi in &info.versions {
             if let Ok(sv) = semver::Version::parse(&vi.version) {
-                if req.matches(&sv) {
-                    if best.as_ref().map_or(true, |(bv, _)| sv > *bv) {
-                        best = Some((sv, vi));
-                    }
+                if req.matches(&sv) && best.as_ref().is_none_or(|(bv, _)| sv > *bv) {
+                    best = Some((sv, vi));
                 }
             }
         }
@@ -237,9 +240,7 @@ impl RegistryClient {
             return Err(RegistryError::Api(format!("status {}", resp.status())));
         }
 
-        let sr: SearchResponse = resp
-            .json()
-            .map_err(|e| RegistryError::Api(e.to_string()))?;
+        let sr: SearchResponse = resp.json().map_err(|e| RegistryError::Api(e.to_string()))?;
         Ok(sr.packages)
     }
 }
@@ -337,12 +338,7 @@ pub fn publish_package(registry_url: Option<&str>) -> Result<(), Box<dyn std::er
     );
 
     let client = RegistryClient::new(registry_url);
-    client.publish(
-        &manifest.app.name,
-        &manifest.app.version,
-        "",
-        &tarball,
-    )?;
+    client.publish(&manifest.app.name, &manifest.app.version, "", &tarball)?;
 
     eprintln!(
         "published {} v{} to registry",

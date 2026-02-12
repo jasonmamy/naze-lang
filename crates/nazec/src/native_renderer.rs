@@ -115,6 +115,7 @@ fn rounded_rect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<tiny_skia
     pb.finish()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn stroke_rounded_rect(
     pixmap: &mut Pixmap,
     x: f32,
@@ -237,6 +238,7 @@ fn draw_radio(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_input(
     pixmap: &mut Pixmap,
     x: f32,
@@ -298,6 +300,7 @@ fn draw_input(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_select(
     pixmap: &mut Pixmap,
     x: f32,

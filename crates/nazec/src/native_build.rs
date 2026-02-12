@@ -23,7 +23,7 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
 
     // Step 2: Create temporary build directory
     let cache_dir = dirs::cache_dir()
-        .unwrap_or_else(|| std::env::temp_dir())
+        .unwrap_or_else(std::env::temp_dir)
         .join("naze")
         .join("native-build");
     std::fs::create_dir_all(&cache_dir)?;

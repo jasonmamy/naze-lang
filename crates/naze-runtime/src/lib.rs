@@ -61,10 +61,10 @@ struct ScrollState {
 #[derive(Clone, Copy, Debug)]
 enum EasingFn {
     Linear,
-    Ease,      // cubic-bezier(0.25, 0.1, 0.25, 1.0)
-    EaseIn,    // cubic-bezier(0.42, 0, 1.0, 1.0)
-    EaseOut,   // cubic-bezier(0, 0, 0.58, 1.0)
-    EaseInOut, // cubic-bezier(0.42, 0, 0.58, 1.0)
+    Ease,                            // cubic-bezier(0.25, 0.1, 0.25, 1.0)
+    EaseIn,                          // cubic-bezier(0.42, 0, 1.0, 1.0)
+    EaseOut,                         // cubic-bezier(0, 0, 0.58, 1.0)
+    EaseInOut,                       // cubic-bezier(0.42, 0, 0.58, 1.0)
     CubicBezier(f64, f64, f64, f64), // custom cubic-bezier(x1, y1, x2, y2)
 }
 
@@ -75,7 +75,10 @@ impl EasingFn {
         // Parse cubic-bezier(x1, y1, x2, y2)
         if lower.starts_with("cubic-bezier(") && lower.ends_with(')') {
             let inner = &trimmed[13..trimmed.len() - 1];
-            let params: Vec<f64> = inner.split(',').filter_map(|p| p.trim().parse().ok()).collect();
+            let params: Vec<f64> = inner
+                .split(',')
+                .filter_map(|p| p.trim().parse().ok())
+                .collect();
             if params.len() == 4 {
                 return EasingFn::CubicBezier(params[0], params[1], params[2], params[3]);
             }
@@ -166,8 +169,7 @@ impl SpringState {
         let force = -stiffness * (self.position - 1.0) - damping * self.velocity;
         self.velocity += force * dt;
         self.position += self.velocity * dt;
-        let settled =
-            (self.position - 1.0).abs() < 0.001 && self.velocity.abs() < 0.001;
+        let settled = (self.position - 1.0).abs() < 0.001 && self.velocity.abs() < 0.001;
         (self.position.clamp(-0.5, 2.0), settled)
     }
 }
@@ -176,10 +178,7 @@ impl SpringState {
 #[derive(Clone, Debug)]
 enum AnimDriver {
     /// Fixed-duration with easing curve.
-    Timed {
-        duration_ms: f64,
-        easing: EasingFn,
-    },
+    Timed { duration_ms: f64, easing: EasingFn },
     /// Spring physics — runs until settled.
     Spring {
         stiffness: f64,
@@ -345,9 +344,7 @@ impl KeyframeSpec {
             .filter_map(|v| {
                 let v = v.trim();
                 if v.starts_with('#') && v.len() == 7 {
-                    u32::from_str_radix(&v[1..], 16)
-                        .ok()
-                        .map(AnimValue::Color)
+                    u32::from_str_radix(&v[1..], 16).ok().map(AnimValue::Color)
                 } else {
                     v.parse::<f64>().ok().map(AnimValue::Number)
                 }
@@ -567,7 +564,10 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
             state_key(&prompt.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(state_key(&prompt.name, "data"), RenderValue::Str(String::new()));
+        state_store.insert(
+            state_key(&prompt.name, "data"),
+            RenderValue::Str(String::new()),
+        );
     }
 
     // 3b. Initialize storage-backed state (read from localStorage/sessionStorage)
@@ -782,7 +782,10 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
             state_key(&prompt.name, "error"),
             RenderValue::Str(String::new()),
         );
-        state_store.insert(state_key(&prompt.name, "data"), RenderValue::Str(String::new()));
+        state_store.insert(
+            state_key(&prompt.name, "data"),
+            RenderValue::Str(String::new()),
+        );
     }
 
     // 2c. Initialize storage-backed state
@@ -893,7 +896,9 @@ pub fn inspector_get_tree() -> String {
         let mut json = String::with_capacity(4096);
         json.push('[');
         for (i, node) in combined.iter().enumerate() {
-            if i > 0 { json.push(','); }
+            if i > 0 {
+                json.push(',');
+            }
             node_to_json(node, &mut json, "".into(), i);
         }
         json.push(']');
@@ -918,7 +923,9 @@ pub fn inspector_get_state() -> String {
         keys.sort();
         for key in keys {
             let val = &app.state_store[key];
-            if !first { json.push(','); }
+            if !first {
+                json.push(',');
+            }
             first = false;
             json.push('"');
             json_escape_into(key, &mut json);
@@ -965,7 +972,9 @@ pub fn inspector_node_at(x: f32, y: f32) -> String {
             json.push_str(",\"props\":{");
             let mut first = true;
             for (k, v) in &hit.props {
-                if !first { json.push(','); }
+                if !first {
+                    json.push(',');
+                }
                 first = false;
                 json.push('"');
                 json_escape_into(k, &mut json);
@@ -1010,7 +1019,9 @@ pub fn inspector_get_event_log() -> String {
         let mut json = String::with_capacity(2048);
         json.push('[');
         for (i, evt) in app.event_log.iter().enumerate() {
-            if i > 0 { json.push(','); }
+            if i > 0 {
+                json.push(',');
+            }
             json.push_str("{\"t\":");
             json.push_str(&evt.timestamp_ms.to_string());
             json.push_str(",\"type\":\"");
@@ -1021,7 +1032,9 @@ pub fn inspector_get_event_log() -> String {
             json_escape_into(&evt.target_path, &mut json);
             json.push_str("\",\"changes\":[");
             for (j, (var, old, new)) in evt.state_changes.iter().enumerate() {
-                if j > 0 { json.push(','); }
+                if j > 0 {
+                    json.push(',');
+                }
                 json.push_str("{\"var\":\"");
                 json_escape_into(var, &mut json);
                 json.push_str("\",\"old\":\"");
@@ -1050,7 +1063,9 @@ pub fn inspector_get_network_log() -> String {
         let mut json = String::with_capacity(1024);
         json.push('[');
         for (i, net) in app.network_log.iter().enumerate() {
-            if i > 0 { json.push(','); }
+            if i > 0 {
+                json.push(',');
+            }
             json.push_str("{\"t\":");
             json.push_str(&net.timestamp_ms.to_string());
             json.push_str(",\"url\":\"");
@@ -1087,7 +1102,9 @@ fn node_to_json(node: &RenderNode, json: &mut String, prefix: String, index: usi
     json.push_str("\",\"props\":{");
     let mut first = true;
     for (k, v) in &node.props {
-        if !first { json.push(','); }
+        if !first {
+            json.push(',');
+        }
         first = false;
         json.push('"');
         json_escape_into(k, json);
@@ -1098,7 +1115,9 @@ fn node_to_json(node: &RenderNode, json: &mut String, prefix: String, index: usi
     json.push_str(&node.handlers.len().to_string());
     json.push_str(",\"children\":[");
     for (i, child) in node.children.iter().enumerate() {
-        if i > 0 { json.push(','); }
+        if i > 0 {
+            json.push(',');
+        }
         node_to_json(child, json, path.clone(), i);
     }
     json.push_str("]}");
@@ -1145,7 +1164,9 @@ fn render_value_to_json(val: &RenderValue, json: &mut String) {
         RenderValue::List(items) => {
             json.push('[');
             for (i, item) in items.iter().enumerate() {
-                if i > 0 { json.push(','); }
+                if i > 0 {
+                    json.push(',');
+                }
                 render_value_to_json(item, json);
             }
             json.push(']');
@@ -1153,7 +1174,9 @@ fn render_value_to_json(val: &RenderValue, json: &mut String) {
         RenderValue::Object(fields) => {
             json.push('{');
             for (i, (k, v)) in fields.iter().enumerate() {
-                if i > 0 { json.push(','); }
+                if i > 0 {
+                    json.push(',');
+                }
                 json.push('"');
                 json_escape_into(k, json);
                 json.push_str("\":");
@@ -1194,12 +1217,7 @@ struct HitInfo {
 }
 
 /// Find the deepest node at (x, y) in the positioned node tree.
-fn find_node_at(
-    nodes: &[PositionedNode],
-    x: f32,
-    y: f32,
-    prefix: String,
-) -> Option<HitInfo> {
+fn find_node_at(nodes: &[PositionedNode], x: f32, y: f32, prefix: String) -> Option<HitInfo> {
     let mut result = None;
     for (i, pn) in nodes.iter().enumerate() {
         let path = if prefix.is_empty() {
@@ -1227,7 +1245,12 @@ fn find_node_at(
 
 /// Log an event to the inspector event log (standalone — borrows APP internally).
 #[allow(dead_code)]
-fn log_event(event_type: &str, target_kind: &str, target_path: &str, state_changes: Vec<(String, String, String)>) {
+fn log_event(
+    event_type: &str,
+    target_kind: &str,
+    target_path: &str,
+    state_changes: Vec<(String, String, String)>,
+) {
     APP.with(|cell| {
         let mut borrow = cell.borrow_mut();
         if let Some(app) = borrow.as_mut() {
@@ -1237,7 +1260,13 @@ fn log_event(event_type: &str, target_kind: &str, target_path: &str, state_chang
 }
 
 /// Log an event directly on a borrowed App (for use within existing APP.with closures).
-fn log_event_direct(app: &mut App, event_type: &str, target_kind: &str, target_path: &str, state_changes: Vec<(String, String, String)>) {
+fn log_event_direct(
+    app: &mut App,
+    event_type: &str,
+    target_kind: &str,
+    target_path: &str,
+    state_changes: Vec<(String, String, String)>,
+) {
     let ts = get_now_ms();
     app.event_log.push(EventRecord {
         timestamp_ms: ts,
@@ -1300,7 +1329,11 @@ fn snapshot_state_for_diff(vars: &[&str]) -> HashMap<String, String> {
 fn render_value_brief(val: &RenderValue) -> String {
     match val {
         RenderValue::Str(s) => {
-            if s.len() > 50 { format!("\"{}...\"", &s[..50]) } else { format!("\"{}\"", s) }
+            if s.len() > 50 {
+                format!("\"{}...\"", &s[..50])
+            } else {
+                format!("\"{}\"", s)
+            }
         }
         RenderValue::Num(n, _) => n.to_string(),
         RenderValue::Bool(b) => b.to_string(),
@@ -1328,7 +1361,9 @@ fn find_node_bounds_by_path(
             return Some((pn.x, pn.y, pn.width, pn.height));
         }
         if target_path.starts_with(&format!("{}.", path)) {
-            if let Some(result) = find_node_bounds_by_path(&pn.children, target_path, &path, _depth + 1) {
+            if let Some(result) =
+                find_node_bounds_by_path(&pn.children, target_path, &path, _depth + 1)
+            {
                 return Some(result);
             }
         }
@@ -1389,8 +1424,7 @@ fn process_animations(
         }
         AnimDriver::Spring { state, .. } => {
             // Springs settle or hard-timeout at 5 seconds
-            let settled =
-                (state.position - 1.0).abs() < 0.001 && state.velocity.abs() < 0.001;
+            let settled = (state.position - 1.0).abs() < 0.001 && state.velocity.abs() < 0.001;
             let timed_out = (now - anim.start_time) > 5000.0;
             !settled && !timed_out
         }
@@ -1457,13 +1491,7 @@ fn process_animations(
         && animations.iter().all(|a| {
             matches!(
                 a.property.as_str(),
-                "transform"
-                    | "opacity"
-                    | "color"
-                    | "border-color"
-                    | "shadow"
-                    | "scale"
-                    | "rotate"
+                "transform" | "opacity" | "color" | "border-color" | "shadow" | "scale" | "rotate"
             )
         });
 
@@ -1543,15 +1571,14 @@ fn detect_new_animations(
                                         duration_ms,
                                         easing,
                                     },
-                                    AnimDriverSpec::Spring {
-                                        stiffness,
-                                        damping,
-                                    } => AnimDriver::Spring {
-                                        stiffness,
-                                        damping,
-                                        state: SpringState::new(),
-                                        last_time: now,
-                                    },
+                                    AnimDriverSpec::Spring { stiffness, damping } => {
+                                        AnimDriver::Spring {
+                                            stiffness,
+                                            damping,
+                                            state: SpringState::new(),
+                                            last_time: now,
+                                        }
+                                    }
                                 };
 
                                 animations.push(ActiveAnimation {
@@ -1576,20 +1603,12 @@ fn detect_new_animations(
             // Split on commas that are OUTSIDE brackets
             for part in split_animate_specs(animate_str) {
                 if let Some(kf) = KeyframeSpec::parse(part.trim()) {
-                    let already_running = animations.iter().any(|a| {
-                        a.node_key == node_key && a.property == kf.property
-                    });
+                    let already_running = animations
+                        .iter()
+                        .any(|a| a.node_key == node_key && a.property == kf.property);
                     if !already_running {
-                        let first = kf
-                            .values
-                            .first()
-                            .cloned()
-                            .unwrap_or(AnimValue::Number(0.0));
-                        let last = kf
-                            .values
-                            .last()
-                            .cloned()
-                            .unwrap_or(AnimValue::Number(1.0));
+                        let first = kf.values.first().cloned().unwrap_or(AnimValue::Number(0.0));
+                        let last = kf.values.last().cloned().unwrap_or(AnimValue::Number(1.0));
                         animations.push(ActiveAnimation {
                             node_key: node_key.clone(),
                             property: kf.property,
@@ -1715,7 +1734,8 @@ fn do_render() -> Result<(), JsValue> {
         let (page_nodes, route_params) = get_page_nodes(&resolved, &app.current_path);
         // Inject route params into state store so {params.id} etc. resolve
         for (name, value) in &route_params {
-            app.state_store.insert(format!("params.{name}"), RenderValue::Str(value.clone()));
+            app.state_store
+                .insert(format!("params.{name}"), RenderValue::Str(value.clone()));
         }
         let combined_root: Vec<RenderNode> = if resolved.pages.is_empty() {
             // Single-page app - just use root
@@ -1838,16 +1858,21 @@ fn do_render() -> Result<(), JsValue> {
 
         // 9a. Draw inspector highlight overlay if active
         if let Some(ref highlight_path) = app.highlight_path {
-            if let Some(bounds) = find_node_bounds_by_path(&layout.root, highlight_path, &String::new(), 0) {
+            if let Some(bounds) =
+                find_node_bounds_by_path(&layout.root, highlight_path, &String::new(), 0)
+            {
                 let (hx, hy, hw, hh) = bounds;
                 // Draw translucent blue fill + blue dashed border
                 app.renderer.draw_rect(
-                    hx as f64, hy as f64, hw as f64, hh as f64,
-                    "rgba(59,130,246,0.1)", 0.0,
+                    hx as f64,
+                    hy as f64,
+                    hw as f64,
+                    hh as f64,
+                    "rgba(59,130,246,0.1)",
+                    0.0,
                 );
-                app.renderer.draw_drop_highlight(
-                    hx as f64, hy as f64, hw as f64, hh as f64,
-                );
+                app.renderer
+                    .draw_drop_highlight(hx as f64, hy as f64, hw as f64, hh as f64);
             }
         }
 
@@ -1933,7 +1958,12 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
 /// Otherwise returns the root nodes.
 /// Match a URL path against a route pattern with `:param` segments and `/*` catch-all.
 /// Returns extracted param values as (name, value) pairs if the route matches.
-fn match_route(pattern: &str, actual: &str, params: &[String], is_catch_all: bool) -> Option<Vec<(String, String)>> {
+fn match_route(
+    pattern: &str,
+    actual: &str,
+    params: &[String],
+    is_catch_all: bool,
+) -> Option<Vec<(String, String)>> {
     if is_catch_all {
         // Catch-all matches everything — no params extracted
         return Some(vec![]);
@@ -1967,7 +1997,10 @@ fn match_route(pattern: &str, actual: &str, params: &[String], is_catch_all: boo
     Some(extracted)
 }
 
-fn get_page_nodes<'a>(tree: &'a RenderTree, current_path: &str) -> (&'a [RenderNode], Vec<(String, String)>) {
+fn get_page_nodes<'a>(
+    tree: &'a RenderTree,
+    current_path: &str,
+) -> (&'a [RenderNode], Vec<(String, String)>) {
     if tree.pages.is_empty() {
         return (&tree.root, vec![]);
     }
@@ -2763,10 +2796,8 @@ fn setup_event_listeners() -> Result<(), JsValue> {
                 event.prevent_default();
             }
         });
-    canvas.add_event_listener_with_callback(
-        "touchstart",
-        touchstart_cb.as_ref().unchecked_ref(),
-    )?;
+    canvas
+        .add_event_listener_with_callback("touchstart", touchstart_cb.as_ref().unchecked_ref())?;
     touchstart_cb.forget();
 
     let canvas_for_touchmove = canvas.clone();
@@ -2786,8 +2817,7 @@ fn setup_event_listeners() -> Result<(), JsValue> {
                 schedule_render();
             }
         });
-    canvas
-        .add_event_listener_with_callback("touchmove", touchmove_cb.as_ref().unchecked_ref())?;
+    canvas.add_event_listener_with_callback("touchmove", touchmove_cb.as_ref().unchecked_ref())?;
     touchmove_cb.forget();
 
     let touchend_cb =
@@ -2799,10 +2829,8 @@ fn setup_event_listeners() -> Result<(), JsValue> {
             let touch = touches.get(0).unwrap();
             handle_touchend(touch.identifier());
         });
-    canvas
-        .add_event_listener_with_callback("touchend", touchend_cb.as_ref().unchecked_ref())?;
-    canvas
-        .add_event_listener_with_callback("touchcancel", touchend_cb.as_ref().unchecked_ref())?;
+    canvas.add_event_listener_with_callback("touchend", touchend_cb.as_ref().unchecked_ref())?;
+    canvas.add_event_listener_with_callback("touchcancel", touchend_cb.as_ref().unchecked_ref())?;
     touchend_cb.forget();
 
     Ok(())
@@ -2972,7 +3000,9 @@ fn handle_click(x: f32, y: f32) -> bool {
         }
 
         // Snapshot state before executing actions for event logging
-        let state_before: Vec<(String, String)> = app.state_store.iter()
+        let state_before: Vec<(String, String)> = app
+            .state_store
+            .iter()
             .map(|(k, v)| (k.clone(), render_value_brief(v)))
             .collect();
 
@@ -3011,7 +3041,9 @@ fn hit_test_any_handler(nodes: &[PositionedNode], x: f32, y: f32, event: &str) -
             return true;
         }
         // Input, textarea, and select elements are clickable
-        if event == "click" && (node.kind == "input" || node.kind == "textarea" || node.kind == "select") {
+        if event == "click"
+            && (node.kind == "input" || node.kind == "textarea" || node.kind == "select")
+        {
             return true;
         }
         if node.handlers.iter().any(|h| h.event == event) {
@@ -3251,7 +3283,11 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             web_sys::console::log_1(&format!("send to {}: (stub)", stream_name).into());
             false
         }
-        IrAction::JsCall { function_name, args, target } => {
+        IrAction::JsCall {
+            function_name,
+            args,
+            target,
+        } => {
             // JS interop: call window-scoped function with args
             let window = web_sys::window().unwrap();
 
@@ -3263,7 +3299,10 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
                 for part in &parts[..parts.len().saturating_sub(1)] {
                     match js_sys::Reflect::get(&obj, &JsValue::from_str(part)) {
                         Ok(next) if !next.is_undefined() => obj = next,
-                        _ => { found = false; break; }
+                        _ => {
+                            found = false;
+                            break;
+                        }
                     }
                 }
                 if found {
@@ -3327,7 +3366,7 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             let permission = web_sys::Notification::permission();
             match permission {
                 web_sys::NotificationPermission::Granted => {
-                    let mut options = web_sys::NotificationOptions::new();
+                    let options = web_sys::NotificationOptions::new();
                     if !body.is_empty() {
                         options.set_body(body);
                     }
@@ -3350,7 +3389,7 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
                     let icon = icon.clone();
                     let cb = Closure::once(move |perm: JsValue| {
                         if perm.as_string().as_deref() == Some("granted") {
-                            let mut options = web_sys::NotificationOptions::new();
+                            let options = web_sys::NotificationOptions::new();
                             if !body.is_empty() {
                                 options.set_body(&body);
                             }
@@ -3586,7 +3625,8 @@ fn init_device_data(name: &str, api: &str, watch: bool) {
                         err_key,
                         RenderValue::Str(format!("Unsupported device API: {}", api)),
                     );
-                    app.state_store.insert(loading_key, RenderValue::Bool(false));
+                    app.state_store
+                        .insert(loading_key, RenderValue::Bool(false));
                 }
             });
             schedule_render();
@@ -3610,9 +3650,12 @@ fn init_geolocation(name: &str, watch: bool) {
             APP.with(|cell| {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
+                    app.state_store.insert(
+                        err_key,
+                        RenderValue::Str("Geolocation not supported".into()),
+                    );
                     app.state_store
-                        .insert(err_key, RenderValue::Str("Geolocation not supported".into()));
-                    app.state_store.insert(loading_key, RenderValue::Bool(false));
+                        .insert(loading_key, RenderValue::Bool(false));
                 }
             });
             schedule_render();
@@ -3624,9 +3667,18 @@ fn init_geolocation(name: &str, watch: bool) {
     let success_cb = Closure::<dyn Fn(web_sys::Position)>::new(move |pos: web_sys::Position| {
         let coords = pos.coords();
         let data = RenderValue::Object(vec![
-            ("latitude".to_string(), RenderValue::Num(coords.latitude(), None)),
-            ("longitude".to_string(), RenderValue::Num(coords.longitude(), None)),
-            ("accuracy".to_string(), RenderValue::Num(coords.accuracy(), None)),
+            (
+                "latitude".to_string(),
+                RenderValue::Num(coords.latitude(), None),
+            ),
+            (
+                "longitude".to_string(),
+                RenderValue::Num(coords.longitude(), None),
+            ),
+            (
+                "accuracy".to_string(),
+                RenderValue::Num(coords.accuracy(), None),
+            ),
         ]);
         let data_key = state_key(&name_ok, "data");
         let loading_key = state_key(&name_ok, "loading");
@@ -3635,8 +3687,10 @@ fn init_geolocation(name: &str, watch: bool) {
             let mut borrow = cell.borrow_mut();
             if let Some(app) = borrow.as_mut() {
                 app.state_store.insert(data_key, data);
-                app.state_store.insert(loading_key, RenderValue::Bool(false));
-                app.state_store.insert(err_key, RenderValue::Str(String::new()));
+                app.state_store
+                    .insert(loading_key, RenderValue::Bool(false));
+                app.state_store
+                    .insert(err_key, RenderValue::Str(String::new()));
             }
         });
         schedule_render();
@@ -3657,7 +3711,8 @@ fn init_geolocation(name: &str, watch: bool) {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
                     app.state_store.insert(err_key, RenderValue::Str(msg));
-                    app.state_store.insert(loading_key, RenderValue::Bool(false));
+                    app.state_store
+                        .insert(loading_key, RenderValue::Bool(false));
                 }
             });
             schedule_render();
@@ -3726,8 +3781,10 @@ fn init_accelerometer(name: &str, watch: bool) {
                 let mut borrow = cell.borrow_mut();
                 if let Some(app) = borrow.as_mut() {
                     app.state_store.insert(data_key, data);
-                    app.state_store.insert(loading_key, RenderValue::Bool(false));
-                    app.state_store.insert(err_key, RenderValue::Str(String::new()));
+                    app.state_store
+                        .insert(loading_key, RenderValue::Bool(false));
+                    app.state_store
+                        .insert(err_key, RenderValue::Str(String::new()));
                 }
             });
             schedule_render();
@@ -3741,10 +3798,8 @@ fn init_accelerometer(name: &str, watch: bool) {
         },
     );
 
-    let _ = window.add_event_listener_with_callback(
-        "devicemotion",
-        motion_cb.as_ref().unchecked_ref(),
-    );
+    let _ =
+        window.add_event_listener_with_callback("devicemotion", motion_cb.as_ref().unchecked_ref());
     motion_cb.forget();
 }
 
@@ -3792,8 +3847,10 @@ fn init_js_call_data(name: &str, func_name: &str) {
                             let mut borrow = cell.borrow_mut();
                             if let Some(app) = borrow.as_mut() {
                                 app.state_store.insert(data_key, naze_val);
-                                app.state_store.insert(loading_key, RenderValue::Bool(false));
-                                app.state_store.insert(err_key, RenderValue::Str(String::new()));
+                                app.state_store
+                                    .insert(loading_key, RenderValue::Bool(false));
+                                app.state_store
+                                    .insert(err_key, RenderValue::Str(String::new()));
                             }
                         });
                         schedule_render();
@@ -3805,7 +3862,8 @@ fn init_js_call_data(name: &str, func_name: &str) {
                             let mut borrow = cell.borrow_mut();
                             if let Some(app) = borrow.as_mut() {
                                 app.state_store.insert(err_key, RenderValue::Str(msg));
-                                app.state_store.insert(loading_key, RenderValue::Bool(false));
+                                app.state_store
+                                    .insert(loading_key, RenderValue::Bool(false));
                             }
                         });
                         schedule_render();
@@ -3824,7 +3882,8 @@ fn init_js_call_data(name: &str, func_name: &str) {
                 err_key,
                 RenderValue::Str(format!("JS function not found: {}", func_name)),
             );
-            app.state_store.insert(loading_key, RenderValue::Bool(false));
+            app.state_store
+                .insert(loading_key, RenderValue::Bool(false));
         }
     });
     schedule_render();
@@ -3962,10 +4021,18 @@ fn call_wasm_import(module: &str, func: &str, args: &[RenderValue]) -> RenderVal
     let js_arg_array = js_sys::Array::new();
     for arg in args {
         match arg {
-            RenderValue::Num(n, _) => { js_arg_array.push(&JsValue::from_f64(*n)); }
-            RenderValue::Str(s) => { js_arg_array.push(&JsValue::from_str(s)); }
-            RenderValue::Bool(b) => { js_arg_array.push(&JsValue::from_bool(*b)); }
-            _ => { js_arg_array.push(&JsValue::from_f64(0.0)); }
+            RenderValue::Num(n, _) => {
+                js_arg_array.push(&JsValue::from_f64(*n));
+            }
+            RenderValue::Str(s) => {
+                js_arg_array.push(&JsValue::from_str(s));
+            }
+            RenderValue::Bool(b) => {
+                js_arg_array.push(&JsValue::from_bool(*b));
+            }
+            _ => {
+                js_arg_array.push(&JsValue::from_f64(0.0));
+            }
         }
     }
     js_args.push(&js_arg_array);
@@ -5354,7 +5421,13 @@ fn set_cursor(cursor: &str) {
 
 /// Apply scroll delta to a named scroll container. Returns true if scroll changed.
 /// Shared by wheel and touch handlers.
-fn apply_scroll_delta(app: &mut App, layout: &LayoutTree, scroll_id: &str, delta_x: f32, delta_y: f32) -> bool {
+fn apply_scroll_delta(
+    app: &mut App,
+    layout: &LayoutTree,
+    scroll_id: &str,
+    delta_x: f32,
+    delta_y: f32,
+) -> bool {
     // Find the scroll container's info by walking the layout tree
     let scroll_info_bounds = find_scroll_by_id(&layout.root, scroll_id);
     let (scroll_info, bounds) = match scroll_info_bounds {
@@ -6410,7 +6483,13 @@ async fn do_server_call(func_name: &str, args: &[RenderValue]) -> Result<RenderV
     let resp_value = wasm_bindgen_futures::JsFuture::from(resp_promise)
         .await
         .map_err(|e| {
-            log_network(&url, "POST", 0, get_now_ms() - start_ms, "server call failed");
+            log_network(
+                &url,
+                "POST",
+                0,
+                get_now_ms() - start_ms,
+                "server call failed",
+            );
             format!("server call failed: {:?}", e)
         })?;
 
@@ -6433,8 +6512,7 @@ async fn do_server_call(func_name: &str, args: &[RenderValue]) -> Result<RenderV
         .map_err(|e| format!("JSON parse failed: {:?}", e))?;
 
     // Extract "data" field from response { "data": ... }
-    let data = js_sys::Reflect::get(&json_value, &"data".into())
-        .unwrap_or(JsValue::NULL);
+    let data = js_sys::Reflect::get(&json_value, &"data".into()).unwrap_or(JsValue::NULL);
 
     // Check for "error" field
     if let Ok(err_val) = js_sys::Reflect::get(&json_value, &"error".into()) {
@@ -6517,10 +6595,7 @@ fn call_prompt(name: &str, vars: HashMap<String, String>) {
 }
 
 /// POST to /api/prompt/{name} with JSON body { "vars": { "key": "value" } }.
-async fn do_prompt_call(
-    name: &str,
-    vars: &HashMap<String, String>,
-) -> Result<String, String> {
+async fn do_prompt_call(name: &str, vars: &HashMap<String, String>) -> Result<String, String> {
     let start_ms = get_now_ms();
     let window = web_sys::window().ok_or("no window")?;
 
@@ -6531,8 +6606,7 @@ async fn do_prompt_call(
             .map_err(|_| "failed to set var")?;
     }
     let body_obj = js_sys::Object::new();
-    js_sys::Reflect::set(&body_obj, &"vars".into(), &vars_obj)
-        .map_err(|_| "failed to set vars")?;
+    js_sys::Reflect::set(&body_obj, &"vars".into(), &vars_obj).map_err(|_| "failed to set vars")?;
     let body_str = js_sys::JSON::stringify(&body_obj)
         .map_err(|_| "failed to stringify body")?
         .as_string()
@@ -6554,7 +6628,13 @@ async fn do_prompt_call(
     let resp_value = wasm_bindgen_futures::JsFuture::from(resp_promise)
         .await
         .map_err(|e| {
-            log_network(&url, "POST", 0, get_now_ms() - start_ms, "prompt call failed");
+            log_network(
+                &url,
+                "POST",
+                0,
+                get_now_ms() - start_ms,
+                "prompt call failed",
+            );
             format!("prompt call failed: {:?}", e)
         })?;
 
@@ -6587,10 +6667,13 @@ async fn do_prompt_call(
     }
 
     // Extract "data" field (string response from AI provider)
-    let data = js_sys::Reflect::get(&json_value, &"data".into())
-        .unwrap_or(JsValue::NULL);
+    let data = js_sys::Reflect::get(&json_value, &"data".into()).unwrap_or(JsValue::NULL);
     let result = data.as_string().unwrap_or_default();
-    let preview = if result.len() > 80 { &result[..80] } else { &result };
+    let preview = if result.len() > 80 {
+        &result[..80]
+    } else {
+        &result
+    };
     log_network(&url, "POST", status, get_now_ms() - start_ms, preview);
     Ok(result)
 }
@@ -6612,7 +6695,8 @@ fn render_value_to_jsvalue(v: &RenderValue) -> JsValue {
         RenderValue::Object(entries) => {
             let obj = js_sys::Object::new();
             for (k, v) in entries {
-                let _ = js_sys::Reflect::set(&obj, &JsValue::from_str(k), &render_value_to_jsvalue(v));
+                let _ =
+                    js_sys::Reflect::set(&obj, &JsValue::from_str(k), &render_value_to_jsvalue(v));
             }
             obj.into()
         }

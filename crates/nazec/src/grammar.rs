@@ -30,9 +30,9 @@ struct PestRule {
 
 #[derive(Debug, Clone, PartialEq)]
 enum RepeatKind {
-    ZeroOrMore,        // *
-    OneOrMore,         // +
-    Optional,          // ?
+    ZeroOrMore,                  // *
+    OneOrMore,                   // +
+    Optional,                    // ?
     Range(usize, Option<usize>), // {m,n} or {m,} or {m}
 }
 
@@ -377,11 +377,24 @@ fn to_gbnf(rules: &[PestRule], include_test: bool) -> String {
     out.push_str("nl ::= \"\\n\"\n\n");
 
     let test_rules = [
-        "test_file", "test_use_stmt", "test_block", "flow_block",
-        "test_step", "test_render", "test_click", "test_fill",
-        "test_navigate", "test_wait", "test_assert", "assert_kind",
-        "assert_text_visible", "assert_text_not_visible", "assert_page",
-        "assert_state", "assert_emitted", "assert_a11y",
+        "test_file",
+        "test_use_stmt",
+        "test_block",
+        "flow_block",
+        "test_step",
+        "test_render",
+        "test_click",
+        "test_fill",
+        "test_navigate",
+        "test_wait",
+        "test_assert",
+        "assert_kind",
+        "assert_text_visible",
+        "assert_text_not_visible",
+        "assert_page",
+        "assert_state",
+        "assert_emitted",
+        "assert_a11y",
     ];
 
     // Map `file` to `root` for GBNF
@@ -442,10 +455,7 @@ fn expr_to_gbnf(expr: &PestExpr, atomic: bool) -> String {
 
         PestExpr::Repeat(inner, kind) => {
             let inner_s = expr_to_gbnf(inner, atomic);
-            let needs_parens = matches!(
-                inner.as_ref(),
-                PestExpr::Seq(_) | PestExpr::Choice(_)
-            );
+            let needs_parens = matches!(inner.as_ref(), PestExpr::Seq(_) | PestExpr::Choice(_));
             let base = if needs_parens {
                 format!("({})", inner_s)
             } else {
@@ -604,11 +614,24 @@ fn to_ebnf(rules: &[PestRule], include_test: bool) -> String {
     out.push_str("(* Naze grammar in EBNF notation — auto-generated from naze.pest *)\n\n");
 
     let test_rules = [
-        "test_file", "test_use_stmt", "test_block", "flow_block",
-        "test_step", "test_render", "test_click", "test_fill",
-        "test_navigate", "test_wait", "test_assert", "assert_kind",
-        "assert_text_visible", "assert_text_not_visible", "assert_page",
-        "assert_state", "assert_emitted", "assert_a11y",
+        "test_file",
+        "test_use_stmt",
+        "test_block",
+        "flow_block",
+        "test_step",
+        "test_render",
+        "test_click",
+        "test_fill",
+        "test_navigate",
+        "test_wait",
+        "test_assert",
+        "assert_kind",
+        "assert_text_visible",
+        "assert_text_not_visible",
+        "assert_page",
+        "assert_state",
+        "assert_emitted",
+        "assert_a11y",
     ];
 
     for rule in rules {
@@ -643,20 +666,18 @@ fn expr_to_ebnf(expr: &PestExpr) -> String {
             format!("\"{}\"", escaped)
         }
 
-        PestExpr::Ident(id) => {
-            match id.as_str() {
-                "ASCII_DIGIT" => "DIGIT".to_string(),
-                "ASCII_ALPHA" => "ALPHA".to_string(),
-                "ASCII_ALPHANUMERIC" => "ALNUM".to_string(),
-                "ASCII_HEX_DIGIT" => "HEX".to_string(),
-                "ANY" => "ANY".to_string(),
-                "SOI" => "SOI".to_string(),
-                "EOI" => "EOI".to_string(),
-                "NEWLINE" | "NEWLINE_CHAR" => "NEWLINE".to_string(),
-                "WHITESPACE" => "WS".to_string(),
-                _ => id.clone(),
-            }
-        }
+        PestExpr::Ident(id) => match id.as_str() {
+            "ASCII_DIGIT" => "DIGIT".to_string(),
+            "ASCII_ALPHA" => "ALPHA".to_string(),
+            "ASCII_ALPHANUMERIC" => "ALNUM".to_string(),
+            "ASCII_HEX_DIGIT" => "HEX".to_string(),
+            "ANY" => "ANY".to_string(),
+            "SOI" => "SOI".to_string(),
+            "EOI" => "EOI".to_string(),
+            "NEWLINE" | "NEWLINE_CHAR" => "NEWLINE".to_string(),
+            "WHITESPACE" => "WS".to_string(),
+            _ => id.clone(),
+        },
 
         PestExpr::Seq(items) => {
             let parts: Vec<String> = items.iter().map(expr_to_ebnf).collect();
@@ -854,9 +875,18 @@ mod tests {
         let gbnf = to_gbnf(&rules, true);
         // Key constructs should be present
         for expected in &[
-            "app-block", "page-block", "component-def", "state-stmt",
-            "let-stmt", "on-handler", "element", "expression", "value",
-            "if-stmt", "each-stmt", "match-stmt",
+            "app-block",
+            "page-block",
+            "component-def",
+            "state-stmt",
+            "let-stmt",
+            "on-handler",
+            "element",
+            "expression",
+            "value",
+            "if-stmt",
+            "each-stmt",
+            "match-stmt",
         ] {
             assert!(
                 gbnf.contains(&format!("{} ::=", expected)),

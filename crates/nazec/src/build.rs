@@ -94,7 +94,12 @@ const STATIC_HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 "#;
 
 /// Run the full build pipeline: parse -> resolve -> typecheck -> serialize -> write dist/
-pub fn run(manifest: &Manifest, format: Format, deps: &[ResolvedDep], static_render: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    manifest: &Manifest,
+    format: Format,
+    deps: &[ResolvedDep],
+    static_render: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
     let project_dir = Path::new(".");
     let entry = &manifest.build.entry;
@@ -191,8 +196,8 @@ pub fn run(manifest: &Manifest, format: Format, deps: &[ResolvedDep], static_ren
 
     let script_tags: String = manifest
         .scripts
-        .iter()
-        .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+        .values()
+        .map(|url| format!("  <script src=\"{}\"></script>", url))
         .collect::<Vec<_>>()
         .join("\n");
     if static_render {
@@ -272,10 +277,7 @@ pub fn run_incremental(
     if !missing_env.is_empty() {
         for name in &missing_env {
             diag.print_all(&[CompileError {
-                message: format!(
-                    "required environment variable '{}' is not set",
-                    name
-                ),
+                message: format!("required environment variable '{}' is not set", name),
                 file: "naze.toml".to_string(),
                 line: 0,
                 column: 0,
@@ -312,8 +314,8 @@ pub fn run_incremental(
 
     let script_tags: String = manifest
         .scripts
-        .iter()
-        .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+        .values()
+        .map(|url| format!("  <script src=\"{}\"></script>", url))
         .collect::<Vec<_>>()
         .join("\n");
     if static_render {
@@ -492,9 +494,8 @@ fn write_wasm_imports(
 
 /// Generate the JS bridge that loads WASM modules and exposes `__naze_wasm_call`.
 fn generate_wasm_bridge(imports: &[naze_ir::ImportDecl]) -> String {
-    let mut js = String::from(
-        "// Auto-generated WASM import bridge\nconst __naze_modules = {};\n\n",
-    );
+    let mut js =
+        String::from("// Auto-generated WASM import bridge\nconst __naze_modules = {};\n\n");
 
     js.push_str("async function loadWasmImports() {\n");
     for imp in imports {
@@ -530,7 +531,11 @@ fn wasm_import_html_parts(render_tree: &naze_ir::RenderTree) -> (String, String)
 }
 
 /// Type-check only (no output).
-pub fn check(manifest: &Manifest, format: Format, deps: &[ResolvedDep]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn check(
+    manifest: &Manifest,
+    format: Format,
+    deps: &[ResolvedDep],
+) -> Result<(), Box<dyn std::error::Error>> {
     let project_dir = Path::new(".");
     let entry = &manifest.build.entry;
 

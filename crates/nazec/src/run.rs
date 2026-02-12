@@ -218,7 +218,13 @@ impl App {
     fn rebuild_and_reload(&mut self) {
         eprintln!("change detected, rebuilding...");
         let start = std::time::Instant::now();
-        match build::run_incremental(&self.manifest, Format::Text, &mut self.build_cache, &[], false) {
+        match build::run_incremental(
+            &self.manifest,
+            Format::Text,
+            &mut self.build_cache,
+            &[],
+            false,
+        ) {
             Ok(()) => {
                 let bin_path = Path::new(&self.manifest.build.output).join("app_data.bin");
                 match std::fs::read(&bin_path)
@@ -457,13 +463,14 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
     for node in nodes {
         match node.kind.as_str() {
             "__if" => {
-                let show_then = node.condition.as_ref().map_or(false, |cond| {
-                    match evaluate_expr(cond, state) {
-                        RenderValue::Bool(b) => b,
-                        RenderValue::Num(n, _) => n != 0.0,
-                        _ => false,
-                    }
-                });
+                let show_then =
+                    node.condition
+                        .as_ref()
+                        .is_some_and(|cond| match evaluate_expr(cond, state) {
+                            RenderValue::Bool(b) => b,
+                            RenderValue::Num(n, _) => n != 0.0,
+                            _ => false,
+                        });
                 if show_then {
                     out.extend(resolve_nodes(&node.children, state));
                 } else if let Some(else_nodes) = &node.else_children {

@@ -44,13 +44,13 @@ pub struct StateDecl {
 pub struct DataDecl {
     pub name: String,
     pub url: String,
-    pub source_type: u8,      // 0 = fetch, 1 = websocket, 2 = sse, 3 = js, 4 = device
-    pub method: String,       // "get", "post", "put", "delete", "patch"
-    pub cache_ms: u64,        // 0 = no cache
-    pub retry_count: u32,     // 0 = no retry
-    pub trigger_mode: u8,     // 0 = auto, 1 = manual
+    pub source_type: u8,  // 0 = fetch, 1 = websocket, 2 = sse, 3 = js, 4 = device
+    pub method: String,   // "get", "post", "put", "delete", "patch"
+    pub cache_ms: u64,    // 0 = no cache
+    pub retry_count: u32, // 0 = no retry
+    pub trigger_mode: u8, // 0 = auto, 1 = manual
     pub content_type: String, // e.g. "application/json"
-    pub watch: bool,          // for device APIs: continuously watch vs one-shot
+    pub watch: bool,      // for device APIs: continuously watch vs one-shot
     pub headers: Vec<(String, RenderValue)>, // request headers with interpolation
 }
 
@@ -261,7 +261,7 @@ pub struct GuardDef {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GuardCheck {
     pub condition: IrExpression, // e.g. !auth-token
-    pub redirect: String,       // e.g. "/login"
+    pub redirect: String,        // e.g. "/login"
 }
 
 /// A single source location mapping from binary offset to source file position.
@@ -314,22 +314,25 @@ pub struct IrServerBody {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum IrServerStep {
-    Fetch(String),           // HTTP GET fetch with URL (may contain interpolations)
-    Sql { query: String, params: Vec<IrExpression> }, // SQL query with $N placeholders
-    Expr(IrExpression),      // Regular expression evaluation
+    Fetch(String), // HTTP GET fetch with URL (may contain interpolations)
+    Sql {
+        query: String,
+        params: Vec<IrExpression>,
+    }, // SQL query with $N placeholders
+    Expr(IrExpression), // Regular expression evaluation
 }
 
 /// An AI prompt declaration (calls AI provider via server proxy).
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PromptDecl {
-    pub name: String,        // binding name: "summary"
-    pub provider: String,    // "openai", "anthropic", "ollama"
-    pub system: String,      // system prompt (may contain {interpolations})
-    pub user: String,        // user prompt (may contain {interpolations})
-    pub model: String,       // model name (e.g. "gpt-4o")
-    pub max_tokens: u32,     // default 1000
-    pub temperature: f64,    // default 0.7
+    pub name: String,     // binding name: "summary"
+    pub provider: String, // "openai", "anthropic", "ollama"
+    pub system: String,   // system prompt (may contain {interpolations})
+    pub user: String,     // user prompt (may contain {interpolations})
+    pub model: String,    // model name (e.g. "gpt-4o")
+    pub max_tokens: u32,  // default 1000
+    pub temperature: f64, // default 0.7
 }
 
 /// A server function call as a data source (calls `/api/{func_name}`).
@@ -357,9 +360,9 @@ pub struct RenderTree {
     pub themes: Vec<ThemeDef>,       // Theme definitions for runtime switching
     pub imports: Vec<ImportDecl>,    // WASM module imports
     pub server_functions: Vec<ServerFuncDecl>, // Server function definitions
-    pub server_calls: Vec<ServerCallDecl>,     // Server function data sources
-    pub prompts: Vec<PromptDecl>,              // AI prompt declarations
-    pub guards: Vec<GuardDef>,                 // Guard definitions for route protection
+    pub server_calls: Vec<ServerCallDecl>, // Server function data sources
+    pub prompts: Vec<PromptDecl>,    // AI prompt declarations
+    pub guards: Vec<GuardDef>,       // Guard definitions for route protection
 }
 
 // ─── Simple binary encoding ─────────────────────────────────────────────────
@@ -457,7 +460,10 @@ pub fn serialize(tree: &RenderTree) -> Vec<u8> {
         buf.push(if page.is_catch_all { 1 } else { 0 });
         // Guard reference
         match &page.guard {
-            Some(g) => { buf.push(1); write_string(&mut buf, g); }
+            Some(g) => {
+                buf.push(1);
+                write_string(&mut buf, g);
+            }
             None => buf.push(0),
         }
         write_u32(&mut buf, page.meta.len() as u32);
@@ -1075,7 +1081,10 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
             for _ in 0..check_count {
                 let condition = cursor.read_expression()?;
                 let redirect = cursor.read_string()?;
-                checks.push(GuardCheck { condition, redirect });
+                checks.push(GuardCheck {
+                    condition,
+                    redirect,
+                });
             }
             defs.push(GuardDef { name, checks });
         }
@@ -2260,13 +2269,11 @@ mod tests {
             root: vec![],
             pages: vec![],
             themes: vec![],
-            imports: vec![
-                ImportDecl {
-                    name: "crypto".to_string(),
-                    wasm_url: "crypto.wasm".to_string(),
-                    functions: vec!["sha256".to_string(), "md5".to_string()],
-                },
-            ],
+            imports: vec![ImportDecl {
+                name: "crypto".to_string(),
+                wasm_url: "crypto.wasm".to_string(),
+                functions: vec!["sha256".to_string(), "md5".to_string()],
+            }],
             server_functions: vec![],
             server_calls: vec![],
             prompts: vec![],
@@ -2280,7 +2287,11 @@ mod tests {
         assert_eq!(restored.imports[0].wasm_url, "crypto.wasm");
         assert_eq!(restored.imports[0].functions, vec!["sha256", "md5"]);
         match &restored.computed[0].expr {
-            IrExpression::WasmCall { module, function, args } => {
+            IrExpression::WasmCall {
+                module,
+                function,
+                args,
+            } => {
                 assert_eq!(module, "crypto");
                 assert_eq!(function, "sha256");
                 assert_eq!(args.len(), 1);
@@ -2421,16 +2432,14 @@ mod tests {
             pages: vec![],
             themes: vec![],
             imports: vec![],
-            server_functions: vec![
-                ServerFuncDecl {
-                    name: "get-data".to_string(),
-                    params: vec![],
-                    body: IrServerBody {
-                        lets: vec![],
-                        result: IrExpression::EnvRef("SECRET_KEY".to_string()),
-                    },
+            server_functions: vec![ServerFuncDecl {
+                name: "get-data".to_string(),
+                params: vec![],
+                body: IrServerBody {
+                    lets: vec![],
+                    result: IrExpression::EnvRef("SECRET_KEY".to_string()),
                 },
-            ],
+            }],
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
@@ -2513,19 +2522,23 @@ mod tests {
             timers: vec![],
             params: vec![],
             root: vec![],
-            pages: vec![
-                PageDef {
-                    path: "/about".to_string(),
-                    params: vec![],
-                    is_catch_all: false,
-                    guard: None,
-                    meta: vec![
-                        ("title".to_string(), RenderValue::Str("About Us".to_string())),
-                        ("description".to_string(), RenderValue::Str("Our company".to_string())),
-                    ],
-                    root: vec![],
-                },
-            ],
+            pages: vec![PageDef {
+                path: "/about".to_string(),
+                params: vec![],
+                is_catch_all: false,
+                guard: None,
+                meta: vec![
+                    (
+                        "title".to_string(),
+                        RenderValue::Str("About Us".to_string()),
+                    ),
+                    (
+                        "description".to_string(),
+                        RenderValue::Str("Our company".to_string()),
+                    ),
+                ],
+                root: vec![],
+            }],
             themes: vec![],
             imports: vec![],
             server_functions: vec![],
@@ -2578,17 +2591,13 @@ mod tests {
             imports: vec![],
             server_functions: vec![],
             server_calls: vec![],
-            guards: vec![
-                GuardDef {
-                    name: "is-admin".to_string(),
-                    checks: vec![
-                        GuardCheck {
-                            condition: IrExpression::StateRef("auth-token".to_string()),
-                            redirect: "/login".to_string(),
-                        },
-                    ],
-                },
-            ],
+            guards: vec![GuardDef {
+                name: "is-admin".to_string(),
+                checks: vec![GuardCheck {
+                    condition: IrExpression::StateRef("auth-token".to_string()),
+                    redirect: "/login".to_string(),
+                }],
+            }],
             prompts: vec![],
         };
         let bytes = serialize(&tree);
@@ -2618,8 +2627,14 @@ mod tests {
                 content_type: String::new(),
                 watch: false,
                 headers: vec![
-                    ("Authorization".to_string(), RenderValue::Str("Bearer {auth-token}".to_string())),
-                    ("X-Api-Key".to_string(), RenderValue::Str("my-key".to_string())),
+                    (
+                        "Authorization".to_string(),
+                        RenderValue::Str("Bearer {auth-token}".to_string()),
+                    ),
+                    (
+                        "X-Api-Key".to_string(),
+                        RenderValue::Str("my-key".to_string()),
+                    ),
                 ],
             }],
             computed: vec![],
@@ -2665,15 +2680,13 @@ mod tests {
                 name: "get-users".to_string(),
                 params: vec!["limit".to_string()],
                 body: IrServerBody {
-                    lets: vec![
-                        (
-                            "rows".to_string(),
-                            IrServerStep::Sql {
-                                query: "SELECT id, name FROM users LIMIT $1".to_string(),
-                                params: vec![IrExpression::StateRef("limit".to_string())],
-                            },
-                        ),
-                    ],
+                    lets: vec![(
+                        "rows".to_string(),
+                        IrServerStep::Sql {
+                            query: "SELECT id, name FROM users LIMIT $1".to_string(),
+                            params: vec![IrExpression::StateRef("limit".to_string())],
+                        },
+                    )],
                     result: IrExpression::StateRef("rows".to_string()),
                 },
             }],

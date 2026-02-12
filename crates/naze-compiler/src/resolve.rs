@@ -322,7 +322,7 @@ pub fn resolve(project_dir: &Path, entry: &str, deps: &[ResolvedDep]) -> Resolve
     // 5. Check for element names that look like component invocations but aren't imported
     let imported_names: HashSet<&str> = imports
         .iter()
-        .filter_map(|(path, _)| path.split('/').last())
+        .filter_map(|(path, _)| path.split('/').next_back())
         .collect();
 
     check_unresolved_elements(&entry_file.nodes, &imported_names, &components, &mut errors);
@@ -553,7 +553,7 @@ pub fn resolve_incremental(
 
     let imported_names: HashSet<&str> = imports
         .iter()
-        .filter_map(|(path, _)| path.split('/').last())
+        .filter_map(|(path, _)| path.split('/').next_back())
         .collect();
 
     check_unresolved_elements(&entry_file.nodes, &imported_names, &components, &mut errors);
@@ -789,13 +789,11 @@ fn load_themes(
 
             // Build theme starting from parent's resolved tokens
             let base = match &raw.extends {
-                Some(parent_name) => {
-                    resolved
-                        .iter()
-                        .find(|t| t.name == *parent_name)
-                        .cloned()
-                        .unwrap_or_else(default_theme)
-                }
+                Some(parent_name) => resolved
+                    .iter()
+                    .find(|t| t.name == *parent_name)
+                    .cloned()
+                    .unwrap_or_else(default_theme),
                 None => default_theme(), // unnamed/default themes inherit built-in defaults
             };
 
@@ -823,10 +821,7 @@ fn load_themes(
             for raw in &raw_themes {
                 if !resolved_names.contains(&raw.name) {
                     errors.push(CompileError {
-                        message: format!(
-                            "circular theme inheritance involving '{}'",
-                            raw.name
-                        ),
+                        message: format!("circular theme inheritance involving '{}'", raw.name),
                         file: "theme".to_string(),
                         line: 0,
                         column: 0,
@@ -887,7 +882,10 @@ fn collect_raw_themes(nodes: &[Node], raw_themes: &mut Vec<RawTheme>) {
                 name: theme_name,
                 extends: extends.clone(),
                 colors: colors.clone(),
-                spacing: spacing.iter().map(|(n, v, _unit)| (n.clone(), *v)).collect(),
+                spacing: spacing
+                    .iter()
+                    .map(|(n, v, _unit)| (n.clone(), *v))
+                    .collect(),
             });
         }
         // Also check inside app blocks for inline themes
@@ -980,7 +978,11 @@ fn discover_dep_files(
 ) {
     if !dep_dir.exists() {
         errors.push(CompileError {
-            message: format!("dependency '{}' directory not found: {}", dep_name, dep_dir.display()),
+            message: format!(
+                "dependency '{}' directory not found: {}",
+                dep_name,
+                dep_dir.display()
+            ),
             file: dep_name.to_string(),
             line: 0,
             column: 0,
@@ -1112,7 +1114,9 @@ fn discover_naze_files_cached(
                 } else {
                     match naze_parser::parse(&source, &import_path) {
                         Ok(n) => {
-                            cache.file_cache.insert(path.clone(), (content_hash, n.clone()));
+                            cache
+                                .file_cache
+                                .insert(path.clone(), (content_hash, n.clone()));
                             n
                         }
                         Err(e) => {
@@ -1130,7 +1134,9 @@ fn discover_naze_files_cached(
             } else {
                 match naze_parser::parse(&source, &import_path) {
                     Ok(n) => {
-                        cache.file_cache.insert(path.clone(), (content_hash, n.clone()));
+                        cache
+                            .file_cache
+                            .insert(path.clone(), (content_hash, n.clone()));
                         n
                     }
                     Err(e) => {
@@ -1409,10 +1415,7 @@ fn builtin_templates() -> Vec<ComponentDef> {
                             ),
                             make_element(
                                 "column",
-                                vec![
-                                    px_prop("width", 400.0),
-                                    px_prop("collapsible", 1200.0),
-                                ],
+                                vec![px_prop("width", 400.0), px_prop("collapsible", 1200.0)],
                                 vec![make_slot("detail-panel")],
                             ),
                         ],
@@ -1747,10 +1750,7 @@ app "Test" {
         let dir = tempfile::tempdir().unwrap();
         setup_project(
             dir.path(),
-            &[(
-                "app.naze",
-                "app \"Test\" {\n  text \"hello\"\n}\n",
-            )],
+            &[("app.naze", "app \"Test\" {\n  text \"hello\"\n}\n")],
         );
 
         let deps = vec![ResolvedDep {
@@ -1759,6 +1759,9 @@ app "Test" {
         }];
 
         let project = resolve(dir.path(), "app.naze", &deps);
-        assert!(project.errors.iter().any(|e| e.message.contains("directory not found")));
+        assert!(project
+            .errors
+            .iter()
+            .any(|e| e.message.contains("directory not found")));
     }
 }

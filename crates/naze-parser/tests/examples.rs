@@ -313,8 +313,8 @@ flow "user journey" {
   assert text "welcome" is visible
 }
 "#;
-    let test_file = parse_test_file(source, "inline.test.naze")
-        .unwrap_or_else(|e| panic!("parse failed: {e}"));
+    let test_file =
+        parse_test_file(source, "inline.test.naze").unwrap_or_else(|e| panic!("parse failed: {e}"));
     assert_eq!(test_file.uses.len(), 1);
     assert_eq!(test_file.uses[0], "counter");
     assert_eq!(test_file.tests.len(), 1);

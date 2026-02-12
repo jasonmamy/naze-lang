@@ -228,7 +228,7 @@ impl TestEnv {
             AssertKind::StateIs { name, value } => {
                 let expected_rv = ast_value_to_render_value(value);
                 let actual = self.state.get(name);
-                let passed = actual.map_or(false, |v| render_values_equal(v, &expected_rv));
+                let passed = actual.is_some_and(|v| render_values_equal(v, &expected_rv));
                 AssertionResult {
                     description: format!("state {} is {:?}", name, expected_rv),
                     passed,
@@ -257,7 +257,11 @@ impl TestEnv {
                     actual: if passed {
                         "0 violations".to_string()
                     } else {
-                        format!("{} violation(s): {}", violations.len(), violations.join(", "))
+                        format!(
+                            "{} violation(s): {}",
+                            violations.len(),
+                            violations.join(", ")
+                        )
                     },
                 }
             }
@@ -268,19 +272,14 @@ impl TestEnv {
 // ─── Compilation helpers ─────────────────────────────────────────────────────
 
 /// Compile a .naze file through the full pipeline and return a RenderTree.
-fn compile_naze_file(
-    project_dir: &Path,
-    entry: &str,
-) -> Result<RenderTree, String> {
+fn compile_naze_file(project_dir: &Path, entry: &str) -> Result<RenderTree, String> {
     let project = naze_compiler::resolve::resolve(project_dir, entry, &[]);
 
     // Check for resolution errors
-    let has_errors = project.errors.iter().any(|e| {
-        matches!(
-            e.severity,
-            naze_compiler::error::Severity::Error
-        )
-    });
+    let has_errors = project
+        .errors
+        .iter()
+        .any(|e| matches!(e.severity, naze_compiler::error::Severity::Error));
     if has_errors {
         let msgs: Vec<String> = project.errors.iter().map(|e| e.message.clone()).collect();
         return Err(format!("resolution errors: {}", msgs.join("; ")));
@@ -288,12 +287,9 @@ fn compile_naze_file(
 
     // Type-check
     let tc_errors = naze_compiler::typecheck::typecheck(&project);
-    let has_tc_errors = tc_errors.iter().any(|e| {
-        matches!(
-            e.severity,
-            naze_compiler::error::Severity::Error
-        )
-    });
+    let has_tc_errors = tc_errors
+        .iter()
+        .any(|e| matches!(e.severity, naze_compiler::error::Severity::Error));
     if has_tc_errors {
         let msgs: Vec<String> = tc_errors.iter().map(|e| e.message.clone()).collect();
         return Err(format!("type errors: {}", msgs.join("; ")));
@@ -442,6 +438,7 @@ fn discover_test_files(project_dir: &Path) -> Result<Vec<PathBuf>, Box<dyn std::
     Ok(files)
 }
 
+#[allow(clippy::only_used_in_recursion)]
 fn walk_for_test_files(
     root: &Path,
     dir: &Path,
@@ -499,7 +496,13 @@ fn run_test_file(
                 continue;
             }
         }
-        let result = run_test_block(project_dir, test_file_dir, &test_file, &test_block.name, &test_block.steps);
+        let result = run_test_block(
+            project_dir,
+            test_file_dir,
+            &test_file,
+            &test_block.name,
+            &test_block.steps,
+        );
         results.push(result);
     }
 
@@ -510,7 +513,13 @@ fn run_test_file(
                 continue;
             }
         }
-        let result = run_flow_block(project_dir, test_file_dir, &test_file, &flow_block.name, &flow_block.steps);
+        let result = run_flow_block(
+            project_dir,
+            test_file_dir,
+            &test_file,
+            &flow_block.name,
+            &flow_block.steps,
+        );
         results.push(result);
     }
 
@@ -547,7 +556,13 @@ fn run_test_block(
             TestStep::Render {
                 component, props, ..
             } => {
-                match compile_component(project_dir, test_file_dir, &test_file.uses, component, props) {
+                match compile_component(
+                    project_dir,
+                    test_file_dir,
+                    &test_file.uses,
+                    component,
+                    props,
+                ) {
                     Ok(tree) => {
                         env = Some(TestEnv::new(tree));
                     }
@@ -632,7 +647,13 @@ fn run_flow_block(
                 component, props, ..
             } => {
                 // In a flow block, render compiles the target (app or component)
-                match compile_component(project_dir, test_file_dir, &test_file.uses, component, props) {
+                match compile_component(
+                    project_dir,
+                    test_file_dir,
+                    &test_file.uses,
+                    component,
+                    props,
+                ) {
                     Ok(tree) => {
                         env = Some(TestEnv::new(tree));
                     }
@@ -780,16 +801,15 @@ fn check_a11y(nodes: &[PositionedNode]) -> Vec<String> {
 fn check_a11y_recursive(nodes: &[PositionedNode], violations: &mut Vec<String>) {
     for node in nodes {
         // Images must have alt text
-        if node.kind == "image" {
-            if !node.props.contains_key("alt") {
-                violations.push("image missing alt text".to_string());
-            }
+        if node.kind == "image" && !node.props.contains_key("alt") {
+            violations.push("image missing alt text".to_string());
         }
         // Inputs should have a placeholder or label
-        if node.kind == "input" || node.kind == "textarea" {
-            if !node.props.contains_key("placeholder") && !node.props.contains_key("label") {
-                violations.push(format!("{} missing label or placeholder", node.kind));
-            }
+        if (node.kind == "input" || node.kind == "textarea")
+            && !node.props.contains_key("placeholder")
+            && !node.props.contains_key("label")
+        {
+            violations.push(format!("{} missing label or placeholder", node.kind));
         }
         check_a11y_recursive(&node.children, violations);
     }
@@ -799,10 +819,7 @@ fn check_a11y_recursive(nodes: &[PositionedNode], violations: &mut Vec<String>) 
 
 pub fn print_results_text(suites: &[TestSuiteResult]) {
     for suite in suites {
-        eprintln!(
-            "\nrunning {} test(s) from {}",
-            suite.total, suite.file
-        );
+        eprintln!("\nrunning {} test(s) from {}", suite.total, suite.file);
         for result in &suite.results {
             let status = if result.passed { "ok" } else { "FAILED" };
             eprintln!(

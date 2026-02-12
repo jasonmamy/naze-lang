@@ -119,7 +119,7 @@ async fn get_package_handler(
     let parts: Vec<&str> = path.split('/').collect();
 
     // Parse the package name and remaining path segments
-    let (pkg_name, rest) = if parts.first().map_or(false, |p| p.starts_with('@')) {
+    let (pkg_name, rest) = if parts.first().is_some_and(|p| p.starts_with('@')) {
         // Scoped package: @scope/name/...
         if parts.len() < 2 {
             return (
@@ -185,7 +185,11 @@ async fn get_package_handler(
                     created_at: v.created_at,
                 })
                 .collect();
-            (StatusCode::OK, Json(serde_json::json!({"versions": version_list}))).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"versions": version_list})),
+            )
+                .into_response()
         }
         // GET /api/v1/packages/name/version — specific version info
         [version] => match state.db.get_version(pkg.id, version) {
@@ -212,34 +216,22 @@ async fn get_package_handler(
                 .into_response(),
         },
         // GET /api/v1/packages/name/version/download — download tarball
-        [version, "download"] => {
-            match state.db.get_version(pkg.id, version) {
-                Ok(Some(_v)) => match state.storage.get_tarball(&pkg_name, version) {
-                    Ok(data) => (
-                        StatusCode::OK,
-                        [
-                            ("content-type", "application/gzip"),
-                            (
-                                "content-disposition",
-                                &format!(
-                                    "attachment; filename=\"{}-{}.tar.gz\"",
-                                    pkg_name.replace('/', "__"),
-                                    version
-                                ),
+        [version, "download"] => match state.db.get_version(pkg.id, version) {
+            Ok(Some(_v)) => match state.storage.get_tarball(&pkg_name, version) {
+                Ok(data) => (
+                    StatusCode::OK,
+                    [
+                        ("content-type", "application/gzip"),
+                        (
+                            "content-disposition",
+                            &format!(
+                                "attachment; filename=\"{}-{}.tar.gz\"",
+                                pkg_name.replace('/', "__"),
+                                version
                             ),
-                        ],
-                        data,
-                    )
-                        .into_response(),
-                    Err(e) => (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(serde_json::json!({"error": e.to_string()})),
-                    )
-                        .into_response(),
-                },
-                Ok(None) => (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"error": "version not found"})),
+                        ),
+                    ],
+                    data,
                 )
                     .into_response(),
                 Err(e) => (
@@ -247,8 +239,18 @@ async fn get_package_handler(
                     Json(serde_json::json!({"error": e.to_string()})),
                 )
                     .into_response(),
-            }
-        }
+            },
+            Ok(None) => (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": "version not found"})),
+            )
+                .into_response(),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": e.to_string()})),
+            )
+                .into_response(),
+        },
         _ => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({"error": "invalid path"})),
@@ -332,7 +334,10 @@ async fn publish_package(
     };
 
     // Store tarball
-    let tarball_path = match state.storage.store_tarball(&meta.name, &meta.version, &tarball) {
+    let tarball_path = match state
+        .storage
+        .store_tarball(&meta.name, &meta.version, &tarball)
+    {
         Ok(p) => p,
         Err(e) => {
             return (
@@ -344,13 +349,11 @@ async fn publish_package(
     };
 
     // Insert version
-    if let Err(e) = state.db.insert_version(
-        pkg_id,
-        &meta.version,
-        &checksum,
-        &tarball_path,
-        naze_files,
-    ) {
+    if let Err(e) =
+        state
+            .db
+            .insert_version(pkg_id, &meta.version, &checksum, &tarball_path, naze_files)
+    {
         return (
             StatusCode::CONFLICT,
             Json(serde_json::json!({"error": format!("version already exists: {e}")})),

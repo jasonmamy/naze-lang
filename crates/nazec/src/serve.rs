@@ -79,11 +79,7 @@ const SSR_HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 // ─── Entry Point ─────────────────────────────────────────────────────────────
 
 /// Start the production SSR server.
-pub fn run(
-    manifest: &Manifest,
-    port: u16,
-    host: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(manifest: &Manifest, port: u16, host: &str) -> Result<(), Box<dyn std::error::Error>> {
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async move { run_async(manifest, port, host).await })
 }
@@ -100,9 +96,7 @@ async fn run_async(
     // Verify dist/ exists
     let bin_path = dist_dir.join("app_data.bin");
     if !bin_path.exists() {
-        return Err(format!(
-            "dist/app_data.bin not found — run `nazec build` first"
-        ).into());
+        return Err("dist/app_data.bin not found — run `nazec build` first".into());
     }
 
     // Load and deserialize the render tree
@@ -112,8 +106,8 @@ async fn run_async(
     // Pre-compute script tags and WASM import parts
     let script_tags: String = manifest
         .scripts
-        .iter()
-        .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+        .values()
+        .map(|url| format!("  <script src=\"{}\"></script>", url))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -189,7 +183,12 @@ async fn api_handler(
     State(state): State<SsrState>,
     axum::Json(body): axum::Json<serde_json::Value>,
 ) -> impl IntoResponse {
-    let func = match state.render_tree.server_functions.iter().find(|f| f.name == name) {
+    let func = match state
+        .render_tree
+        .server_functions
+        .iter()
+        .find(|f| f.name == name)
+    {
         Some(f) => f,
         None => {
             return axum::Json(serde_json::json!({
@@ -207,9 +206,9 @@ async fn api_handler(
     let forwarded: Vec<(String, String)> = ["authorization", "cookie", "x-api-key"]
         .iter()
         .filter_map(|&key| {
-            headers.get(key).and_then(|v| {
-                v.to_str().ok().map(|s| (key.to_string(), s.to_string()))
-            })
+            headers
+                .get(key)
+                .and_then(|v| v.to_str().ok().map(|s| (key.to_string(), s.to_string())))
         })
         .collect();
 
@@ -274,7 +273,11 @@ fn render_page(state: &SsrState, path: &str) -> Response {
 
     // 2. Pre-evaluate server function calls
     for call in &tree.server_calls {
-        if let Some(func) = tree.server_functions.iter().find(|f| f.name == call.func_name) {
+        if let Some(func) = tree
+            .server_functions
+            .iter()
+            .find(|f| f.name == call.func_name)
+        {
             // Evaluate call arguments, then delegate to server_fns
             let args_json: Vec<serde_json::Value> = call
                 .args
@@ -308,10 +311,7 @@ fn render_page(state: &SsrState, path: &str) -> Response {
         if let Some(guard) = tree.guards.iter().find(|g| g.name == guard_name) {
             for check in &guard.checks {
                 let val = exec::evaluate_expr(&check.condition, &app_state);
-                let triggered = match &val {
-                    RenderValue::Bool(true) => true,
-                    _ => false,
-                };
+                let triggered = matches!(&val, RenderValue::Bool(true));
                 if triggered {
                     return axum::response::Redirect::temporary(&check.redirect).into_response();
                 }
@@ -392,7 +392,12 @@ fn render_page(state: &SsrState, path: &str) -> Response {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /// Match a URL path against a route pattern with `:param` segments.
-fn match_route(pattern: &str, actual: &str, params: &[String], is_catch_all: bool) -> Option<Vec<(String, String)>> {
+fn match_route(
+    pattern: &str,
+    actual: &str,
+    params: &[String],
+    is_catch_all: bool,
+) -> Option<Vec<(String, String)>> {
     if is_catch_all {
         return Some(vec![]);
     }
@@ -404,11 +409,11 @@ fn match_route(pattern: &str, actual: &str, params: &[String], is_catch_all: boo
     let mut extracted = Vec::new();
     let mut param_idx = 0;
     for (p, a) in pat_segs.iter().zip(act_segs.iter()) {
-        if p.starts_with(':') {
+        if let Some(stripped) = p.strip_prefix(':') {
             let name = if param_idx < params.len() {
                 params[param_idx].clone()
             } else {
-                p[1..].to_string()
+                stripped.to_string()
             };
             extracted.push((name, a.to_string()));
             param_idx += 1;
@@ -421,7 +426,16 @@ fn match_route(pattern: &str, actual: &str, params: &[String], is_catch_all: boo
 
 /// Find page nodes for a given path with dynamic route matching.
 /// Returns (page_nodes, extracted_params).
-fn find_page_nodes<'a>(tree: &'a RenderTree, path: &str) -> (&'a [RenderNode], Vec<(String, String)>, &'a [(String, RenderValue)], Option<&'a str>) {
+#[allow(clippy::type_complexity)]
+fn find_page_nodes<'a>(
+    tree: &'a RenderTree,
+    path: &str,
+) -> (
+    &'a [RenderNode],
+    Vec<(String, String)>,
+    &'a [(String, RenderValue)],
+    Option<&'a str>,
+) {
     // 1. Exact match (static routes)
     for page in &tree.pages {
         if !page.is_catch_all && page.params.is_empty() && page.path == path {
@@ -504,8 +518,7 @@ fn serialize_state_for_hydration(state: &HashMap<String, RenderValue>) -> String
 mod tests {
     use super::*;
     use naze_ir::{
-        IrExpression, IrServerBody, PageDef, RenderNode, RenderTree, ServerCallDecl,
-        ServerFuncDecl,
+        IrExpression, IrServerBody, PageDef, RenderNode, RenderTree, ServerCallDecl, ServerFuncDecl,
     };
 
     fn empty_tree() -> RenderTree {

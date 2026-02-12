@@ -98,10 +98,8 @@ impl ApplicationHandler for App {
                     },
                 ..
             } => {
-                if logical_key == Key::Named(NamedKey::Escape) {
-                    if self.handle_escape() {
-                        self.render();
-                    }
+                if logical_key == Key::Named(NamedKey::Escape) && self.handle_escape() {
+                    self.render();
                 }
             }
             _ => {}
@@ -219,10 +217,10 @@ impl App {
         };
         // Dismiss topmost overlay (if dismiss-on-escape is not false)
         for overlay in layout.overlays.iter().rev() {
-            let dismiss = match overlay.props.get("dismiss-on-escape") {
-                Some(RenderValue::Bool(false)) => false,
-                _ => true,
-            };
+            let dismiss = !matches!(
+                overlay.props.get("dismiss-on-escape"),
+                Some(RenderValue::Bool(false))
+            );
             if dismiss {
                 let outside_handlers: Vec<_> = overlay
                     .handlers
@@ -313,13 +311,14 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
     for node in nodes {
         match node.kind.as_str() {
             "__if" => {
-                let show_then = node.condition.as_ref().map_or(false, |cond| {
-                    match evaluate_expr(cond, state) {
-                        RenderValue::Bool(b) => b,
-                        RenderValue::Num(n, _) => n != 0.0,
-                        _ => false,
-                    }
-                });
+                let show_then =
+                    node.condition
+                        .as_ref()
+                        .is_some_and(|cond| match evaluate_expr(cond, state) {
+                            RenderValue::Bool(b) => b,
+                            RenderValue::Num(n, _) => n != 0.0,
+                            _ => false,
+                        });
                 if show_then {
                     out.extend(resolve_nodes(&node.children, state));
                 } else if let Some(else_nodes) = &node.else_children {
@@ -471,15 +470,24 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             false
         }
         IrAction::JsCall { function_name, .. } => {
-            eprintln!("[js] {} - JS interop not available in native mode", function_name);
+            eprintln!(
+                "[js] {} - JS interop not available in native mode",
+                function_name
+            );
             false
         }
         IrAction::Notify { title, .. } => {
-            eprintln!("[notify] {} - notifications not available in native mode", title);
+            eprintln!(
+                "[notify] {} - notifications not available in native mode",
+                title
+            );
             false
         }
         IrAction::SetTheme { name } => {
-            eprintln!("[set-theme] {} - theme switching not yet implemented in native mode", name);
+            eprintln!(
+                "[set-theme] {} - theme switching not yet implemented in native mode",
+                name
+            );
             false
         }
     }

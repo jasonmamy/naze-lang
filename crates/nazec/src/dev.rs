@@ -518,8 +518,8 @@ async fn run_async(
     let title = get_app_title(manifest)?;
     let script_tags: String = manifest
         .scripts
-        .iter()
-        .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+        .values()
+        .map(|url| format!("  <script src=\"{}\"></script>", url))
         .collect::<Vec<_>>()
         .join("\n");
     let dev_html = DEV_INDEX_HTML
@@ -554,7 +554,15 @@ async fn run_async(
     let server_fns_watcher = server_fns.clone();
     let prompts_watcher = prompts.clone();
     tokio::spawn(async move {
-        watch_and_rebuild(manifest_clone, reload_tx, output_dir_clone, deps_clone, server_fns_watcher, prompts_watcher).await;
+        watch_and_rebuild(
+            manifest_clone,
+            reload_tx,
+            output_dir_clone,
+            deps_clone,
+            server_fns_watcher,
+            prompts_watcher,
+        )
+        .await;
     });
 
     // Build router with no-cache headers for dev mode
@@ -696,7 +704,13 @@ async fn watch_and_rebuild(
 
                 // Rebuild incrementally (reuse cached ASTs for unchanged files)
                 let start = Instant::now();
-                match build::run_incremental(&manifest, Format::Text, &mut build_cache, &resolved_deps, false) {
+                match build::run_incremental(
+                    &manifest,
+                    Format::Text,
+                    &mut build_cache,
+                    &resolved_deps,
+                    false,
+                ) {
                     Ok(()) => {
                         let elapsed = start.elapsed().as_millis();
                         eprintln!("  rebuilt in {}ms", elapsed);
@@ -717,8 +731,8 @@ async fn watch_and_rebuild(
                         if let Ok(title) = get_app_title(&manifest) {
                             let script_tags: String = manifest
                                 .scripts
-                                .iter()
-                                .map(|(_, url)| format!("  <script src=\"{}\"></script>", url))
+                                .values()
+                                .map(|url| format!("  <script src=\"{}\"></script>", url))
                                 .collect::<Vec<_>>()
                                 .join("\n");
                             let dev_html = DEV_INDEX_HTML

@@ -22,7 +22,9 @@ pub fn add(
         doc["dependencies"] = toml_edit::Item::Table(toml_edit::Table::new());
     }
 
-    let deps_table = doc["dependencies"].as_table_mut().ok_or("invalid [dependencies] section")?;
+    let deps_table = doc["dependencies"]
+        .as_table_mut()
+        .ok_or("invalid [dependencies] section")?;
 
     if path.is_some() || git.is_some() {
         // Detailed dependency

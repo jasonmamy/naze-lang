@@ -117,9 +117,9 @@ pub enum Node {
         span: Span,
     },
     Theme {
-        name: Option<String>,                      // None = unnamed (default), Some("dark") = named
-        extends: Option<String>,                    // parent theme name for inheritance
-        colors: Vec<(String, u32)>,                // "primary" -> 0x2563eb
+        name: Option<String>,       // None = unnamed (default), Some("dark") = named
+        extends: Option<String>,    // parent theme name for inheritance
+        colors: Vec<(String, u32)>, // "primary" -> 0x2563eb
         spacing: Vec<(String, f64, Option<Unit>)>, // "md" -> (16.0, Some(Px))
         span: Span,
     },
@@ -166,13 +166,13 @@ pub enum Node {
         span: Span,
     },
     Prompt {
-        name: String,                  // binding name: "summary"
-        provider: String,              // provider name: "openai", "anthropic", "ollama"
-        props: Vec<(String, Value)>,   // key-value properties from block
+        name: String,                // binding name: "summary"
+        provider: String,            // provider name: "openai", "anthropic", "ollama"
+        props: Vec<(String, Value)>, // key-value properties from block
         span: Span,
     },
     Meta {
-        key: String,        // "title", "description", "image", "canonical", "robots"
+        key: String, // "title", "description", "image", "canonical", "robots"
         value: Value,
         span: Span,
     },
@@ -217,7 +217,7 @@ pub struct DataConfig {
     pub retry: Option<u32>,     // retry count
     pub trigger: Option<String>, // "auto" (default) or "manual"
     pub content_type: Option<String>, // e.g. "application/json"
-    pub watch: bool,                  // for device APIs: continuously watch vs one-shot
+    pub watch: bool,            // for device APIs: continuously watch vs one-shot
 }
 
 /// Storage type for persistent state declarations.
@@ -398,20 +398,23 @@ pub struct ModelField {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryCondition {
     pub field: String,
-    pub op: String,        // "==", "!=", ">", "<", ">=", "<="
+    pub op: String, // "==", "!=", ">", "<", ">=", "<="
     pub value: Expression,
 }
 
 /// Expression types allowed in server function let bindings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerExpr {
-    Fetch(String),                            // fetch "url"
-    Sql { query: String, params: Vec<Expression> }, // sql "SELECT ..." [param1, param2]
-    Expr(Expression),                         // any regular expression
+    Fetch(String), // fetch "url"
+    Sql {
+        query: String,
+        params: Vec<Expression>,
+    }, // sql "SELECT ..." [param1, param2]
+    Expr(Expression), // any regular expression
     Find {
         model: String,
         conditions: Vec<QueryCondition>,
-        order: Option<(String, bool)>,  // (field_name, ascending)
+        order: Option<(String, bool)>, // (field_name, ascending)
         limit: Option<Expression>,
     },
     Insert {

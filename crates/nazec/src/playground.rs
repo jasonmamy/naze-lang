@@ -132,8 +132,16 @@ fn base64_encode(input: &[u8]) -> String {
         let triple = (b0 << 16) | (b1 << 8) | b2;
         out.push(B64[((triple >> 18) & 0x3F) as usize] as char);
         out.push(B64[((triple >> 12) & 0x3F) as usize] as char);
-        if chunk.len() > 1 { out.push(B64[((triple >> 6) & 0x3F) as usize] as char); } else { out.push('='); }
-        if chunk.len() > 2 { out.push(B64[(triple & 0x3F) as usize] as char); } else { out.push('='); }
+        if chunk.len() > 1 {
+            out.push(B64[((triple >> 6) & 0x3F) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(B64[(triple & 0x3F) as usize] as char);
+        } else {
+            out.push('=');
+        }
     }
     out
 }
@@ -142,8 +150,7 @@ fn base64_encode(input: &[u8]) -> String {
 fn write_playground_wasm(dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
     // The playground WASM is optional — the playground falls back to server-side
     // compilation if the WASM isn't available. Check if the pkg/ directory exists.
-    let pkg_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../naze-playground/pkg");
+    let pkg_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../naze-playground/pkg");
 
     if pkg_dir.exists() {
         let wasm_path = pkg_dir.join("naze_playground_bg.wasm");

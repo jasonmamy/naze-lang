@@ -42,6 +42,7 @@ pub enum DependencySpec {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct DetailedDep {
     pub path: Option<String>,
     pub git: Option<String>,
@@ -308,7 +309,11 @@ SECRET = { from = "MY_SECRET_KEY" }
         let dir = std::env::temp_dir().join("naze_test_dotenv");
         let _ = std::fs::create_dir_all(&dir);
         let env_file = dir.join(".env");
-        std::fs::write(&env_file, "# comment\nKEY1=value1\nKEY2=\"quoted\"\nKEY3='single'\n\nKEY4 = spaced\n").unwrap();
+        std::fs::write(
+            &env_file,
+            "# comment\nKEY1=value1\nKEY2=\"quoted\"\nKEY3='single'\n\nKEY4 = spaced\n",
+        )
+        .unwrap();
         let vars = load_dotenv(&env_file);
         assert_eq!(vars["KEY1"], "value1");
         assert_eq!(vars["KEY2"], "quoted");

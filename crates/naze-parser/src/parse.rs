@@ -213,15 +213,14 @@ fn parse_guard_def(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
                 Value::Str(s) => s,
                 _ => String::new(),
             };
-            checks.push(GuardCheckAst { condition, redirect });
+            checks.push(GuardCheckAst {
+                condition,
+                redirect,
+            });
         }
     }
 
-    Node::Guard {
-        name,
-        checks,
-        span,
-    }
+    Node::Guard { name, checks, span }
 }
 
 fn parse_model_def(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -791,10 +790,15 @@ fn parse_server_body(pair: pest::iterators::Pair<Rule>) -> ServerBody {
                             Value::Str(s) => ServerExpr::Fetch(s),
                             Value::InterpolatedStr(parts) => {
                                 // Flatten to string for now
-                                let s = parts.into_iter().map(|p| match p {
-                                    StringPart::Literal(s) => s,
-                                    StringPart::Interpolation(segs) => format!("{{{}}}", segs.join(".")),
-                                }).collect();
+                                let s = parts
+                                    .into_iter()
+                                    .map(|p| match p {
+                                        StringPart::Literal(s) => s,
+                                        StringPart::Interpolation(segs) => {
+                                            format!("{{{}}}", segs.join("."))
+                                        }
+                                    })
+                                    .collect();
                                 ServerExpr::Fetch(s)
                             }
                             _ => ServerExpr::Fetch(String::new()),
@@ -809,7 +813,10 @@ fn parse_server_body(pair: pest::iterators::Pair<Rule>) -> ServerBody {
                         let params = sql_inner
                             .next()
                             .map(|params_pair| {
-                                params_pair.into_inner().map(parse_pipe_expression).collect()
+                                params_pair
+                                    .into_inner()
+                                    .map(parse_pipe_expression)
+                                    .collect()
                             })
                             .unwrap_or_default();
                         ServerExpr::Sql { query, params }
@@ -2039,8 +2046,7 @@ mod tests {
 
     #[test]
     fn parse_custom_event_name() {
-        let source =
-            "app \"Test\" {\n  rect {\n    on toggle-sidebar: set open = true\n  }\n}\n";
+        let source = "app \"Test\" {\n  rect {\n    on toggle-sidebar: set open = true\n  }\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
             Node::App { children, .. } => match &children[0] {
@@ -2503,9 +2509,7 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Data {
-                name, config, ..
-            } => {
+            Node::Data { name, config, .. } => {
                 assert_eq!(name, "users");
                 assert_eq!(config.headers.len(), 2);
                 assert_eq!(config.headers[0].0, "Authorization");
@@ -2892,9 +2896,7 @@ mod tests {
         let nodes = parse(source, "theme.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Theme {
-                name, extends, ..
-            } => {
+            Node::Theme { name, extends, .. } => {
                 assert_eq!(name.as_deref(), Some("dark"));
                 assert_eq!(extends.as_deref(), Some("light"));
             }
@@ -2950,7 +2952,12 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Page { path, params, children, .. } => {
+            Node::Page {
+                path,
+                params,
+                children,
+                ..
+            } => {
                 assert_eq!(path, "/posts/:id");
                 assert_eq!(params, &vec!["id".to_string()]);
                 assert_eq!(children.len(), 1);
@@ -3003,7 +3010,11 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Boundary { children, catch_children, .. } => {
+            Node::Boundary {
+                children,
+                catch_children,
+                ..
+            } => {
                 assert_eq!(children.len(), 2); // data + text
                 assert_eq!(catch_children.len(), 1); // text
             }
@@ -3619,10 +3630,7 @@ mod tests {
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
             Node::ServerFunction {
-                name,
-                params,
-                body,
-                ..
+                name, params, body, ..
             } => {
                 assert_eq!(name, "add");
                 assert_eq!(params.len(), 2);
@@ -3784,7 +3792,8 @@ mod tests {
 
     #[test]
     fn parse_prompt_minimal() {
-        let source = "prompt answer: from ollama {\n  system: \"You are helpful.\"\n  user: \"Hello\"\n}\n";
+        let source =
+            "prompt answer: from ollama {\n  system: \"You are helpful.\"\n  user: \"Hello\"\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
@@ -3859,7 +3868,12 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::Page { path, guard, children, .. } => {
+            Node::Page {
+                path,
+                guard,
+                children,
+                ..
+            } => {
                 assert_eq!(path, "/admin");
                 assert_eq!(guard.as_deref(), Some("is-admin"));
                 assert_eq!(children.len(), 1);
@@ -3887,7 +3901,9 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
-            Node::ServerFunction { name, params, body, .. } => {
+            Node::ServerFunction {
+                name, params, body, ..
+            } => {
                 assert_eq!(name, "get-users");
                 assert_eq!(params.len(), 1);
                 assert_eq!(body.lets.len(), 1);
@@ -3906,7 +3922,8 @@ mod tests {
 
     #[test]
     fn parse_server_function_sql_no_params() {
-        let source = "server function get-all() {\n  let rows = sql \"SELECT * FROM items\"\n  rows\n}\n";
+        let source =
+            "server function get-all() {\n  let rows = sql \"SELECT * FROM items\"\n  rows\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
@@ -3976,7 +3993,12 @@ mod tests {
             Node::ServerFunction { body, .. } => {
                 assert_eq!(body.lets.len(), 1);
                 match &body.lets[0].1 {
-                    ServerExpr::Find { model, conditions, order, limit } => {
+                    ServerExpr::Find {
+                        model,
+                        conditions,
+                        order,
+                        limit,
+                    } => {
                         assert_eq!(model, "users");
                         assert_eq!(conditions.len(), 1);
                         assert_eq!(conditions[0].field, "active");
@@ -3999,17 +4021,20 @@ mod tests {
         let source = "server function get-all() {\n  let items = find items\n  items\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::ServerFunction { body, .. } => {
-                match &body.lets[0].1 {
-                    ServerExpr::Find { model, conditions, order, limit } => {
-                        assert_eq!(model, "items");
-                        assert!(conditions.is_empty());
-                        assert!(order.is_none());
-                        assert!(limit.is_none());
-                    }
-                    _ => panic!("expected ServerExpr::Find"),
+            Node::ServerFunction { body, .. } => match &body.lets[0].1 {
+                ServerExpr::Find {
+                    model,
+                    conditions,
+                    order,
+                    limit,
+                } => {
+                    assert_eq!(model, "items");
+                    assert!(conditions.is_empty());
+                    assert!(order.is_none());
+                    assert!(limit.is_none());
                 }
-            }
+                _ => panic!("expected ServerExpr::Find"),
+            },
             _ => panic!("expected ServerFunction"),
         }
     }
@@ -4019,18 +4044,16 @@ mod tests {
         let source = "server function search() {\n  let users = find users where active == true and age > 18\n  users\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::ServerFunction { body, .. } => {
-                match &body.lets[0].1 {
-                    ServerExpr::Find { conditions, .. } => {
-                        assert_eq!(conditions.len(), 2);
-                        assert_eq!(conditions[0].field, "active");
-                        assert_eq!(conditions[0].op, "==");
-                        assert_eq!(conditions[1].field, "age");
-                        assert_eq!(conditions[1].op, ">");
-                    }
-                    _ => panic!("expected ServerExpr::Find"),
+            Node::ServerFunction { body, .. } => match &body.lets[0].1 {
+                ServerExpr::Find { conditions, .. } => {
+                    assert_eq!(conditions.len(), 2);
+                    assert_eq!(conditions[0].field, "active");
+                    assert_eq!(conditions[0].op, "==");
+                    assert_eq!(conditions[1].field, "age");
+                    assert_eq!(conditions[1].op, ">");
                 }
-            }
+                _ => panic!("expected ServerExpr::Find"),
+            },
             _ => panic!("expected ServerFunction"),
         }
     }
@@ -4040,17 +4063,15 @@ mod tests {
         let source = "server function create-user(name: text, email: text) {\n  let user = insert users { name: name, email: email }\n  user\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::ServerFunction { body, .. } => {
-                match &body.lets[0].1 {
-                    ServerExpr::Insert { model, fields } => {
-                        assert_eq!(model, "users");
-                        assert_eq!(fields.len(), 2);
-                        assert_eq!(fields[0].0, "name");
-                        assert_eq!(fields[1].0, "email");
-                    }
-                    _ => panic!("expected ServerExpr::Insert"),
+            Node::ServerFunction { body, .. } => match &body.lets[0].1 {
+                ServerExpr::Insert { model, fields } => {
+                    assert_eq!(model, "users");
+                    assert_eq!(fields.len(), 2);
+                    assert_eq!(fields[0].0, "name");
+                    assert_eq!(fields[1].0, "email");
                 }
-            }
+                _ => panic!("expected ServerExpr::Insert"),
+            },
             _ => panic!("expected ServerFunction"),
         }
     }
@@ -4060,19 +4081,21 @@ mod tests {
         let source = "server function update-user(id: number, name: text) {\n  let result = update users set { name: name } where id == id\n  result\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::ServerFunction { body, .. } => {
-                match &body.lets[0].1 {
-                    ServerExpr::Update { model, set_fields, conditions } => {
-                        assert_eq!(model, "users");
-                        assert_eq!(set_fields.len(), 1);
-                        assert_eq!(set_fields[0].0, "name");
-                        assert_eq!(conditions.len(), 1);
-                        assert_eq!(conditions[0].field, "id");
-                        assert_eq!(conditions[0].op, "==");
-                    }
-                    _ => panic!("expected ServerExpr::Update"),
+            Node::ServerFunction { body, .. } => match &body.lets[0].1 {
+                ServerExpr::Update {
+                    model,
+                    set_fields,
+                    conditions,
+                } => {
+                    assert_eq!(model, "users");
+                    assert_eq!(set_fields.len(), 1);
+                    assert_eq!(set_fields[0].0, "name");
+                    assert_eq!(conditions.len(), 1);
+                    assert_eq!(conditions[0].field, "id");
+                    assert_eq!(conditions[0].op, "==");
                 }
-            }
+                _ => panic!("expected ServerExpr::Update"),
+            },
             _ => panic!("expected ServerFunction"),
         }
     }
@@ -4082,16 +4105,14 @@ mod tests {
         let source = "server function remove-user(id: number) {\n  let result = delete users where id == id\n  result\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
-            Node::ServerFunction { body, .. } => {
-                match &body.lets[0].1 {
-                    ServerExpr::Delete { model, conditions } => {
-                        assert_eq!(model, "users");
-                        assert_eq!(conditions.len(), 1);
-                        assert_eq!(conditions[0].field, "id");
-                    }
-                    _ => panic!("expected ServerExpr::Delete"),
+            Node::ServerFunction { body, .. } => match &body.lets[0].1 {
+                ServerExpr::Delete { model, conditions } => {
+                    assert_eq!(model, "users");
+                    assert_eq!(conditions.len(), 1);
+                    assert_eq!(conditions[0].field, "id");
                 }
-            }
+                _ => panic!("expected ServerExpr::Delete"),
+            },
             _ => panic!("expected ServerFunction"),
         }
     }

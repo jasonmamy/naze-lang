@@ -48,9 +48,7 @@ pub fn evaluate_server_fn_with_headers(
                     Err(_) => RenderValue::Str(String::new()),
                 }
             }
-            IrServerStep::Sql { query, params } => {
-                execute_sql(query, params, &eval_state)
-            }
+            IrServerStep::Sql { query, params } => execute_sql(query, params, &eval_state),
             IrServerStep::Expr(expr) => crate::exec::evaluate_expr(expr, &eval_state),
         };
         eval_state.insert(name.clone(), val);
@@ -97,21 +95,17 @@ fn resolve_url_interpolations(url: &str, state: &HashMap<String, RenderValue>) -
 /// Convert a serde_json::Value to a RenderValue for server function args.
 pub fn json_to_render_value(v: &serde_json::Value) -> RenderValue {
     match v {
-        serde_json::Value::Number(n) => {
-            RenderValue::Num(n.as_f64().unwrap_or(0.0), None)
-        }
+        serde_json::Value::Number(n) => RenderValue::Num(n.as_f64().unwrap_or(0.0), None),
         serde_json::Value::String(s) => RenderValue::Str(s.clone()),
         serde_json::Value::Bool(b) => RenderValue::Bool(*b),
         serde_json::Value::Array(arr) => {
             RenderValue::List(arr.iter().map(json_to_render_value).collect())
         }
-        serde_json::Value::Object(map) => {
-            RenderValue::Object(
-                map.iter()
-                    .map(|(k, v)| (k.clone(), json_to_render_value(v)))
-                    .collect(),
-            )
-        }
+        serde_json::Value::Object(map) => RenderValue::Object(
+            map.iter()
+                .map(|(k, v)| (k.clone(), json_to_render_value(v)))
+                .collect(),
+        ),
         serde_json::Value::Null => RenderValue::Str(String::new()),
     }
 }
@@ -120,15 +114,11 @@ pub fn json_to_render_value(v: &serde_json::Value) -> RenderValue {
 pub fn render_value_to_json(v: &RenderValue) -> serde_json::Value {
     match v {
         RenderValue::Str(s) => serde_json::Value::String(s.clone()),
-        RenderValue::Num(n, _) => {
-            serde_json::Number::from_f64(*n)
-                .map(serde_json::Value::Number)
-                .unwrap_or(serde_json::Value::Null)
-        }
+        RenderValue::Num(n, _) => serde_json::Number::from_f64(*n)
+            .map(serde_json::Value::Number)
+            .unwrap_or(serde_json::Value::Null),
         RenderValue::Bool(b) => serde_json::Value::Bool(*b),
-        RenderValue::Color(c) => {
-            serde_json::Value::String(format!("#{:06x}", c))
-        }
+        RenderValue::Color(c) => serde_json::Value::String(format!("#{:06x}", c)),
         RenderValue::List(items) => {
             serde_json::Value::Array(items.iter().map(render_value_to_json).collect())
         }
@@ -162,8 +152,8 @@ fn execute_sql(
 ) -> RenderValue {
     #[cfg(feature = "database")]
     {
-        use postgres::{Client, NoTls};
         use postgres::types::ToSql;
+        use postgres::{Client, NoTls};
 
         let db_url = match std::env::var("DATABASE_URL") {
             Ok(url) => url,
@@ -346,9 +336,7 @@ mod tests {
             name: "calc".to_string(),
             params: vec![],
             body: IrServerBody {
-                lets: vec![
-                    ("x".to_string(), IrServerStep::Expr(IrExpression::Num(10.0))),
-                ],
+                lets: vec![("x".to_string(), IrServerStep::Expr(IrExpression::Num(10.0)))],
                 result: IrExpression::StateRef("x".to_string()),
             },
         };

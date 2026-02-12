@@ -115,10 +115,8 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
             _ => None,
         },
         "textarea" => match prop {
-            "width" | "height" | "font-size" | "rows" | "max-length" | "opacity"
-            | "tab-index" | "line-height" | "letter-spacing" | "border" | "radius" => {
-                Some(Expected::Number)
-            }
+            "width" | "height" | "font-size" | "rows" | "max-length" | "opacity" | "tab-index"
+            | "line-height" | "letter-spacing" | "border" | "radius" => Some(Expected::Number),
             "color" | "border-color" => Some(Expected::Color),
             "placeholder" | "cursor" | "text-align" | "shadow" | "transform" => {
                 Some(Expected::Text)
@@ -292,7 +290,9 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
             Node::Fill { children, .. } => {
                 names.extend(collect_state_names(children));
             }
-            Node::Page { params, children, .. } => {
+            Node::Page {
+                params, children, ..
+            } => {
                 // Dynamic route params are available as params.NAME inside the page
                 for p in params {
                     names.insert(format!("params.{p}"));
@@ -875,22 +875,22 @@ fn check_component_call(
         match param_map.get(prop.key.as_str()) {
             Some(param) => {
                 // Skip type checking for refs — they're resolved at runtime or codegen
-                if !matches!(&prop.value, Value::Ref(_)) {
-                    if !value_matches_type(&prop.value, &param.ty) {
-                        errors.push(CompileError {
-                            message: format!(
-                                "type mismatch for prop '{}' on component '{}': expected {}, got {}",
-                                prop.key,
-                                comp.name,
-                                type_name(&param.ty),
-                                value_type_name(&prop.value),
-                            ),
-                            file: call_span.file.clone(),
-                            line: call_span.line,
-                            column: call_span.col,
-                            severity: Severity::Error,
-                        });
-                    }
+                if !matches!(&prop.value, Value::Ref(_))
+                    && !value_matches_type(&prop.value, &param.ty)
+                {
+                    errors.push(CompileError {
+                        message: format!(
+                            "type mismatch for prop '{}' on component '{}': expected {}, got {}",
+                            prop.key,
+                            comp.name,
+                            type_name(&param.ty),
+                            value_type_name(&prop.value),
+                        ),
+                        file: call_span.file.clone(),
+                        line: call_span.line,
+                        column: call_span.col,
+                        severity: Severity::Error,
+                    });
                 }
             }
             None => {
@@ -983,8 +983,7 @@ fn check_accessibility_props(
     let is_interactive = matches!(
         element,
         "rect" | "input" | "textarea" | "checkbox" | "radio" | "select"
-    )
-        || props.iter().any(|p| p.key == "on");
+    ) || props.iter().any(|p| p.key == "on");
 
     let has_label = props.iter().any(|p| p.key == "label");
     let has_role = props.iter().any(|p| p.key == "role");
@@ -1223,11 +1222,9 @@ pub fn read_wasm_exports(path: &Path) -> HashSet<String> {
     let mut exports = HashSet::new();
     for payload in parser.parse_all(&bytes) {
         if let Ok(wasmparser::Payload::ExportSection(reader)) = payload {
-            for export in reader {
-                if let Ok(export) = export {
-                    if matches!(export.kind, wasmparser::ExternalKind::Func) {
-                        exports.insert(export.name.to_string());
-                    }
+            for export in reader.into_iter().flatten() {
+                if matches!(export.kind, wasmparser::ExternalKind::Func) {
+                    exports.insert(export.name.to_string());
                 }
             }
         }
@@ -1318,8 +1315,7 @@ fn validate_server_data_refs(
                     });
                 }
             }
-            Node::App { children, .. }
-            | Node::Page { children, .. } => {
+            Node::App { children, .. } | Node::Page { children, .. } => {
                 validate_server_data_refs(children, server_fns, errors);
             }
             _ => {}
@@ -1365,9 +1361,7 @@ fn check_wasm_calls_in_nodes(
                 check_wasm_calls_in_nodes(else_children, export_map, errors);
             }
             Node::Each {
-                iterable,
-                children,
-                ..
+                iterable, children, ..
             } => {
                 check_wasm_calls_in_expr(iterable, export_map, errors);
                 check_wasm_calls_in_nodes(children, export_map, errors);
@@ -1442,6 +1436,7 @@ fn check_wasm_calls_in_action(
     }
 }
 
+#[allow(clippy::only_used_in_recursion)]
 fn check_wasm_calls_in_value(
     value: &Value,
     export_map: &HashMap<String, HashSet<String>>,

@@ -22,11 +22,7 @@ fn nazec_test_examples_pass() {
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(
-        output.status.success(),
-        "nazec test failed:\n{}",
-        stderr
-    );
+    assert!(output.status.success(), "nazec test failed:\n{}", stderr);
     assert!(
         stderr.contains("0 failed"),
         "expected 0 failures in output:\n{}",
@@ -50,7 +46,10 @@ fn nazec_test_json_output() {
         serde_json::from_slice(&output.stdout).expect("invalid JSON output");
 
     assert_eq!(json["failed"], 0, "expected 0 failures in JSON output");
-    assert!(json["total"].as_u64().unwrap() > 0, "expected at least 1 test");
+    assert!(
+        json["total"].as_u64().unwrap() > 0,
+        "expected at least 1 test"
+    );
 }
 
 /// Run `nazec test --filter` and verify only matching tests run.

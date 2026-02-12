@@ -12,16 +12,16 @@ mod gallery;
 mod grammar;
 mod html_renderer;
 mod manifest;
-mod playground;
-mod seo;
-mod serve;
-mod server_fns;
 mod native_build;
 mod native_renderer;
 mod new;
+mod playground;
 mod prompt_handlers;
 mod registry;
 mod run;
+mod seo;
+mod serve;
+mod server_fns;
 mod test_runner;
 
 use clap::Parser;
@@ -38,7 +38,10 @@ fn main() {
 
     let result = match cli.command {
         Command::New { name } => new::run(&name),
-        Command::Build { target, static_render } => do_build(target, format, static_render),
+        Command::Build {
+            target,
+            static_render,
+        } => do_build(target, format, static_render),
         Command::Check => do_check(format),
         Command::Run => do_run(),
         Command::Dev { port, open } => do_dev(port, open),
@@ -46,15 +49,38 @@ fn main() {
         Command::Parse { file } => parse_file(&file),
         Command::Test { filter } => do_test(filter.as_deref(), format),
         Command::Gallery { build, native } => gallery::run(build, native),
-        Command::Grammar { grammar_format, no_test } => grammar::run(grammar_format, no_test),
-        Command::Add { package, path, git, tag, branch, rev, version } => {
-            dep_commands::add(&package, path.as_deref(), git.as_deref(), tag.as_deref(), branch.as_deref(), rev.as_deref(), version.as_deref())
-        }
+        Command::Grammar {
+            grammar_format,
+            no_test,
+        } => grammar::run(grammar_format, no_test),
+        Command::Add {
+            package,
+            path,
+            git,
+            tag,
+            branch,
+            rev,
+            version,
+        } => dep_commands::add(
+            &package,
+            path.as_deref(),
+            git.as_deref(),
+            tag.as_deref(),
+            branch.as_deref(),
+            rev.as_deref(),
+            version.as_deref(),
+        ),
         Command::Remove { package } => dep_commands::remove(&package),
         Command::Update { package } => dep_commands::update(package.as_deref()),
         Command::Publish { registry } => registry::publish_package(registry.as_deref()),
-        Command::Search { query, limit, registry } => registry::search_packages(&query, limit, registry.as_deref()),
-        Command::Analyze { bin, wasm, compare } => analyze::run(&bin, wasm.as_deref(), compare.as_deref()),
+        Command::Search {
+            query,
+            limit,
+            registry,
+        } => registry::search_packages(&query, limit, registry.as_deref()),
+        Command::Analyze { bin, wasm, compare } => {
+            analyze::run(&bin, wasm.as_deref(), compare.as_deref())
+        }
         Command::Playground { port } => playground::run(port),
         Command::Ai { subcommand } => ai::run(subcommand),
     };
@@ -67,11 +93,21 @@ fn main() {
     }
 }
 
-fn do_build(target: BuildTarget, format: Format, static_render: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn do_build(
+    target: BuildTarget,
+    format: Format,
+    static_render: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     let manifest = manifest::load("naze.toml")?;
     if format == Format::Text {
         let target_str = match target {
-            BuildTarget::Web => if static_render { "web (static)" } else { "web" },
+            BuildTarget::Web => {
+                if static_render {
+                    "web (static)"
+                } else {
+                    "web"
+                }
+            }
             BuildTarget::Native => "native",
             BuildTarget::Android => "android",
         };

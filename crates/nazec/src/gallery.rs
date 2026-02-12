@@ -556,11 +556,9 @@ impl NativeGallery {
     fn update_cursor(&self) {
         if let (Some((x, y)), Some(window)) = (self.cursor_pos, &self.window) {
             // Check sidebar buttons
-            if x < SIDEBAR_WIDTH {
-                if self.sidebar_hit_test(y).is_some() {
-                    window.set_cursor(CursorIcon::Pointer);
-                    return;
-                }
+            if x < SIDEBAR_WIDTH && self.sidebar_hit_test(y).is_some() {
+                window.set_cursor(CursorIcon::Pointer);
+                return;
             }
             // Check example content handlers
             if let Some(layout) = &self.layout {
@@ -842,13 +840,14 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
     for node in nodes {
         match node.kind.as_str() {
             "__if" => {
-                let show_then = node.condition.as_ref().map_or(false, |cond| {
-                    match evaluate_expr(cond, state) {
-                        RenderValue::Bool(b) => b,
-                        RenderValue::Num(n, _) => n != 0.0,
-                        _ => false,
-                    }
-                });
+                let show_then =
+                    node.condition
+                        .as_ref()
+                        .is_some_and(|cond| match evaluate_expr(cond, state) {
+                            RenderValue::Bool(b) => b,
+                            RenderValue::Num(n, _) => n != 0.0,
+                            _ => false,
+                        });
                 if show_then {
                     out.extend(resolve_nodes(&node.children, state));
                 } else if let Some(else_nodes) = &node.else_children {

@@ -437,7 +437,10 @@ mod tests {
             "https://example.com/og.png"
         );
         assert_eq!(
-            resolve_image_url("https://cdn.example.com/og.png", Some("https://example.com")),
+            resolve_image_url(
+                "https://cdn.example.com/og.png",
+                Some("https://example.com")
+            ),
             "https://cdn.example.com/og.png"
         );
         assert_eq!(resolve_image_url("/og.png", None), "/og.png");

@@ -2,7 +2,7 @@
 //!
 //! Breaks down `app_data.bin` by section and optionally analyzes WASM binary sections.
 
-use naze_ir::{RenderNode, RenderTree, RenderValue};
+use naze_ir::{RenderNode, RenderTree};
 use std::collections::HashMap;
 
 /// A measured section of the binary.
@@ -36,7 +36,10 @@ pub fn run(
     eprintln!("Total size: {}\n", format_bytes(total_size));
 
     // Section breakdown
-    eprintln!("{:<24} {:>10} {:>8} {:>8}", "Section", "Bytes", "Count", "%");
+    eprintln!(
+        "{:<24} {:>10} {:>8} {:>8}",
+        "Section", "Bytes", "Count", "%"
+    );
     eprintln!("{}", "-".repeat(52));
     let mut accounted = 0;
     for s in &sections {
@@ -54,7 +57,7 @@ pub fn run(
             pct
         );
     }
-    let overhead = if total_size > accounted { total_size - accounted } else { 0 };
+    let overhead = total_size.saturating_sub(accounted);
     if overhead > 0 {
         let pct = (overhead as f64 / total_size as f64) * 100.0;
         eprintln!(
@@ -104,14 +107,22 @@ fn measure_sections(tree: &RenderTree) -> Vec<Section> {
         state: tree.state.clone(),
         ..empty_tree()
     }) - empty_tree_size();
-    sections.push(Section { name: "state".into(), bytes: state_bytes, count: tree.state.len() });
+    sections.push(Section {
+        name: "state".into(),
+        bytes: state_bytes,
+        count: tree.state.len(),
+    });
 
     // Data declarations
     let data_bytes = measure_by_serializing(&RenderTree {
         data: tree.data.clone(),
         ..empty_tree()
     }) - empty_tree_size();
-    sections.push(Section { name: "data".into(), bytes: data_bytes, count: tree.data.len() });
+    sections.push(Section {
+        name: "data".into(),
+        bytes: data_bytes,
+        count: tree.data.len(),
+    });
 
     // Computed declarations
     let computed_bytes = measure_by_serializing(&RenderTree {
@@ -140,28 +151,44 @@ fn measure_sections(tree: &RenderTree) -> Vec<Section> {
         timers: tree.timers.clone(),
         ..empty_tree()
     }) - empty_tree_size();
-    sections.push(Section { name: "timers".into(), bytes: timer_bytes, count: tree.timers.len() });
+    sections.push(Section {
+        name: "timers".into(),
+        bytes: timer_bytes,
+        count: tree.timers.len(),
+    });
 
     // Param declarations
     let param_bytes = measure_by_serializing(&RenderTree {
         params: tree.params.clone(),
         ..empty_tree()
     }) - empty_tree_size();
-    sections.push(Section { name: "params".into(), bytes: param_bytes, count: tree.params.len() });
+    sections.push(Section {
+        name: "params".into(),
+        bytes: param_bytes,
+        count: tree.params.len(),
+    });
 
     // Root nodes
     let root_bytes = measure_by_serializing(&RenderTree {
         root: tree.root.clone(),
         ..empty_tree()
     }) - empty_tree_size();
-    sections.push(Section { name: "root nodes".into(), bytes: root_bytes, count: tree.root.len() });
+    sections.push(Section {
+        name: "root nodes".into(),
+        bytes: root_bytes,
+        count: tree.root.len(),
+    });
 
     // Pages
     let pages_bytes = measure_by_serializing(&RenderTree {
         pages: tree.pages.clone(),
         ..empty_tree()
     }) - empty_tree_size();
-    sections.push(Section { name: "pages".into(), bytes: pages_bytes, count: tree.pages.len() });
+    sections.push(Section {
+        name: "pages".into(),
+        bytes: pages_bytes,
+        count: tree.pages.len(),
+    });
 
     // Themes
     let themes_bytes = measure_by_serializing(&RenderTree {
@@ -390,6 +417,7 @@ fn format_delta(n: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use naze_ir::RenderValue;
 
     #[test]
     fn test_format_bytes() {

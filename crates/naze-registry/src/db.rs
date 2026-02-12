@@ -83,7 +83,10 @@ impl Db {
         Ok(conn.last_insert_rowid())
     }
 
-    pub fn get_package(&self, name: &str) -> Result<Option<PackageRow>, Box<dyn std::error::Error>> {
+    pub fn get_package(
+        &self,
+        name: &str,
+    ) -> Result<Option<PackageRow>, Box<dyn std::error::Error>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT id, name, description, latest_version, created_at, updated_at FROM packages WHERE name = ?1",

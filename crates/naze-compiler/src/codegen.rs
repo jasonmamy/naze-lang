@@ -150,7 +150,11 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                     },
                     content_type: config.content_type.clone().unwrap_or_default(),
                     watch: config.watch,
-                    headers: config.headers.iter().map(|(k, v)| (k.clone(), lower_value(v, &let_scope))).collect(),
+                    headers: config
+                        .headers
+                        .iter()
+                        .map(|(k, v)| (k.clone(), lower_value(v, &let_scope)))
+                        .collect(),
                 });
             }
             Node::Computed { name, expr, .. } => {
@@ -255,7 +259,7 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                 server_calls.push(naze_ir::ServerCallDecl {
                     name: name.clone(),
                     func_name: func_name.clone(),
-                    args: args.iter().map(|a| lower_expression(a)).collect(),
+                    args: args.iter().map(lower_expression).collect(),
                 });
             }
             Node::Prompt {
@@ -309,9 +313,7 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                     temperature: get_num("temperature", 0.7),
                 });
             }
-            Node::Guard {
-                name, checks, ..
-            } => {
+            Node::Guard { name, checks, .. } => {
                 let ir_checks: Vec<naze_ir::GuardCheck> = checks
                     .iter()
                     .map(|c| naze_ir::GuardCheck {
@@ -371,6 +373,7 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
 }
 
 /// Walk children to collect state/let/data/computed declarations (does not recurse into elements).
+#[allow(clippy::too_many_arguments)]
 fn collect_declarations(
     nodes: &[Node],
     state: &mut Vec<StateDecl>,
@@ -426,7 +429,11 @@ fn collect_declarations(
                     },
                     content_type: config.content_type.clone().unwrap_or_default(),
                     watch: config.watch,
-                    headers: config.headers.iter().map(|(k, v)| (k.clone(), lower_value(v, let_scope))).collect(),
+                    headers: config
+                        .headers
+                        .iter()
+                        .map(|(k, v)| (k.clone(), lower_value(v, let_scope)))
+                        .collect(),
                 });
             }
             Node::Computed { name, expr, .. } => {
@@ -494,7 +501,7 @@ fn collect_declarations(
                 server_calls.push(naze_ir::ServerCallDecl {
                     name: name.clone(),
                     func_name: func_name.clone(),
-                    args: args.iter().map(|a| lower_expression(a)).collect(),
+                    args: args.iter().map(lower_expression).collect(),
                 });
             }
             Node::Prompt {
@@ -675,10 +682,7 @@ fn compile_find_to_sql(
         params.push(lower_expression(lim));
         sql.push_str(&format!(" LIMIT ${}", params.len()));
     }
-    naze_ir::IrServerStep::Sql {
-        query: sql,
-        params,
-    }
+    naze_ir::IrServerStep::Sql { query: sql, params }
 }
 
 fn compile_insert_to_sql(
@@ -687,17 +691,15 @@ fn compile_insert_to_sql(
 ) -> naze_ir::IrServerStep {
     let columns: Vec<&str> = fields.iter().map(|(k, _)| k.as_str()).collect();
     let placeholders: Vec<String> = (1..=fields.len()).map(|i| format!("${}", i)).collect();
-    let params: Vec<naze_ir::IrExpression> = fields.iter().map(|(_, v)| lower_value_to_ir(v)).collect();
+    let params: Vec<naze_ir::IrExpression> =
+        fields.iter().map(|(_, v)| lower_value_to_ir(v)).collect();
     let sql = format!(
         "INSERT INTO {} ({}) VALUES ({}) RETURNING *",
         model,
         columns.join(", "),
         placeholders.join(", ")
     );
-    naze_ir::IrServerStep::Sql {
-        query: sql,
-        params,
-    }
+    naze_ir::IrServerStep::Sql { query: sql, params }
 }
 
 fn compile_update_to_sql(
@@ -721,10 +723,7 @@ fn compile_update_to_sql(
         let mut result = where_sql;
         // Replace $1, $2, etc. with $N+offset
         for i in (1..=conditions.len()).rev() {
-            result = result.replace(
-                &format!("${}", i),
-                &format!("${}", i + where_offset),
-            );
+            result = result.replace(&format!("${}", i), &format!("${}", i + where_offset));
         }
         result
     } else {
@@ -735,10 +734,7 @@ fn compile_update_to_sql(
         sql.push_str(&format!(" WHERE {}", renumbered_where));
     }
     sql.push_str(" RETURNING *");
-    naze_ir::IrServerStep::Sql {
-        query: sql,
-        params,
-    }
+    naze_ir::IrServerStep::Sql { query: sql, params }
 }
 
 fn compile_delete_to_sql(
@@ -751,10 +747,7 @@ fn compile_delete_to_sql(
         sql.push_str(&format!(" WHERE {}", where_sql));
     }
     sql.push_str(" RETURNING *");
-    naze_ir::IrServerStep::Sql {
-        query: sql,
-        params,
-    }
+    naze_ir::IrServerStep::Sql { query: sql, params }
 }
 
 /// Lower an AST Value to an IrExpression for query field values (no scope needed).
@@ -808,7 +801,13 @@ fn lower_nodes_with_pages(
 
     for node in nodes {
         match node {
-            Node::Page { path, params, guard, children, .. } => {
+            Node::Page {
+                path,
+                params,
+                guard,
+                children,
+                ..
+            } => {
                 let is_catch_all = path == "/*" || path.ends_with("/*");
                 // Extract meta nodes from page children
                 let mut meta = Vec::new();
@@ -912,7 +911,11 @@ fn lower_node(
             }
         }
         Node::Link {
-            text, to, children, span, ..
+            text,
+            to,
+            children,
+            span,
+            ..
         } => {
             let mut props = HashMap::new();
             props.insert("__text".to_string(), lower_value(text, scope));
@@ -986,9 +989,7 @@ fn lower_node(
             let data_names: Vec<String> = children
                 .iter()
                 .filter_map(|n| match n {
-                    Node::Data { name, .. } | Node::ServerData { name, .. } => {
-                        Some(name.clone())
-                    }
+                    Node::Data { name, .. } | Node::ServerData { name, .. } => Some(name.clone()),
                     _ => None,
                 })
                 .collect();
@@ -1122,7 +1123,11 @@ fn lower_nodes(
                 }
             }
             Node::Link {
-                text, to, children, span, ..
+                text,
+                to,
+                children,
+                span,
+                ..
             } => {
                 let mut props = HashMap::new();
                 props.insert("__text".to_string(), lower_value(text, scope));
@@ -1386,16 +1391,14 @@ fn lower_nodes_with_slots(
                     let resolved_handlers: Vec<EventHandler> = handlers
                         .iter()
                         .filter_map(|h| match &h.action {
-                            Action::Emit { event_name, .. } => {
-                                emit_map.get(event_name.as_str()).map(|parent_action| {
-                                    EventHandler {
-                                        event: h.event.clone(),
-                                        action: (*parent_action).clone(),
-                                        modifier: h.modifier.clone(),
-                                        span: h.span.clone(),
-                                    }
-                                })
-                            }
+                            Action::Emit { event_name, .. } => emit_map
+                                .get(event_name.as_str())
+                                .map(|parent_action| EventHandler {
+                                    event: h.event.clone(),
+                                    action: (*parent_action).clone(),
+                                    modifier: h.modifier.clone(),
+                                    span: h.span.clone(),
+                                }),
                             _ => Some(h.clone()),
                         })
                         .collect();
@@ -1516,7 +1519,11 @@ fn lower_nodes_with_slots(
                 });
             }
             Node::Link {
-                text, to, children, span, ..
+                text,
+                to,
+                children,
+                span,
+                ..
             } => {
                 let mut props = HashMap::new();
                 props.insert("__text".to_string(), lower_value(text, comp_scope));
@@ -1595,9 +1602,8 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
                         // Handle env var interpolation: {env.NAME}
                         if segments.len() == 2 && segments[0] == "env" {
                             let env_name = &segments[1];
-                            let val = ENV_VARS.with(|ev| {
-                                ev.borrow().get(env_name.as_str()).cloned()
-                            });
+                            let val =
+                                ENV_VARS.with(|ev| ev.borrow().get(env_name.as_str()).cloned());
                             return TextPart::Literal(val.unwrap_or_default());
                         }
 
@@ -1753,10 +1759,7 @@ fn lower_action(a: &Action) -> IrAction {
             target: target.clone(),
         },
         Action::Notify {
-            title,
-            body,
-            icon,
-            ..
+            title, body, icon, ..
         } => IrAction::Notify {
             title: title.clone(),
             body: body.clone().unwrap_or_default(),
@@ -1873,8 +1876,8 @@ fn lower_expression(e: &Expression) -> IrExpression {
                             PipelineFn::Flatten => 8,
                             PipelineFn::Distinct => 9,
                         },
-                        argument: s.argument.as_ref().map(|a| lower_expression(a)),
-                        argument2: s.argument2.as_ref().map(|a| lower_expression(a)),
+                        argument: s.argument.as_ref().map(lower_expression),
+                        argument2: s.argument2.as_ref().map(lower_expression),
                     }
                 })
                 .collect(),

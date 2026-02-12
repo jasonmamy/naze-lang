@@ -16,10 +16,7 @@ pub fn generate_static_html(tree: &RenderTree) -> String {
 }
 
 /// Generate static HTML for a specific page's root nodes.
-pub fn generate_static_html_for_page(
-    tree: &RenderTree,
-    page_root: &[RenderNode],
-) -> String {
+pub fn generate_static_html_for_page(tree: &RenderTree, page_root: &[RenderNode]) -> String {
     let state = exec::init_state(tree);
     let resolved = exec::resolve_nodes(page_root, &state);
     render_to_html(&resolved)
@@ -102,11 +99,7 @@ fn render_flex_container(node: &RenderNode, direction: &str) -> String {
     }
     add_common_styles(node, false, &mut styles);
     let children = render_children(&node.children);
-    format!(
-        "<div style=\"{}\">{}</div>",
-        styles.join(";"),
-        children
-    )
+    format!("<div style=\"{}\">{}</div>", styles.join(";"), children)
 }
 
 fn render_stack(node: &RenderNode) -> String {
@@ -134,18 +127,11 @@ fn render_grid(node: &RenderNode) -> String {
     let mut styles = Vec::new();
     styles.push("display:grid".to_string());
     if let Some(cols) = get_num_prop(node, "columns") {
-        styles.push(format!(
-            "grid-template-columns:repeat({},1fr)",
-            cols as i64
-        ));
+        styles.push(format!("grid-template-columns:repeat({},1fr)", cols as i64));
     }
     add_common_styles(node, false, &mut styles);
     let children = render_children(&node.children);
-    format!(
-        "<div style=\"{}\">{}</div>",
-        styles.join(";"),
-        children
-    )
+    format!("<div style=\"{}\">{}</div>", styles.join(";"), children)
 }
 
 fn render_rect(node: &RenderNode) -> String {
@@ -272,11 +258,7 @@ fn render_scroll(node: &RenderNode) -> String {
     styles.push("overflow:auto".to_string());
     add_common_styles(node, false, &mut styles);
     let children = render_children(&node.children);
-    format!(
-        "<div style=\"{}\">{}</div>",
-        styles.join(";"),
-        children
-    )
+    format!("<div style=\"{}\">{}</div>", styles.join(";"), children)
 }
 
 fn render_nav(node: &RenderNode) -> String {
@@ -284,11 +266,7 @@ fn render_nav(node: &RenderNode) -> String {
     styles.push("display:flex".to_string());
     add_common_styles(node, false, &mut styles);
     let children = render_children(&node.children);
-    format!(
-        "<nav style=\"{}\">{}</nav>",
-        styles.join(";"),
-        children
-    )
+    format!("<nav style=\"{}\">{}</nav>", styles.join(";"), children)
 }
 
 fn render_overlay(node: &RenderNode) -> String {
@@ -297,11 +275,7 @@ fn render_overlay(node: &RenderNode) -> String {
     styles.push("inset:0".to_string());
     add_common_styles(node, false, &mut styles);
     let children = render_children(&node.children);
-    format!(
-        "<div style=\"{}\">{}</div>",
-        styles.join(";"),
-        children
-    )
+    format!("<div style=\"{}\">{}</div>", styles.join(";"), children)
 }
 
 // ─── Style building ─────────────────────────────────────────────────────────
@@ -379,8 +353,8 @@ fn add_common_styles(node: &RenderNode, is_text: bool, styles: &mut Vec<String>)
         styles.push(format!("border-radius:{}px", radius));
     }
     if let Some(border) = get_num_prop(node, "border") {
-        let border_color = get_color_prop(node, "border-color")
-            .unwrap_or_else(|| "#000000".to_string());
+        let border_color =
+            get_color_prop(node, "border-color").unwrap_or_else(|| "#000000".to_string());
         styles.push(format!("border:{}px solid {}", border, border_color));
     }
 
@@ -547,7 +521,11 @@ mod tests {
         }
     }
 
-    fn container_node(kind: &str, props: HashMap<String, RenderValue>, children: Vec<RenderNode>) -> RenderNode {
+    fn container_node(
+        kind: &str,
+        props: HashMap<String, RenderValue>,
+        children: Vec<RenderNode>,
+    ) -> RenderNode {
         RenderNode {
             kind: kind.to_string(),
             props,
@@ -589,11 +567,15 @@ mod tests {
 
     #[test]
     fn render_row_layout() {
-        let row = container_node("row", {
-            let mut p = HashMap::new();
-            p.insert("gap".to_string(), RenderValue::Num(16.0, None));
-            p
-        }, vec![text_node("A"), text_node("B")]);
+        let row = container_node(
+            "row",
+            {
+                let mut p = HashMap::new();
+                p.insert("gap".to_string(), RenderValue::Num(16.0, None));
+                p
+            },
+            vec![text_node("A"), text_node("B")],
+        );
         let html = render_node(&row);
         assert!(html.contains("display:flex"));
         assert!(!html.contains("flex-direction:column"));
@@ -613,12 +595,15 @@ mod tests {
 
     #[test]
     fn render_nested_tree() {
-        let tree = container_node("column", HashMap::new(), vec![
-            container_node("row", HashMap::new(), vec![
-                text_node("Hello"),
-                text_node("World"),
-            ]),
-        ]);
+        let tree = container_node(
+            "column",
+            HashMap::new(),
+            vec![container_node(
+                "row",
+                HashMap::new(),
+                vec![text_node("Hello"), text_node("World")],
+            )],
+        );
         let html = render_node(&tree);
         assert!(html.contains("flex-direction:column"));
         assert!(html.contains("<p>Hello</p>"));
@@ -627,11 +612,15 @@ mod tests {
 
     #[test]
     fn render_background_color() {
-        let node = container_node("container", {
-            let mut p = HashMap::new();
-            p.insert("color".to_string(), RenderValue::Color(0x1e293b));
-            p
-        }, vec![]);
+        let node = container_node(
+            "container",
+            {
+                let mut p = HashMap::new();
+                p.insert("color".to_string(), RenderValue::Color(0x1e293b));
+                p
+            },
+            vec![],
+        );
         let html = render_node(&node);
         assert!(html.contains("background-color:#1e293b"));
     }
@@ -680,7 +669,10 @@ mod tests {
     #[test]
     fn render_input_node() {
         let mut props = HashMap::new();
-        props.insert("placeholder".to_string(), RenderValue::Str("Enter name".to_string()));
+        props.insert(
+            "placeholder".to_string(),
+            RenderValue::Str("Enter name".to_string()),
+        );
         let node = RenderNode {
             kind: "input".to_string(),
             props,
@@ -699,7 +691,10 @@ mod tests {
     #[test]
     fn render_checkbox_node() {
         let mut props = HashMap::new();
-        props.insert("label".to_string(), RenderValue::Str("Accept terms".to_string()));
+        props.insert(
+            "label".to_string(),
+            RenderValue::Str("Accept terms".to_string()),
+        );
         let node = RenderNode {
             kind: "checkbox".to_string(),
             props,
@@ -721,7 +716,11 @@ mod tests {
         let mut props = HashMap::new();
         props.insert("columns".to_string(), RenderValue::Num(3.0, None));
         props.insert("gap".to_string(), RenderValue::Num(8.0, None));
-        let node = container_node("grid", props, vec![text_node("A"), text_node("B"), text_node("C")]);
+        let node = container_node(
+            "grid",
+            props,
+            vec![text_node("A"), text_node("B"), text_node("C")],
+        );
         let html = render_node(&node);
         assert!(html.contains("display:grid"));
         assert!(html.contains("grid-template-columns:repeat(3,1fr)"));
@@ -768,8 +767,12 @@ mod tests {
 
         let project = naze_compiler::resolve::resolve(&examples_dir, "dashboard-static.naze", &[]);
         assert!(
-            project.errors.iter().all(|e| !matches!(e.severity, naze_compiler::error::Severity::Error)),
-            "resolve errors: {:?}", project.errors
+            project
+                .errors
+                .iter()
+                .all(|e| !matches!(e.severity, naze_compiler::error::Severity::Error)),
+            "resolve errors: {:?}",
+            project.errors
         );
 
         let tree = naze_compiler::codegen::lower(&project);
@@ -786,7 +789,10 @@ mod tests {
         assert!(html.contains("Overview"), "should contain Overview text");
 
         // Should contain CSS styles
-        assert!(html.contains("background-color:"), "should contain background colors");
+        assert!(
+            html.contains("background-color:"),
+            "should contain background colors"
+        );
         assert!(html.contains("padding:"), "should contain padding");
     }
 }

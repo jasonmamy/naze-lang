@@ -9,14 +9,8 @@ use crate::manifest::{DependencySpec, DetailedDep, Manifest};
 #[derive(Debug, Clone)]
 pub enum DepSource {
     Path(PathBuf),
-    Git {
-        url: String,
-        resolved_rev: String,
-    },
-    Registry {
-        version: String,
-        checksum: String,
-    },
+    Git { url: String, resolved_rev: String },
+    Registry { version: String, checksum: String },
 }
 
 /// A fully resolved dependency with its local path and source info.
@@ -77,7 +71,13 @@ pub fn resolve_deps(
     let mut lock_updates = Vec::new();
 
     for (name, spec) in &manifest.dependencies {
-        let full = resolve_single(name, spec, project_dir, &cache_dir, lock_entries.get(name.as_str()).copied())?;
+        let full = resolve_single(
+            name,
+            spec,
+            project_dir,
+            &cache_dir,
+            lock_entries.get(name.as_str()).copied(),
+        )?;
         lock_updates.push(to_lock_entry(&full, spec));
         resolved.push(ResolvedDep {
             name: full.name,
@@ -103,10 +103,10 @@ fn resolve_single(
     lock_entry: Option<&LockEntry>,
 ) -> Result<FullResolvedDep, Box<dyn std::error::Error>> {
     match spec {
-        DependencySpec::Version(v) => {
-            resolve_registry_dep(name, v, cache_dir, lock_entry)
+        DependencySpec::Version(v) => resolve_registry_dep(name, v, cache_dir, lock_entry),
+        DependencySpec::Detailed(detail) => {
+            resolve_detailed(name, detail, project_dir, cache_dir, lock_entry)
         }
-        DependencySpec::Detailed(detail) => resolve_detailed(name, detail, project_dir, cache_dir, lock_entry),
     }
 }
 
@@ -119,8 +119,7 @@ fn resolve_registry_dep(
     // Check if the lockfile already has a registry entry that satisfies the constraint
     if let Some(entry) = lock_entry {
         if entry.source == "registry" {
-            if let (Some(locked_version), Some(locked_checksum)) =
-                (&entry.version, &entry.checksum)
+            if let (Some(locked_version), Some(locked_checksum)) = (&entry.version, &entry.checksum)
             {
                 // Verify the locked version still satisfies the constraint
                 if let (Ok(req), Ok(sv)) = (
@@ -189,13 +188,18 @@ fn resolve_detailed(
             project_dir.join(path_str)
         };
         let dep_path = dep_path.canonicalize().map_err(|e| {
-            format!("dependency '{}': path '{}' not found: {}", name, path_str, e)
+            format!(
+                "dependency '{}': path '{}' not found: {}",
+                name, path_str, e
+            )
         })?;
         if !dep_path.is_dir() {
             return Err(format!(
                 "dependency '{}': path '{}' is not a directory",
-                name, dep_path.display()
-            ).into());
+                name,
+                dep_path.display()
+            )
+            .into());
         }
         Ok(FullResolvedDep {
             name: name.to_string(),
@@ -205,10 +209,7 @@ fn resolve_detailed(
     } else if let Some(git_url) = &detail.git {
         resolve_git_dep(name, git_url, detail, cache_dir, lock_entry)
     } else {
-        Err(format!(
-            "dependency '{}': must specify either 'path' or 'git'",
-            name
-        ).into())
+        Err(format!("dependency '{}': must specify either 'path' or 'git'", name).into())
     }
 }
 
@@ -279,11 +280,7 @@ fn resolve_git_dep(
     })
 }
 
-fn git_clone_ref(
-    url: &str,
-    git_ref: &str,
-    dest: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn git_clone_ref(url: &str, git_ref: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let dest_str = dest.to_string_lossy().to_string();
     let mut cmd = std::process::Command::new("git");
     cmd.args(["clone", "--depth", "1"]);
@@ -456,7 +453,11 @@ mod tests {
         let lib_dir = tempfile::tempdir().unwrap();
 
         // Create a .naze file in the lib
-        fs::write(lib_dir.path().join("button.naze"), "component button(label: text) {\n  text \"{label}\"\n}\n").unwrap();
+        fs::write(
+            lib_dir.path().join("button.naze"),
+            "component button(label: text) {\n  text \"{label}\"\n}\n",
+        )
+        .unwrap();
 
         let mut deps_map = HashMap::new();
         deps_map.insert(
@@ -486,7 +487,11 @@ mod tests {
 
         fs::create_dir_all(&project_dir).unwrap();
         fs::create_dir_all(&lib_dir).unwrap();
-        fs::write(lib_dir.join("card.naze"), "component card(title: text) {\n  text \"{title}\"\n}\n").unwrap();
+        fs::write(
+            lib_dir.join("card.naze"),
+            "component card(title: text) {\n  text \"{title}\"\n}\n",
+        )
+        .unwrap();
 
         let mut deps_map = HashMap::new();
         deps_map.insert(
@@ -533,7 +538,10 @@ mod tests {
     fn resolve_version_only_spec_errors_without_registry() {
         let project = tempfile::tempdir().unwrap();
         let mut deps_map = HashMap::new();
-        deps_map.insert("@naze/ui".to_string(), DependencySpec::Version("^1.0".to_string()));
+        deps_map.insert(
+            "@naze/ui".to_string(),
+            DependencySpec::Version("^1.0".to_string()),
+        );
 
         let manifest = test_manifest(deps_map);
         let result = resolve_deps(&manifest, project.path());

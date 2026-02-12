@@ -4,8 +4,7 @@
 use std::collections::HashMap;
 
 use naze_ir::{
-    IrAction, IrBinOp, IrExpression, IrPipelineStage, RenderNode, RenderTree, RenderValue,
-    TextPart,
+    IrAction, IrBinOp, IrExpression, IrPipelineStage, RenderNode, RenderTree, RenderValue, TextPart,
 };
 use naze_layout::PositionedNode;
 
@@ -34,13 +33,14 @@ pub(crate) fn resolve_nodes(
     for node in nodes {
         match node.kind.as_str() {
             "__if" => {
-                let show_then = node.condition.as_ref().map_or(false, |cond| {
-                    match evaluate_expr(cond, state) {
-                        RenderValue::Bool(b) => b,
-                        RenderValue::Num(n, _) => n != 0.0,
-                        _ => false,
-                    }
-                });
+                let show_then =
+                    node.condition
+                        .as_ref()
+                        .is_some_and(|cond| match evaluate_expr(cond, state) {
+                            RenderValue::Bool(b) => b,
+                            RenderValue::Num(n, _) => n != 0.0,
+                            _ => false,
+                        });
                 if show_then {
                     out.extend(resolve_nodes(&node.children, state));
                 } else if let Some(else_nodes) = &node.else_children {
@@ -448,12 +448,8 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
                 ))
             }
         }
-        IrBinOp::Sub => {
-            RenderValue::Num(left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0), None)
-        }
-        IrBinOp::Mul => {
-            RenderValue::Num(left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0), None)
-        }
+        IrBinOp::Sub => RenderValue::Num(left_num.unwrap_or(0.0) - right_num.unwrap_or(0.0), None),
+        IrBinOp::Mul => RenderValue::Num(left_num.unwrap_or(0.0) * right_num.unwrap_or(0.0), None),
         IrBinOp::Div => {
             let r = right_num.unwrap_or(1.0);
             let r = if r == 0.0 { 1.0 } else { r };
@@ -492,10 +488,7 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
 
 // ─── Action execution ───────────────────────────────────────────────────────
 
-pub(crate) fn execute_action(
-    action: &IrAction,
-    state: &mut HashMap<String, RenderValue>,
-) -> bool {
+pub(crate) fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -> bool {
     match action {
         IrAction::Set { target, expr } => {
             let value = evaluate_expr(expr, state);
@@ -550,16 +543,15 @@ pub(crate) fn find_click_handlers(
                     Some(RenderValue::Bool(b)) => *b,
                     _ => false,
                 };
-                let mut handlers: Vec<naze_ir::IrEventHandler> =
-                    vec![naze_ir::IrEventHandler {
-                        event: "click".to_string(),
-                        action: IrAction::Set {
-                            target: var.clone(),
-                            expr: IrExpression::Bool(!current),
-                        },
-                        modifier_kind: 0,
-                        modifier_ms: 0,
-                    }];
+                let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
+                    event: "click".to_string(),
+                    action: IrAction::Set {
+                        target: var.clone(),
+                        expr: IrExpression::Bool(!current),
+                    },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
+                }];
                 handlers.extend(
                     node.handlers
                         .iter()
@@ -576,16 +568,15 @@ pub(crate) fn find_click_handlers(
                     RenderValue::Str(s) => s.clone(),
                     _ => continue,
                 };
-                let mut handlers: Vec<naze_ir::IrEventHandler> =
-                    vec![naze_ir::IrEventHandler {
-                        event: "click".to_string(),
-                        action: IrAction::Set {
-                            target: var.clone(),
-                            expr: IrExpression::Str(value_str),
-                        },
-                        modifier_kind: 0,
-                        modifier_ms: 0,
-                    }];
+                let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
+                    event: "click".to_string(),
+                    action: IrAction::Set {
+                        target: var.clone(),
+                        expr: IrExpression::Str(value_str),
+                    },
+                    modifier_kind: 0,
+                    modifier_ms: 0,
+                }];
                 handlers.extend(
                     node.handlers
                         .iter()

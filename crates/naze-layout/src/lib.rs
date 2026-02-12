@@ -306,7 +306,8 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
                     let mut row_count = 0;
 
                     for child in node.children.iter() {
-                        let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
+                        let (cw, ch) =
+                            measure_node(child, inner_w, inner_h, viewport_w, text_measure);
                         let item_gap = if row_w > 0.0 { gap } else { 0.0 };
 
                         if row_w > 0.0 && row_w + item_gap + cw > inner_w {
@@ -334,7 +335,8 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
                     let mut total_w: f32 = 0.0;
                     let mut max_h: f32 = 0.0;
                     for (i, child) in node.children.iter().enumerate() {
-                        let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
+                        let (cw, ch) =
+                            measure_node(child, inner_w, inner_h, viewport_w, text_measure);
                         total_w += cw;
                         if i > 0 {
                             total_w += gap;
@@ -427,6 +429,7 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
 }
 
 /// Layout a single node at the given position with the given size.
+#[allow(clippy::too_many_arguments)]
 fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
     node: &RenderNode,
     x: f32,
@@ -590,6 +593,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
 
 /// Layout a scroll container. Children are laid out with unbounded space in scroll direction,
 /// and scroll_info tracks the total content size.
+#[allow(clippy::too_many_arguments)]
 fn layout_scroll_node<F: Fn(&str, f32) -> (f32, f32)>(
     node: &RenderNode,
     x: f32,
@@ -681,6 +685,7 @@ fn calculate_content_bounds(nodes: &[PositionedNode], origin_x: f32, origin_y: f
 }
 
 /// Layout children in a column with gap, align (cross-axis), and justify (main-axis).
+#[allow(clippy::too_many_arguments)]
 fn layout_column<F: Fn(&str, f32) -> (f32, f32)>(
     nodes: &[RenderNode],
     x: f32,
@@ -865,6 +870,7 @@ fn calculate_justify_spacing(
 }
 
 /// Layout children in a row with gap, align (cross-axis), and justify (main-axis).
+#[allow(clippy::too_many_arguments)]
 fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
     nodes: &[RenderNode],
     x: f32,
@@ -1014,6 +1020,7 @@ fn layout_row<F: Fn(&str, f32) -> (f32, f32)>(
 }
 
 /// Layout children in a row with wrapping.
+#[allow(clippy::too_many_arguments)]
 fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
     nodes: &[RenderNode],
     x: f32,
@@ -1120,6 +1127,7 @@ fn layout_row_wrap<F: Fn(&str, f32) -> (f32, f32)>(
 }
 
 /// Layout children in a grid.
+#[allow(clippy::too_many_arguments)]
 fn layout_grid<F: Fn(&str, f32) -> (f32, f32)>(
     nodes: &[RenderNode],
     x: f32,
@@ -1139,7 +1147,7 @@ fn layout_grid<F: Fn(&str, f32) -> (f32, f32)>(
     let mut out = Vec::with_capacity(nodes.len());
 
     // Compute row heights
-    let num_rows = (nodes.len() + cols - 1) / cols;
+    let num_rows = nodes.len().div_ceil(cols);
     let mut row_heights = vec![0.0f32; num_rows];
     for (i, node) in nodes.iter().enumerate() {
         let row = i / cols;
@@ -1158,7 +1166,17 @@ fn layout_grid<F: Fn(&str, f32) -> (f32, f32)>(
 
         let cx = x + col as f32 * (col_w + gap);
         let (w, h) = measure_node(node, col_w, available_h, viewport_w, text_measure);
-        let positioned = layout_node(node, cx, cursor_y, w, h, col_w, available_h, viewport_w, text_measure);
+        let positioned = layout_node(
+            node,
+            cx,
+            cursor_y,
+            w,
+            h,
+            col_w,
+            available_h,
+            viewport_w,
+            text_measure,
+        );
         out.push(positioned);
     }
 
@@ -1179,7 +1197,7 @@ fn get_num_prop(node: &RenderNode, key: &str) -> Option<f64> {
 fn get_num_prop_with_percent(node: &RenderNode, key: &str) -> Option<(f64, bool)> {
     match node.props.get(key) {
         Some(RenderValue::Num(n, unit)) => {
-            let is_percent = unit.as_ref().map_or(false, |u| u == "%");
+            let is_percent = unit.as_ref().is_some_and(|u| u == "%");
             Some((*n, is_percent))
         }
         _ => None,
@@ -1291,8 +1309,13 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                         // Measure children to determine intrinsic width
                         let mut max_w: f32 = 0.0;
                         for child in &node.children {
-                            let (cw, _) =
-                                measure_node(child, viewport_width, viewport_height, viewport_w, text_measure);
+                            let (cw, _) = measure_node(
+                                child,
+                                viewport_width,
+                                viewport_height,
+                                viewport_w,
+                                text_measure,
+                            );
                             max_w = max_w.max(cw);
                         }
                         max_w + padding * 2.0
@@ -1301,8 +1324,13 @@ fn layout_overlays<F: Fn(&str, f32) -> (f32, f32)>(
                     resolve_dimension(node, "height", viewport_height).unwrap_or_else(|| {
                         let mut total_h: f32 = 0.0;
                         for (i, child) in node.children.iter().enumerate() {
-                            let (_, ch) =
-                                measure_node(child, content_w, viewport_height, viewport_w, text_measure);
+                            let (_, ch) = measure_node(
+                                child,
+                                content_w,
+                                viewport_height,
+                                viewport_w,
+                                text_measure,
+                            );
                             total_h += ch;
                             if i > 0 {
                                 total_h += gap;

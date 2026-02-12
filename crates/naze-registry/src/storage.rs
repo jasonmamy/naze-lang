@@ -39,6 +39,7 @@ impl Storage {
         Ok(std::fs::read(path)?)
     }
 
+    #[allow(dead_code)]
     pub fn tarball_exists(&self, name: &str, version: &str) -> bool {
         let dir = self.packages_dir.join(Self::sanitize_name(name));
         dir.join(format!("{version}.tar.gz")).exists()

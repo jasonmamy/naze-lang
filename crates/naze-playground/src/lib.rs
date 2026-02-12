@@ -12,8 +12,7 @@ use naze_compiler::typecheck;
 
 // ---- Base64 encoder (no external dependency) --------------------------------
 
-const B64_ALPHABET: &[u8; 64] =
-    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const B64_ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 fn base64_encode(input: &[u8]) -> String {
     let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
@@ -53,10 +52,8 @@ fn errors_to_json(errors: &[CompileError]) -> String {
                 escape_json_str(&e.file),
                 e.line,
                 e.column,
-                serde_json::to_string(&e.message).unwrap_or_else(|_| format!(
-                    "\"{}\"",
-                    escape_json_str(&e.message)
-                )),
+                serde_json::to_string(&e.message)
+                    .unwrap_or_else(|_| format!("\"{}\"", escape_json_str(&e.message))),
             )
         })
         .collect();
@@ -79,10 +76,7 @@ fn success_json(binary_b64: &str) -> String {
 }
 
 fn error_json(errors: &[CompileError]) -> String {
-    format!(
-        r#"{{"success":false,"errors":{}}}"#,
-        errors_to_json(errors)
-    )
+    format!(r#"{{"success":false,"errors":{}}}"#, errors_to_json(errors))
 }
 
 // ---- Internal pipeline helpers ----------------------------------------------

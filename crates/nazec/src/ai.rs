@@ -20,16 +20,35 @@ pub fn run(cmd: AiCommand) -> Result<(), Box<dyn std::error::Error>> {
 
 async fn run_async(cmd: AiCommand) -> Result<(), Box<dyn std::error::Error>> {
     match cmd {
-        AiCommand::Generate { prompt, provider, model, retries, output } => {
-            do_generate(&prompt, &provider, model.as_deref(), retries, output.as_deref()).await
+        AiCommand::Generate {
+            prompt,
+            provider,
+            model,
+            retries,
+            output,
+        } => {
+            do_generate(
+                &prompt,
+                &provider,
+                model.as_deref(),
+                retries,
+                output.as_deref(),
+            )
+            .await
         }
-        AiCommand::Fix { file, provider, model, retries } => {
-            do_fix(&file, &provider, model.as_deref(), retries).await
-        }
+        AiCommand::Fix {
+            file,
+            provider,
+            model,
+            retries,
+        } => do_fix(&file, &provider, model.as_deref(), retries).await,
         AiCommand::Dataset { subcommand } => match subcommand {
-            DatasetCommand::Export { dir, provider, model, output } => {
-                do_dataset_export(&dir, &provider, model.as_deref(), &output).await
-            }
+            DatasetCommand::Export {
+                dir,
+                provider,
+                model,
+                output,
+            } => do_dataset_export(&dir, &provider, model.as_deref(), &output).await,
             DatasetCommand::Validate { file } => do_dataset_validate(&file),
         },
     }
@@ -515,7 +534,10 @@ async fn do_dataset_export(
         }
     }
 
-    eprintln!("  exported {} pairs, skipped {} — wrote {}", exported, skipped, output);
+    eprintln!(
+        "  exported {} pairs, skipped {} — wrote {}",
+        exported, skipped, output
+    );
     Ok(())
 }
 
