@@ -21,6 +21,7 @@ web-sys = { version = "0.3", features = [
     "Element",
     "HtmlElement",
     "HtmlInputElement",
+    "HtmlTextAreaElement",
     "HtmlDivElement",
     "HtmlBodyElement",
     "MouseEvent",
@@ -61,6 +62,15 @@ web-sys = { version = "0.3", features = [
     "TouchList",
     "Touch",
     "DomRect",
+    "Notification",
+    "NotificationOptions",
+    "NotificationPermission",
+    "Geolocation",
+    "Position",
+    "Coordinates",
+    "PositionError",
+    "PositionOptions",
+    "DeviceMotionEvent",
 ] }
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1"

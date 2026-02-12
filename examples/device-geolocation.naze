@@ -1,0 +1,55 @@
+app "Geolocation Demo" {
+  data location: device "geolocation" {
+    trigger: "manual"
+  }
+
+  data watch-location: device "geolocation" {
+    watch: true
+  }
+
+  state tracking = false
+
+  column padding: 20px, gap: 16px {
+    heading "Geolocation API"
+
+    text "One-shot Location"
+    rect padding: 12px, radius: 8, color: #f1f5f9 {
+      column gap: 8px {
+        rect padding: 8px, radius: 4, color: #3b82f6 {
+          text "Get My Location" color: #ffffff
+          on click: trigger location
+        }
+
+        if location.loading {
+          text "Getting location..." color: #6b7280
+        }
+
+        if location.error {
+          text "Error: {location.error}" color: #ef4444
+        }
+
+        if location.data {
+          text "Lat: {location.data.latitude}" color: #10b981
+          text "Lon: {location.data.longitude}" color: #10b981
+          text "Accuracy: {location.data.accuracy}m" color: #10b981
+        }
+      }
+    }
+
+    text "Continuous Tracking"
+    rect padding: 12px, radius: 8, color: #f0fdf4 {
+      column gap: 8px {
+        text "Watch mode updates automatically" color: #6b7280
+
+        if watch-location.data {
+          text "Lat: {watch-location.data.latitude}" color: #059669
+          text "Lon: {watch-location.data.longitude}" color: #059669
+        }
+
+        if watch-location.error {
+          text "Watch error: {watch-location.error}" color: #ef4444
+        }
+      }
+    }
+  }
+}

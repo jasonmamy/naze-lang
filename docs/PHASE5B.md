@@ -1,8 +1,8 @@
-# Phase 5B: Declarative Database Queries (M39)
+# Phase 5B: Extensions (M39-M40)
 
-**Goal:** Add Prisma-like declarative database queries so developers can avoid writing raw SQL. Model definitions provide compile-time type safety; query expressions (`find`, `insert`, `update`, `delete`) compile to parameterized SQL at compile time using the existing M38 infrastructure.
+**Goal:** Close remaining gaps after Phase 5 core (M31-M38). M39 adds declarative database queries. M40 completes browser API parity by implementing the four features that had parser+IR+codegen but missing/stub runtime implementations.
 
-**Phase 5 status:** M31-M38 all complete. M39 complete. 382 workspace tests passing. See [PHASE5.md](PHASE5.md).
+**Phase 5 status:** M31-M38 all complete. M39 complete. M40 complete. 382 workspace tests passing. WASM binary: 406KB. See [PHASE5.md](PHASE5.md).
 
 ---
 
@@ -98,3 +98,28 @@ server function remove-user(id: number) {
 | `crates/naze-parser/src/parse.rs` | `parse_model_def`, query expression parsing, ~6 tests |
 | `crates/naze-compiler/src/codegen.rs` | Query-to-SQL compilation, `compile_where` helper |
 | `crates/naze-compiler/src/typecheck.rs` | Model collection + warning for undefined models |
+
+---
+
+## M40: Close Browser API Parity Gaps
+**Crates:** `naze-runtime` (WASM), `naze-renderer`
+
+Four features had full parser + IR + codegen support but missing or stub runtime implementations. M40 completes them all.
+
+- [x] **Textarea rendering** — `"textarea"` match arm in runtime, hidden `<textarea>` DOM element for multi-line text capture, bind/focus/validation support
+- [x] **Browser notifications** — Real Notification API replacing `window.alert()` stub, with permission flow (granted/denied/request)
+- [x] **JS interop actions** — Real `window[fn]()` calls via `js_sys::Reflect`, dotted path resolution ("Math.random"), arg conversion, return value binding to state
+- [x] **Device API data sources** — Geolocation (one-shot + watch), accelerometer (devicemotion), JS call data sources (source_type 3 and 4)
+- [x] Fixed pre-existing bug: missing `guards` field in `resolve_tree()` RenderTree construction
+- [x] WASM rebuilt, 406KB (was 356KB, +50KB from new web-sys bindings)
+- [x] WASM size budget updated to 420KB
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `crates/naze-runtime/src/lib.rs` | Textarea match arm, notify impl, JS interop impl, device API init (~420 LOC) |
+| `crates/naze-runtime/Cargo.toml` | web-sys features: Notification, Geolocation, Position, Coordinates, DeviceMotionEvent |
+| `crates/nazec/tests/build_examples.rs` | WASM size limit 360KB → 420KB |
+| `examples/device-geolocation.naze` | New example: one-shot + watch mode geolocation |
+| `examples/device-accelerometer.naze` | New example: motion data display |

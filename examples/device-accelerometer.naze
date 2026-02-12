@@ -1,0 +1,31 @@
+app "Accelerometer Demo" {
+  data motion: device "accelerometer" {
+    watch: true
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Accelerometer API"
+
+    text "Device motion data (requires mobile or motion-capable device)" color: #6b7280
+
+    rect padding: 12px, radius: 8, color: #f1f5f9 {
+      column gap: 8px {
+        if motion.data {
+          text "X: {motion.data.x}" color: #3b82f6
+          text "Y: {motion.data.y}" color: #10b981
+          text "Z: {motion.data.z}" color: #8b5cf6
+        }
+
+        if motion.error {
+          text "Error: {motion.error}" color: #ef4444
+        }
+
+        if motion.loading {
+          text "Waiting for motion data..." color: #6b7280
+        }
+      }
+    }
+
+    text "Tilt your device to see values change" color: #9ca3af
+  }
+}

@@ -5,7 +5,7 @@ use naze_compiler::error::Severity;
 use naze_compiler::resolve;
 use naze_compiler::typecheck;
 
-const WASM_SIZE_LIMIT: usize = 360 * 1024; // 360KB (Phase 4 budget — grew from server functions)
+const WASM_SIZE_LIMIT: usize = 420 * 1024; // 420KB (M40 — added Notification, Geolocation, Device APIs)
 
 /// Embedded runtime WASM — same as what nazec embeds.
 const RUNTIME_WASM: &[u8] = include_bytes!("../../naze-runtime/pkg/naze_runtime_bg.wasm");

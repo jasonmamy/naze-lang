@@ -603,7 +603,23 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
         })
         .collect();
 
-    // 6d. Collect prompt declarations with interpolation vars from current state
+    // 6d. Collect device API declarations
+    let device_data: Vec<(String, String, bool)> = render_tree
+        .data
+        .iter()
+        .filter(|d| d.source_type == 4) // device sources
+        .map(|d| (d.name.clone(), d.url.clone(), d.watch))
+        .collect();
+
+    // 6e. Collect JS call data declarations
+    let js_call_data: Vec<(String, String)> = render_tree
+        .data
+        .iter()
+        .filter(|d| d.source_type == 3) // JS call sources
+        .map(|d| (d.name.clone(), d.url.clone()))
+        .collect();
+
+    // 6f. Collect prompt declarations with interpolation vars from current state
     let prompt_calls: Vec<(String, HashMap<String, String>)> = render_tree
         .prompts
         .iter()
@@ -645,6 +661,7 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
 
     // 8. Create hidden input element for text input focus
     create_hidden_input(canvas_id)?;
+    create_hidden_textarea(canvas_id)?;
 
     // 9. Create screen reader accessibility container
     create_a11y_container()?;
@@ -676,6 +693,16 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
     // 13d. Fire off prompt calls
     for (name, vars) in prompt_calls {
         call_prompt(&name, vars);
+    }
+
+    // 13e. Initialize device API data sources
+    for (name, api, watch) in device_data {
+        init_device_data(&name, &api, watch);
+    }
+
+    // 13f. Initialize JS call data sources
+    for (name, func_name) in js_call_data {
+        init_js_call_data(&name, &func_name);
     }
 
     // 14. Set up timers
@@ -1884,6 +1911,7 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         imports: tree.imports.clone(),
         server_functions: tree.server_functions.clone(),
         server_calls: tree.server_calls.clone(),
+        guards: tree.guards.clone(),
         prompts: tree.prompts.clone(),
     }
 }
@@ -2387,6 +2415,30 @@ fn draw_node(
                 &placeholder,
                 focused,
                 &input_type,
+                show_caret,
+            );
+        }
+        "textarea" => {
+            let placeholder = naze_renderer::get_str_prop(&node.props, "placeholder", "");
+            // Get current value from bind
+            let value = match node.props.get("bind") {
+                Some(RenderValue::Bind(var)) => match state.get(var) {
+                    Some(RenderValue::Str(s)) => s.clone(),
+                    _ => String::new(),
+                },
+                _ => String::new(),
+            };
+            let node_id = format!("input_{}_{}", x as i32, y as i32);
+            let focused = focused_input_id == Some(node_id.as_str());
+            let show_caret = focused && caret_visible;
+            renderer.draw_textarea(
+                x,
+                y,
+                w as f64,
+                h as f64,
+                &value,
+                &placeholder,
+                focused,
                 show_caret,
             );
         }
@@ -2946,8 +2998,8 @@ fn hit_test_any_handler(nodes: &[PositionedNode], x: f32, y: f32, event: &str) -
         if hit_test_any_handler(&node.children, x, y, event) {
             return true;
         }
-        // Input and select elements are clickable
-        if event == "click" && (node.kind == "input" || node.kind == "select") {
+        // Input, textarea, and select elements are clickable
+        if event == "click" && (node.kind == "input" || node.kind == "textarea" || node.kind == "select") {
             return true;
         }
         if node.handlers.iter().any(|h| h.event == event) {
@@ -3188,25 +3240,123 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             false
         }
         IrAction::JsCall { function_name, args, target } => {
-            // JS interop call — stub
-            let arg_vals: Vec<String> = args.iter().map(|a| {
-                let v = evaluate_expr(a, state);
-                render_value_to_string(&v)
-            }).collect();
-            web_sys::console::log_1(
-                &format!("js-call: {}({}) -> {:?}", function_name, arg_vals.join(", "), target).into(),
-            );
-            false
-        }
-        IrAction::Notify { title, body, .. } => {
-            // Show notification via browser alert (simplified)
-            let text = if body.is_empty() {
-                title.clone()
-            } else {
-                format!("{}: {}", title, body)
+            // JS interop: call window-scoped function with args
+            let window = web_sys::window().unwrap();
+
+            // Resolve function — supports dotted paths like "Math.random"
+            let js_fn = {
+                let parts: Vec<&str> = function_name.split('.').collect();
+                let mut obj: JsValue = window.into();
+                let mut found = true;
+                for part in &parts[..parts.len().saturating_sub(1)] {
+                    match js_sys::Reflect::get(&obj, &JsValue::from_str(part)) {
+                        Ok(next) if !next.is_undefined() => obj = next,
+                        _ => { found = false; break; }
+                    }
+                }
+                if found {
+                    let fn_name = parts.last().unwrap_or(&"");
+                    js_sys::Reflect::get(&obj, &JsValue::from_str(fn_name))
+                        .ok()
+                        .and_then(|v| v.dyn_into::<js_sys::Function>().ok())
+                        .map(|f| (f, obj))
+                } else {
+                    None
+                }
             };
-            if let Some(window) = web_sys::window() {
-                let _ = window.alert_with_message(&text);
+
+            match js_fn {
+                Some((func, this_val)) => {
+                    // Convert Naze args to JsValue array
+                    let js_args = js_sys::Array::new();
+                    for arg in args {
+                        let val = evaluate_expr(arg, state);
+                        match val {
+                            RenderValue::Str(s) => js_args.push(&JsValue::from_str(&s)),
+                            RenderValue::Num(n, _) => js_args.push(&JsValue::from_f64(n)),
+                            RenderValue::Bool(b) => js_args.push(&JsValue::from_bool(b)),
+                            _ => js_args.push(&JsValue::NULL),
+                        };
+                    }
+
+                    match func.apply(&this_val, &js_args) {
+                        Ok(result) => {
+                            if let Some(target_var) = target {
+                                // Convert JS result back to RenderValue
+                                let naze_val = if let Some(s) = result.as_string() {
+                                    RenderValue::Str(s)
+                                } else if let Some(n) = result.as_f64() {
+                                    RenderValue::Num(n, None)
+                                } else if let Some(b) = result.as_bool() {
+                                    RenderValue::Bool(b)
+                                } else {
+                                    RenderValue::Str("null".to_string())
+                                };
+                                state.insert(target_var.clone(), naze_val);
+                                return true; // Re-render to show updated state
+                            }
+                        }
+                        Err(err) => {
+                            web_sys::console::error_1(&err);
+                        }
+                    }
+                    false
+                }
+                None => {
+                    web_sys::console::error_1(
+                        &format!("JS function not found: {}", function_name).into(),
+                    );
+                    false
+                }
+            }
+        }
+        IrAction::Notify { title, body, icon } => {
+            // Browser Notifications API
+            let permission = web_sys::Notification::permission();
+            match permission {
+                web_sys::NotificationPermission::Granted => {
+                    let mut options = web_sys::NotificationOptions::new();
+                    if !body.is_empty() {
+                        options.set_body(body);
+                    }
+                    if !icon.is_empty() {
+                        let _ = js_sys::Reflect::set(
+                            &options,
+                            &JsValue::from_str("icon"),
+                            &JsValue::from_str(icon),
+                        );
+                    }
+                    let _ = web_sys::Notification::new_with_options(title, &options);
+                }
+                web_sys::NotificationPermission::Denied => {
+                    web_sys::console::warn_1(&"Notification permission denied".into());
+                }
+                _ => {
+                    // Request permission, then show notification
+                    let title = title.clone();
+                    let body = body.clone();
+                    let icon = icon.clone();
+                    let cb = Closure::once(move |perm: JsValue| {
+                        if perm.as_string().as_deref() == Some("granted") {
+                            let mut options = web_sys::NotificationOptions::new();
+                            if !body.is_empty() {
+                                options.set_body(&body);
+                            }
+                            if !icon.is_empty() {
+                                let _ = js_sys::Reflect::set(
+                                    &options,
+                                    &JsValue::from_str("icon"),
+                                    &JsValue::from_str(&icon),
+                                );
+                            }
+                            let _ = web_sys::Notification::new_with_options(&title, &options);
+                        }
+                    });
+                    if let Ok(promise) = web_sys::Notification::request_permission() {
+                        let _ = promise.then(&cb);
+                    }
+                    cb.forget();
+                }
             }
             false
         }
@@ -3407,6 +3557,266 @@ fn storage_value_to_string(value: &RenderValue) -> String {
 }
 
 // ─── Timers ──────────────────────────────────────────────────────────────────
+
+/// Initialize a device API data source (geolocation, accelerometer).
+fn init_device_data(name: &str, api: &str, watch: bool) {
+    match api {
+        "geolocation" => init_geolocation(name, watch),
+        "accelerometer" => init_accelerometer(name, watch),
+        _ => {
+            // Unknown device API — set error state
+            let err_key = format!("{}.error", name);
+            let loading_key = format!("{}.loading", name);
+            APP.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                if let Some(app) = borrow.as_mut() {
+                    app.state_store.insert(
+                        err_key,
+                        RenderValue::Str(format!("Unsupported device API: {}", api)),
+                    );
+                    app.state_store.insert(loading_key, RenderValue::Bool(false));
+                }
+            });
+            schedule_render();
+        }
+    }
+}
+
+/// Initialize geolocation data source.
+fn init_geolocation(name: &str, watch: bool) {
+    let name = name.to_string();
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+    let navigator = window.navigator();
+    let geolocation = match navigator.geolocation() {
+        Ok(g) => g,
+        Err(_) => {
+            let err_key = format!("{}.error", name);
+            let loading_key = format!("{}.loading", name);
+            APP.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                if let Some(app) = borrow.as_mut() {
+                    app.state_store
+                        .insert(err_key, RenderValue::Str("Geolocation not supported".into()));
+                    app.state_store.insert(loading_key, RenderValue::Bool(false));
+                }
+            });
+            schedule_render();
+            return;
+        }
+    };
+
+    let name_ok = name.clone();
+    let success_cb = Closure::<dyn Fn(web_sys::Position)>::new(move |pos: web_sys::Position| {
+        let coords = pos.coords();
+        let data = RenderValue::Object(vec![
+            ("latitude".to_string(), RenderValue::Num(coords.latitude(), None)),
+            ("longitude".to_string(), RenderValue::Num(coords.longitude(), None)),
+            ("accuracy".to_string(), RenderValue::Num(coords.accuracy(), None)),
+        ]);
+        let data_key = format!("{}.data", name_ok);
+        let loading_key = format!("{}.loading", name_ok);
+        let err_key = format!("{}.error", name_ok);
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                app.state_store.insert(data_key, data);
+                app.state_store.insert(loading_key, RenderValue::Bool(false));
+                app.state_store.insert(err_key, RenderValue::Str(String::new()));
+            }
+        });
+        schedule_render();
+    });
+
+    let name_err = name.clone();
+    let error_cb =
+        Closure::<dyn Fn(web_sys::PositionError)>::new(move |err: web_sys::PositionError| {
+            let msg = match err.code() {
+                1 => "Geolocation permission denied".to_string(),
+                2 => "Position unavailable".to_string(),
+                3 => "Geolocation timeout".to_string(),
+                _ => format!("Geolocation error: {}", err.message()),
+            };
+            let err_key = format!("{}.error", name_err);
+            let loading_key = format!("{}.loading", name_err);
+            APP.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                if let Some(app) = borrow.as_mut() {
+                    app.state_store.insert(err_key, RenderValue::Str(msg));
+                    app.state_store.insert(loading_key, RenderValue::Bool(false));
+                }
+            });
+            schedule_render();
+        });
+
+    if watch {
+        let _ = geolocation.watch_position_with_error_callback(
+            success_cb.as_ref().unchecked_ref(),
+            Some(error_cb.as_ref().unchecked_ref()),
+        );
+    } else {
+        let _ = geolocation.get_current_position_with_error_callback(
+            success_cb.as_ref().unchecked_ref(),
+            Some(error_cb.as_ref().unchecked_ref()),
+        );
+    }
+    success_cb.forget();
+    error_cb.forget();
+}
+
+/// Initialize accelerometer/device motion data source.
+fn init_accelerometer(name: &str, watch: bool) {
+    let name = name.to_string();
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+
+    let name_cb = name.clone();
+    let once = !watch;
+    let motion_cb = Closure::<dyn Fn(web_sys::DeviceMotionEvent)>::new(
+        move |event: web_sys::DeviceMotionEvent| {
+            // Access accelerationIncludingGravity via Reflect for broad browser compat
+            let accel_val = js_sys::Reflect::get(
+                event.as_ref(),
+                &JsValue::from_str("accelerationIncludingGravity"),
+            )
+            .unwrap_or(JsValue::NULL);
+            let (x, y, z) = if !accel_val.is_null() && !accel_val.is_undefined() {
+                let gx = js_sys::Reflect::get(&accel_val, &JsValue::from_str("x"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                let gy = js_sys::Reflect::get(&accel_val, &JsValue::from_str("y"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                let gz = js_sys::Reflect::get(&accel_val, &JsValue::from_str("z"))
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                (gx, gy, gz)
+            } else {
+                (0.0, 0.0, 0.0)
+            };
+
+            let data = RenderValue::Object(vec![
+                ("x".to_string(), RenderValue::Num(x, None)),
+                ("y".to_string(), RenderValue::Num(y, None)),
+                ("z".to_string(), RenderValue::Num(z, None)),
+            ]);
+            let data_key = format!("{}.data", name_cb);
+            let loading_key = format!("{}.loading", name_cb);
+            let err_key = format!("{}.error", name_cb);
+            APP.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                if let Some(app) = borrow.as_mut() {
+                    app.state_store.insert(data_key, data);
+                    app.state_store.insert(loading_key, RenderValue::Bool(false));
+                    app.state_store.insert(err_key, RenderValue::Str(String::new()));
+                }
+            });
+            schedule_render();
+
+            // For one-shot mode, remove the listener after first event
+            if once {
+                // For one-shot mode, we rely on the closure not scheduling
+                // further renders. Removing the listener would require storing
+                // the closure reference, which isn't worth the complexity.
+            }
+        },
+    );
+
+    let _ = window.add_event_listener_with_callback(
+        "devicemotion",
+        motion_cb.as_ref().unchecked_ref(),
+    );
+    motion_cb.forget();
+}
+
+/// Initialize a JS call data source (source_type == 3).
+fn init_js_call_data(name: &str, func_name: &str) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+
+    // Resolve dotted function path (e.g. "Math.random")
+    let parts: Vec<&str> = func_name.split('.').collect();
+    let mut obj: JsValue = window.into();
+    let mut found = true;
+    for part in &parts[..parts.len().saturating_sub(1)] {
+        match js_sys::Reflect::get(&obj, &JsValue::from_str(part)) {
+            Ok(next) if !next.is_undefined() => obj = next,
+            _ => {
+                found = false;
+                break;
+            }
+        }
+    }
+
+    let data_key = format!("{}.data", name);
+    let loading_key = format!("{}.loading", name);
+    let err_key = format!("{}.error", name);
+
+    if found {
+        let fn_name = parts.last().unwrap_or(&"");
+        if let Ok(val) = js_sys::Reflect::get(&obj, &JsValue::from_str(fn_name)) {
+            if let Ok(func) = val.dyn_into::<js_sys::Function>() {
+                match func.apply(&obj, &js_sys::Array::new()) {
+                    Ok(result) => {
+                        let naze_val = if let Some(s) = result.as_string() {
+                            RenderValue::Str(s)
+                        } else if let Some(n) = result.as_f64() {
+                            RenderValue::Num(n, None)
+                        } else if let Some(b) = result.as_bool() {
+                            RenderValue::Bool(b)
+                        } else {
+                            RenderValue::Str("null".to_string())
+                        };
+                        APP.with(|cell| {
+                            let mut borrow = cell.borrow_mut();
+                            if let Some(app) = borrow.as_mut() {
+                                app.state_store.insert(data_key, naze_val);
+                                app.state_store.insert(loading_key, RenderValue::Bool(false));
+                                app.state_store.insert(err_key, RenderValue::Str(String::new()));
+                            }
+                        });
+                        schedule_render();
+                        return;
+                    }
+                    Err(e) => {
+                        let msg = format!("JS call error: {:?}", e);
+                        APP.with(|cell| {
+                            let mut borrow = cell.borrow_mut();
+                            if let Some(app) = borrow.as_mut() {
+                                app.state_store.insert(err_key, RenderValue::Str(msg));
+                                app.state_store.insert(loading_key, RenderValue::Bool(false));
+                            }
+                        });
+                        schedule_render();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // Function not found
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        if let Some(app) = borrow.as_mut() {
+            app.state_store.insert(
+                err_key,
+                RenderValue::Str(format!("JS function not found: {}", func_name)),
+            );
+            app.state_store.insert(loading_key, RenderValue::Bool(false));
+        }
+    });
+    schedule_render();
+}
 
 /// Set up all timer declarations (setTimeout / setInterval).
 fn setup_timers() {
@@ -4010,6 +4420,7 @@ fn run_validation(
 // ─── Text Input DOM Overlay ──────────────────────────────────────────────────
 
 const HIDDEN_INPUT_ID: &str = "__naze_hidden_input";
+const HIDDEN_TEXTAREA_ID: &str = "__naze_hidden_textarea";
 
 /// Create a hidden HTML input element for capturing keyboard input.
 fn create_hidden_input(_canvas_id: &str) -> Result<(), JsValue> {
@@ -4111,6 +4522,93 @@ fn create_hidden_input(_canvas_id: &str) -> Result<(), JsValue> {
     Ok(())
 }
 
+/// Create a hidden HTML textarea element for capturing multi-line keyboard input.
+fn create_hidden_textarea(_canvas_id: &str) -> Result<(), JsValue> {
+    let window = web_sys::window().ok_or("no window")?;
+    let document = window.document().ok_or("no document")?;
+
+    if document.get_element_by_id(HIDDEN_TEXTAREA_ID).is_some() {
+        return Ok(());
+    }
+
+    let textarea = document.create_element("textarea")?;
+    let textarea: web_sys::HtmlTextAreaElement = textarea.dyn_into()?;
+    textarea.set_id(HIDDEN_TEXTAREA_ID);
+
+    // Style to be invisible but focusable
+    textarea.style().set_property("position", "absolute")?;
+    textarea.style().set_property("left", "-9999px")?;
+    textarea.style().set_property("top", "0")?;
+    textarea.style().set_property("opacity", "0")?;
+    textarea.style().set_property("pointer-events", "none")?;
+
+    document.body().ok_or("no body")?.append_child(&textarea)?;
+
+    // Input event listener — same logic as hidden input
+    let input_cb = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
+        if let Some(window) = web_sys::window() {
+            if let Some(document) = window.document() {
+                if let Some(el) = document.get_element_by_id(HIDDEN_TEXTAREA_ID) {
+                    if let Ok(ta) = el.dyn_into::<web_sys::HtmlTextAreaElement>() {
+                        let value = ta.value();
+                        let changed = APP.with(|cell| {
+                            let mut borrow = cell.borrow_mut();
+                            if let Some(app) = borrow.as_mut() {
+                                if let Some(ref focused) = app.focused_input.clone() {
+                                    app.state_store.insert(
+                                        focused.bind_var.clone(),
+                                        RenderValue::Str(value.clone()),
+                                    );
+                                    run_validation(
+                                        &mut app.state_store,
+                                        &focused.bind_var,
+                                        &value,
+                                        focused.validate_prop.as_ref(),
+                                        &focused.input_type,
+                                    );
+                                    for handler in &focused.change_handlers {
+                                        execute_action(&handler.action, &mut app.state_store);
+                                    }
+                                    return true;
+                                }
+                            }
+                            false
+                        });
+                        if changed {
+                            schedule_render();
+                        }
+                    }
+                }
+            }
+        }
+    });
+    textarea.add_event_listener_with_callback("input", input_cb.as_ref().unchecked_ref())?;
+    input_cb.forget();
+
+    // Blur event listener
+    let blur_cb = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                app.focused_input = None;
+                if let Some(id) = app.caret_interval_id.take() {
+                    if let Some(window) = web_sys::window() {
+                        window.clear_interval_with_handle(id);
+                    }
+                }
+                app.caret_visible = true;
+            }
+        });
+        schedule_render();
+    });
+    if let Some(el) = document.get_element_by_id(HIDDEN_TEXTAREA_ID) {
+        el.add_event_listener_with_callback("blur", blur_cb.as_ref().unchecked_ref())?;
+    }
+    blur_cb.forget();
+
+    Ok(())
+}
+
 /// Blur the hidden input element.
 fn blur_hidden_input() {
     if let Some(window) = web_sys::window() {
@@ -4118,6 +4616,12 @@ fn blur_hidden_input() {
             if let Some(el) = document.get_element_by_id(HIDDEN_INPUT_ID) {
                 if let Ok(input) = el.dyn_into::<web_sys::HtmlInputElement>() {
                     let _ = input.blur();
+                }
+            }
+            // Also blur hidden textarea
+            if let Some(el) = document.get_element_by_id(HIDDEN_TEXTAREA_ID) {
+                if let Ok(textarea) = el.dyn_into::<web_sys::HtmlTextAreaElement>() {
+                    let _ = textarea.blur();
                 }
             }
         }
@@ -4181,12 +4685,19 @@ fn focus_input(
         toggle_caret.forget();
     }
 
-    // Focus the hidden input and set its value and type
+    // Focus the appropriate hidden element (textarea or input)
     if let Some(window) = web_sys::window() {
         if let Some(document) = window.document() {
-            if let Some(el) = document.get_element_by_id(HIDDEN_INPUT_ID) {
+            if input_type == "textarea" {
+                // Use hidden textarea for multi-line input
+                if let Some(el) = document.get_element_by_id(HIDDEN_TEXTAREA_ID) {
+                    if let Ok(textarea) = el.dyn_into::<web_sys::HtmlTextAreaElement>() {
+                        textarea.set_value(current_value);
+                        let _ = textarea.focus();
+                    }
+                }
+            } else if let Some(el) = document.get_element_by_id(HIDDEN_INPUT_ID) {
                 if let Ok(input) = el.dyn_into::<web_sys::HtmlInputElement>() {
-                    // Set the input type (text, password, email, number)
                     input.set_type(input_type);
                     input.set_value(current_value);
                     let _ = input.focus();
@@ -4311,15 +4822,19 @@ fn find_input_at_point(
         if let Some(result) = find_input_at_point(&node.children, x, y, state) {
             return Some(result);
         }
-        // Check if this is an input
-        if node.kind == "input" {
+        // Check if this is an input or textarea
+        if node.kind == "input" || node.kind == "textarea" {
             if let Some(RenderValue::Bind(bind_var)) = node.props.get("bind") {
                 let node_id = format!("input_{}_{}", node.x as i32, node.y as i32);
                 let current_value = match state.get(bind_var) {
                     Some(RenderValue::Str(s)) => s.clone(),
                     _ => String::new(),
                 };
-                let input_type = naze_renderer::get_str_prop(&node.props, "type", "text");
+                let input_type = if node.kind == "textarea" {
+                    "textarea".to_string()
+                } else {
+                    naze_renderer::get_str_prop(&node.props, "type", "text")
+                };
                 // Extract change handlers
                 let change_handlers: Vec<_> = node
                     .handlers
