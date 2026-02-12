@@ -299,6 +299,12 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
+        themes: tree.themes.clone(),
+        imports: tree.imports.clone(),
+        server_functions: tree.server_functions.clone(),
+        server_calls: tree.server_calls.clone(),
+        prompts: tree.prompts.clone(),
+        guards: tree.guards.clone(),
     }
 }
 
@@ -344,6 +350,7 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 });
             }
         }
@@ -471,6 +478,10 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             eprintln!("[notify] {} - notifications not available in native mode", title);
             false
         }
+        IrAction::SetTheme { name } => {
+            eprintln!("[set-theme] {} - theme switching not yet implemented in native mode", name);
+            false
+        }
     }
 }
 
@@ -505,6 +516,14 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
         IrExpression::Pipeline { source, stages } => {
             let source_val = evaluate_expr(source, state);
             eval_pipeline(source_val, stages, state)
+        }
+        IrExpression::WasmCall { .. } => {
+            // WASM imports not supported in native viewer
+            RenderValue::Num(0.0, None)
+        }
+        IrExpression::EnvRef(_) => {
+            // Env vars resolved at compile time; should not appear at runtime
+            RenderValue::Str(String::new())
         }
     }
 }

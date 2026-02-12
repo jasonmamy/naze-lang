@@ -57,6 +57,10 @@ web-sys = { version = "0.3", features = [
     "PopStateEvent",
     "Url",
     "UrlSearchParams",
+    "TouchEvent",
+    "TouchList",
+    "Touch",
+    "DomRect",
 ] }
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1"

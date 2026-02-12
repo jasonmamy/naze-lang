@@ -324,7 +324,7 @@ fn build_example(
     let entry = format!("{}.naze", name);
 
     // Resolve and compile
-    let project = resolve::resolve(examples_dir, &entry);
+    let project = resolve::resolve(examples_dir, &entry, &[]);
 
     // Check for errors
     let resolve_errors: Vec<_> = project
@@ -828,6 +828,12 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
+        themes: tree.themes.clone(),
+        imports: tree.imports.clone(),
+        server_functions: tree.server_functions.clone(),
+        server_calls: tree.server_calls.clone(),
+        prompts: tree.prompts.clone(),
+        guards: tree.guards.clone(),
     }
 }
 
@@ -910,6 +916,7 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 });
             }
         }
@@ -1063,6 +1070,14 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
         IrExpression::Pipeline { source, stages } => {
             let source_val = evaluate_expr(source, state);
             eval_pipeline(source_val, stages, state)
+        }
+        IrExpression::WasmCall { .. } => {
+            // WASM imports not supported in gallery preview
+            RenderValue::Num(0.0, None)
+        }
+        IrExpression::EnvRef(_) => {
+            // Env vars resolved at compile time; should not appear at runtime
+            RenderValue::Str(String::new())
         }
     }
 }
@@ -1377,7 +1392,7 @@ fn run_native(examples_dir: &Path, examples: &[String]) -> Result<(), Box<dyn st
     let mut loaded: Vec<(String, RenderTree)> = Vec::new();
     for name in examples {
         let entry = format!("{}.naze", name);
-        let project = resolve::resolve(examples_dir, &entry);
+        let project = resolve::resolve(examples_dir, &entry, &[]);
 
         let resolve_errors: Vec<_> = project
             .errors

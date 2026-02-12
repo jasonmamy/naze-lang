@@ -1411,7 +1411,7 @@ mod tests {
             }
             fs::write(path, content).unwrap();
         }
-        let project = resolve(dir.path(), "app.naze");
+        let project = resolve(dir.path(), "app.naze", &[]);
         assert!(
             project.errors.is_empty(),
             "resolve errors: {:?}",
@@ -1663,7 +1663,7 @@ mod tests {
             "template-basic.naze",
             "responsive-layout.naze",
         ] {
-            let project = resolve(&examples_dir, name);
+            let project = resolve(&examples_dir, name, &[]);
             let render_tree = codegen::lower(&project);
             let layout = compute_layout(&render_tree, 1024.0, 768.0);
             assert!(!layout.root.is_empty(), "empty layout for {}", name);
@@ -1717,6 +1717,7 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
                 RenderNode {
                     kind: "overlay".to_string(),
@@ -1740,11 +1741,13 @@ mod tests {
                         condition: None,
                         else_children: None,
                         each_binding: None,
+                        span: None,
                     }],
                     handlers: vec![],
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
                 RenderNode {
                     kind: "rect".to_string(),
@@ -1765,9 +1768,16 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
             ],
             pages: vec![],
+            themes: vec![],
+            imports: vec![],
+            server_functions: vec![],
+            server_calls: vec![],
+            prompts: vec![],
+            guards: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 
@@ -1818,13 +1828,21 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 }],
                 handlers: vec![],
                 condition: None,
                 else_children: None,
                 each_binding: None,
+                span: None,
             }],
             pages: vec![],
+            themes: vec![],
+            imports: vec![],
+            server_functions: vec![],
+            server_calls: vec![],
+            prompts: vec![],
+            guards: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 
@@ -1873,6 +1891,7 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
                 RenderNode {
                     kind: "overlay".to_string(),
@@ -1894,9 +1913,16 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
             ],
             pages: vec![],
+            themes: vec![],
+            imports: vec![],
+            server_functions: vec![],
+            server_calls: vec![],
+            prompts: vec![],
+            guards: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 
@@ -1949,6 +1975,7 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
                 RenderNode {
                     kind: "rect".to_string(),
@@ -1970,6 +1997,7 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
                 RenderNode {
                     kind: "overlay".to_string(),
@@ -1998,9 +2026,16 @@ mod tests {
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 },
             ],
             pages: vec![],
+            themes: vec![],
+            imports: vec![],
+            server_functions: vec![],
+            server_calls: vec![],
+            prompts: vec![],
+            guards: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 

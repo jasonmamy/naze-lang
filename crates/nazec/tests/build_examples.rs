@@ -5,7 +5,7 @@ use naze_compiler::error::Severity;
 use naze_compiler::resolve;
 use naze_compiler::typecheck;
 
-const WASM_SIZE_LIMIT: usize = 350 * 1024; // 350KB (Phase 3 budget — grew from storage, params, timers, streams, computed, a11y)
+const WASM_SIZE_LIMIT: usize = 360 * 1024; // 360KB (Phase 4 budget — grew from server functions)
 
 /// Embedded runtime WASM — same as what nazec embeds.
 const RUNTIME_WASM: &[u8] = include_bytes!("../../naze-runtime/pkg/naze_runtime_bg.wasm");
@@ -22,7 +22,7 @@ fn examples_dir() -> std::path::PathBuf {
 /// Full pipeline test: resolve → typecheck → lower → serialize → verify roundtrip.
 fn build_example(name: &str) {
     let dir = examples_dir();
-    let project = resolve::resolve(&dir, name);
+    let project = resolve::resolve(&dir, name, &[]);
 
     // No resolution errors
     let resolve_errors: Vec<_> = project
@@ -196,6 +196,27 @@ fn build_template_basic() {
 #[test]
 fn build_responsive_layout() {
     build_example("responsive-layout.naze");
+}
+
+// --- Examples with emit events (Phase 3 M19) ---
+
+#[test]
+fn build_emit_events() {
+    build_example("emit-events.naze");
+}
+
+// --- Examples with theme switching (Phase 3 M19) ---
+
+#[test]
+fn build_theme_switching() {
+    build_example("theme-switching.naze");
+}
+
+// --- Examples with advanced animation (Phase 3 M18) ---
+
+#[test]
+fn build_advanced_animation() {
+    build_example("advanced-animation.naze");
 }
 
 // --- Runtime WASM size check ---

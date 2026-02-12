@@ -34,6 +34,11 @@ pub enum Node {
         path: Vec<String>,
         span: Span,
     },
+    Import {
+        name: String,   // local binding name: "crypto"
+        source: String, // source path: "./lib/crypto.wasm" or "@naze/crypto"
+        span: Span,
+    },
     Element {
         name: String,
         props: Vec<Prop>,
@@ -90,6 +95,11 @@ pub enum Node {
         else_children: Vec<Node>, // empty if no else clause
         span: Span,
     },
+    Boundary {
+        children: Vec<Node>,       // Normal content (may contain data declarations)
+        catch_children: Vec<Node>, // Fallback content shown when data fails
+        span: Span,
+    },
     Each {
         variable: String,
         iterable: Expression, // StateRef to a list variable
@@ -107,13 +117,27 @@ pub enum Node {
         span: Span,
     },
     Theme {
+        name: Option<String>,                      // None = unnamed (default), Some("dark") = named
+        extends: Option<String>,                    // parent theme name for inheritance
         colors: Vec<(String, u32)>,                // "primary" -> 0x2563eb
         spacing: Vec<(String, f64, Option<Unit>)>, // "md" -> (16.0, Some(Px))
         span: Span,
     },
     Page {
-        path: String, // URL path like "/" or "/about"
+        path: String,          // URL path like "/" or "/posts/:id"
+        params: Vec<String>,   // Extracted param names (e.g., ["id"] from "/posts/:id")
+        guard: Option<String>, // Optional guard name (e.g., "is-admin")
         children: Vec<Node>,
+        span: Span,
+    },
+    Guard {
+        name: String,
+        checks: Vec<GuardCheckAst>, // condition + redirect pairs
+        span: Span,
+    },
+    Model {
+        name: String,
+        fields: Vec<ModelField>,
         span: Span,
     },
     Link {
@@ -127,6 +151,29 @@ pub enum Node {
         params: Vec<FuncParam>,
         return_type: Type,
         body: Expression,
+        span: Span,
+    },
+    ServerFunction {
+        name: String,
+        params: Vec<FuncParam>,
+        body: ServerBody,
+        span: Span,
+    },
+    ServerData {
+        name: String,      // data binding name: "user"
+        func_name: String, // server function name: "get-user"
+        args: Vec<Expression>,
+        span: Span,
+    },
+    Prompt {
+        name: String,                  // binding name: "summary"
+        provider: String,              // provider name: "openai", "anthropic", "ollama"
+        props: Vec<(String, Value)>,   // key-value properties from block
+        span: Span,
+    },
+    Meta {
+        key: String,        // "title", "description", "image", "canonical", "robots"
+        value: Value,
         span: Span,
     },
     Match {
@@ -161,31 +208,16 @@ pub enum ModifierKind {
 }
 
 /// Configuration for enhanced data fetch declarations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DataConfig {
     pub method: Option<String>, // "get", "post", "put", "delete", "patch"
-    pub headers: Vec<(String, String)>, // static headers
+    pub headers: Vec<(String, Value)>, // headers with interpolation support
     pub body: Option<Value>,    // request body
     pub cache_ms: Option<u64>,  // cache TTL in milliseconds
     pub retry: Option<u32>,     // retry count
     pub trigger: Option<String>, // "auto" (default) or "manual"
     pub content_type: Option<String>, // e.g. "application/json"
     pub watch: bool,                  // for device APIs: continuously watch vs one-shot
-}
-
-impl Default for DataConfig {
-    fn default() -> Self {
-        Self {
-            method: None,
-            headers: vec![],
-            body: None,
-            cache_ms: None,
-            retry: None,
-            trigger: None,
-            content_type: None,
-            watch: false,
-        }
-    }
 }
 
 /// Storage type for persistent state declarations.
@@ -254,6 +286,14 @@ pub enum Action {
         title: String,
         body: Option<String>,
         icon: Option<String>,
+        span: Span,
+    },
+    Emit {
+        event_name: String,
+        span: Span,
+    },
+    SetTheme {
+        theme_name: String,
         span: Span,
     },
 }
@@ -330,6 +370,63 @@ pub enum StringPart {
 pub struct FuncParam {
     pub name: String,
     pub ty: Type,
+}
+
+/// Server function body: a sequence of let bindings + a final result expression.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerBody {
+    pub lets: Vec<(String, ServerExpr)>,
+    pub result: Expression,
+}
+
+/// A single guard check: condition + redirect.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GuardCheckAst {
+    pub condition: Expression,
+    pub redirect: String,
+}
+
+/// A field in a model definition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelField {
+    pub name: String,
+    pub field_type: String,       // "number", "text", "bool", "timestamp"
+    pub constraints: Vec<String>, // "primary", "unique", "default:now", etc.
+}
+
+/// A single condition in a where clause: field op value.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueryCondition {
+    pub field: String,
+    pub op: String,        // "==", "!=", ">", "<", ">=", "<="
+    pub value: Expression,
+}
+
+/// Expression types allowed in server function let bindings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ServerExpr {
+    Fetch(String),                            // fetch "url"
+    Sql { query: String, params: Vec<Expression> }, // sql "SELECT ..." [param1, param2]
+    Expr(Expression),                         // any regular expression
+    Find {
+        model: String,
+        conditions: Vec<QueryCondition>,
+        order: Option<(String, bool)>,  // (field_name, ascending)
+        limit: Option<Expression>,
+    },
+    Insert {
+        model: String,
+        fields: Vec<(String, Value)>,
+    },
+    Update {
+        model: String,
+        set_fields: Vec<(String, Value)>,
+        conditions: Vec<QueryCondition>,
+    },
+    Delete {
+        model: String,
+        conditions: Vec<QueryCondition>,
+    },
 }
 
 /// A single arm in a match expression.

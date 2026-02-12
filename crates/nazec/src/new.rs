@@ -8,6 +8,19 @@ version = "0.1.0"
 [build]
 entry = "app.naze"
 output = "dist/"
+
+# [env]
+# API_URL = "http://localhost:3000"
+# SECRET = { from = "SECRET_KEY", required = true }
+
+# [dependencies]
+# "@naze/ui-kit" = { path = "../naze-ui-kit" }
+# "@org/charts" = { git = "https://github.com/org/charts.git", tag = "v1.0.0" }
+
+# [seo]
+# description = "My Naze app"
+# image = "/og-image.png"
+# canonical = "https://example.com"
 "#;
 
 const APP_NAZE_TEMPLATE: &str = r#"-- {{name}}

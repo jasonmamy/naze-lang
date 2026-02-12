@@ -1,0 +1,48 @@
+-- Theme switching example
+-- Defines named themes with extends and a button to toggle between them
+
+theme light {
+  colors {
+    bg: #ffffff
+    fg: #0f172a
+    primary: #2563eb
+    card-bg: #f8fafc
+  }
+  spacing {
+    sm: 8px
+    md: 16px
+    lg: 24px
+  }
+}
+
+theme dark extends light {
+  colors {
+    bg: #1e293b
+    fg: #f8fafc
+    primary: #60a5fa
+    card-bg: #334155
+  }
+}
+
+app "Theme Switching Demo" {
+  state active-theme = "light"
+
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Theme Switching" color: theme.colors.fg
+
+    row gap: 12px {
+      rect width: 120px, height: 40px, color: theme.colors.primary, radius: 8px {
+        text "Light" color: #ffffff
+        on click: set-theme "light"
+      }
+      rect width: 120px, height: 40px, color: theme.colors.primary, radius: 8px {
+        text "Dark" color: #ffffff
+        on click: set-theme "dark"
+      }
+    }
+
+    rect padding: 16px, color: theme.colors.card-bg, radius: 8px {
+      text "This card uses theme tokens for its background color." color: theme.colors.fg
+    }
+  }
+}

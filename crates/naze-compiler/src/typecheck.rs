@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 use naze_parser::ast::{
     Action, EventHandler, Expression, MatchPattern, Node, Param, Prop, Span, Type, Value,
@@ -209,6 +210,12 @@ pub fn typecheck(project: &ResolvedProject) -> Vec<CompileError> {
         );
     }
 
+    // Validate WASM import function references
+    validate_wasm_imports(project, &mut errors);
+
+    // Validate server data calls reference declared server functions with correct arg counts
+    validate_server_calls(&project.entry.nodes, &mut errors);
+
     errors
 }
 
@@ -233,8 +240,8 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
                 // Storage declarations act like state variables
                 names.insert(name.clone());
             }
-            Node::Data { name, .. } => {
-                // Data declarations create three derived state variables
+            Node::Data { name, .. } | Node::ServerData { name, .. } | Node::Prompt { name, .. } => {
+                // Data/prompt declarations create three derived state variables
                 names.insert(format!("{}.loading", name));
                 names.insert(format!("{}.error", name));
                 names.insert(format!("{}.data", name));
@@ -285,7 +292,11 @@ fn collect_state_names(nodes: &[Node]) -> HashSet<String> {
             Node::Fill { children, .. } => {
                 names.extend(collect_state_names(children));
             }
-            Node::Page { children, .. } => {
+            Node::Page { params, children, .. } => {
+                // Dynamic route params are available as params.NAME inside the page
+                for p in params {
+                    names.insert(format!("params.{p}"));
+                }
                 names.extend(collect_state_names(children));
             }
             Node::Link { children, .. } => {
@@ -583,7 +594,7 @@ fn check_nodes(
                     );
                 }
             }
-            Node::Function { .. } => {
+            Node::Function { .. } | Node::ServerFunction { .. } => {
                 // Function definitions — validated during collection
             }
             Node::Let { .. }
@@ -591,7 +602,9 @@ fn check_nodes(
             | Node::Computed { .. }
             | Node::Storage { .. }
             | Node::Timer { .. }
-            | Node::Param { .. } => {
+            | Node::Param { .. }
+            | Node::ServerData { .. }
+            | Node::Prompt { .. } => {
                 // Declarations — no type-checking needed beyond name collection
             }
             _ => {}
@@ -704,6 +717,8 @@ fn check_handler(
             }
         }
         Action::Notify { .. } => {}
+        Action::Emit { .. } => {}
+        Action::SetTheme { .. } => {}
     }
 }
 
@@ -726,6 +741,10 @@ fn check_expression_inner(
 ) {
     match expr {
         Expression::StateRef(name) => {
+            // Env var references (env.NAME) are resolved at compile/runtime — skip state check
+            if name.starts_with("env.") {
+                return;
+            }
             // Inside pipeline stages, bare identifiers may refer to item fields
             // rather than state variables, so skip strict validation there
             if !in_pipeline_stage && !state_names.contains(name) {
@@ -1192,6 +1211,257 @@ fn collect_slot_names(nodes: &[Node]) -> HashSet<&str> {
     names
 }
 
+// ─── WASM import validation ──────────────────────────────────────────────────
+
+/// Read exported function names from a WASM binary.
+pub fn read_wasm_exports(path: &Path) -> HashSet<String> {
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b,
+        Err(_) => return HashSet::new(),
+    };
+    let parser = wasmparser::Parser::new(0);
+    let mut exports = HashSet::new();
+    for payload in parser.parse_all(&bytes) {
+        if let Ok(wasmparser::Payload::ExportSection(reader)) = payload {
+            for export in reader {
+                if let Ok(export) = export {
+                    if matches!(export.kind, wasmparser::ExternalKind::Func) {
+                        exports.insert(export.name.to_string());
+                    }
+                }
+            }
+        }
+    }
+    exports
+}
+
+/// Validate that all qualified function calls (module.func) reference actual
+/// exported functions in the imported WASM modules.
+fn validate_wasm_imports(project: &ResolvedProject, errors: &mut Vec<CompileError>) {
+    if project.imports.is_empty() {
+        return;
+    }
+
+    // Build export map: module_name -> set of exported function names
+    let mut export_map: HashMap<String, HashSet<String>> = HashMap::new();
+    for imp in &project.imports {
+        let exports = read_wasm_exports(&imp.wasm_path);
+        export_map.insert(imp.name.clone(), exports);
+    }
+
+    // Walk all expressions in entry file looking for qualified function calls
+    check_wasm_calls_in_nodes(&project.entry.nodes, &export_map, errors);
+}
+
+/// Validate that server data calls reference declared server functions with correct arg counts.
+fn validate_server_calls(nodes: &[Node], errors: &mut Vec<CompileError>) {
+    // Collect server function declarations: name -> param count
+    let mut server_fns: HashMap<String, usize> = HashMap::new();
+    collect_server_fn_decls(nodes, &mut server_fns);
+
+    // Validate server data calls
+    validate_server_data_refs(nodes, &server_fns, errors);
+}
+
+fn collect_server_fn_decls(nodes: &[Node], fns: &mut HashMap<String, usize>) {
+    for node in nodes {
+        match node {
+            Node::ServerFunction { name, params, .. } => {
+                fns.insert(name.clone(), params.len());
+            }
+            Node::App { children, .. } => {
+                collect_server_fn_decls(children, fns);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn validate_server_data_refs(
+    nodes: &[Node],
+    server_fns: &HashMap<String, usize>,
+    errors: &mut Vec<CompileError>,
+) {
+    for node in nodes {
+        match node {
+            Node::ServerData {
+                func_name,
+                args,
+                span,
+                ..
+            } => {
+                if let Some(&expected) = server_fns.get(func_name) {
+                    if args.len() != expected {
+                        errors.push(CompileError {
+                            message: format!(
+                                "server function '{}' expects {} argument(s) but got {}",
+                                func_name,
+                                expected,
+                                args.len()
+                            ),
+                            file: span.file.clone(),
+                            line: span.line,
+                            column: span.col,
+                            severity: Severity::Error,
+                        });
+                    }
+                } else {
+                    errors.push(CompileError {
+                        message: format!(
+                            "unknown server function '{}' — declare it with `server function {}`",
+                            func_name, func_name
+                        ),
+                        file: span.file.clone(),
+                        line: span.line,
+                        column: span.col,
+                        severity: Severity::Error,
+                    });
+                }
+            }
+            Node::App { children, .. }
+            | Node::Page { children, .. } => {
+                validate_server_data_refs(children, server_fns, errors);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_wasm_calls_in_nodes(
+    nodes: &[Node],
+    export_map: &HashMap<String, HashSet<String>>,
+    errors: &mut Vec<CompileError>,
+) {
+    for node in nodes {
+        match node {
+            Node::App { children, .. } => {
+                check_wasm_calls_in_nodes(children, export_map, errors);
+            }
+            Node::Element {
+                children,
+                handlers,
+                props,
+                ..
+            } => {
+                for handler in handlers {
+                    check_wasm_calls_in_action(&handler.action, export_map, errors);
+                }
+                for prop in props {
+                    check_wasm_calls_in_value(&prop.value, export_map, errors);
+                }
+                check_wasm_calls_in_nodes(children, export_map, errors);
+            }
+            Node::Computed { expr, .. } => {
+                check_wasm_calls_in_expr(expr, export_map, errors);
+            }
+            Node::If {
+                condition,
+                then_children,
+                else_children,
+                ..
+            } => {
+                check_wasm_calls_in_expr(condition, export_map, errors);
+                check_wasm_calls_in_nodes(then_children, export_map, errors);
+                check_wasm_calls_in_nodes(else_children, export_map, errors);
+            }
+            Node::Each {
+                iterable,
+                children,
+                ..
+            } => {
+                check_wasm_calls_in_expr(iterable, export_map, errors);
+                check_wasm_calls_in_nodes(children, export_map, errors);
+            }
+            Node::Page { children, .. } => {
+                check_wasm_calls_in_nodes(children, export_map, errors);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_wasm_calls_in_expr(
+    expr: &Expression,
+    export_map: &HashMap<String, HashSet<String>>,
+    errors: &mut Vec<CompileError>,
+) {
+    match expr {
+        Expression::FunctionCall { name, args } => {
+            if let Some(dot) = name.find('.') {
+                let module = &name[..dot];
+                let function = &name[dot + 1..];
+                if let Some(exports) = export_map.get(module) {
+                    if !exports.contains(function) {
+                        errors.push(CompileError {
+                            message: format!(
+                                "WASM module '{}' does not export function '{}'",
+                                module, function
+                            ),
+                            severity: Severity::Error,
+                            file: String::new(),
+                            line: 0,
+                            column: 0,
+                        });
+                    }
+                }
+            }
+            for arg in args {
+                check_wasm_calls_in_expr(arg, export_map, errors);
+            }
+        }
+        Expression::BinOp { left, right, .. } => {
+            check_wasm_calls_in_expr(left, export_map, errors);
+            check_wasm_calls_in_expr(right, export_map, errors);
+        }
+        Expression::Pipeline { source, stages } => {
+            check_wasm_calls_in_expr(source, export_map, errors);
+            for stage in stages {
+                if let Some(arg) = &stage.argument {
+                    check_wasm_calls_in_expr(arg, export_map, errors);
+                }
+                if let Some(arg) = &stage.argument2 {
+                    check_wasm_calls_in_expr(arg, export_map, errors);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn check_wasm_calls_in_action(
+    action: &Action,
+    export_map: &HashMap<String, HashSet<String>>,
+    errors: &mut Vec<CompileError>,
+) {
+    match action {
+        Action::Set { expr, .. } => check_wasm_calls_in_expr(expr, export_map, errors),
+        Action::Log { expr, .. } => check_wasm_calls_in_expr(expr, export_map, errors),
+        Action::Copy { expr, .. } => check_wasm_calls_in_expr(expr, export_map, errors),
+        Action::Send { expr, .. } => check_wasm_calls_in_expr(expr, export_map, errors),
+        _ => {}
+    }
+}
+
+fn check_wasm_calls_in_value(
+    value: &Value,
+    export_map: &HashMap<String, HashSet<String>>,
+    errors: &mut Vec<CompileError>,
+) {
+    match value {
+        Value::List(items) => {
+            for item in items {
+                check_wasm_calls_in_value(item, export_map, errors);
+            }
+        }
+        Value::Object(entries) => {
+            for (_, v) in entries {
+                check_wasm_calls_in_value(v, export_map, errors);
+            }
+        }
+        _ => {}
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1208,7 +1478,7 @@ mod tests {
             }
             fs::write(path, content).unwrap();
         }
-        let project = resolve(dir.path(), "app.naze");
+        let project = resolve(dir.path(), "app.naze", &[]);
         let mut errors = typecheck(&project);
         errors.extend(project.errors);
         errors
@@ -1431,7 +1701,7 @@ mod tests {
             "counter.naze",
             "conditional.naze",
         ] {
-            let project = resolve(&examples_dir, name);
+            let project = resolve(&examples_dir, name, &[]);
             let tc_errors = typecheck(&project);
             let all_errors: Vec<_> = project
                 .errors
@@ -1454,7 +1724,7 @@ mod tests {
             "multi-component.naze",
             "slots.naze",
         ] {
-            let project = resolve(&examples_dir, name);
+            let project = resolve(&examples_dir, name, &[]);
             let tc_errors = typecheck(&project);
             let all_errors: Vec<_> = project
                 .errors

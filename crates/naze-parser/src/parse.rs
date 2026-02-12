@@ -56,16 +56,24 @@ pub fn parse(source: &str, file: &str) -> Result<Vec<Node>, ParseError> {
             Rule::component_def => nodes.push(parse_component(pair, file)),
             Rule::template_def => nodes.push(parse_template(pair, file)),
             Rule::theme_def => nodes.push(parse_theme(pair, file)),
+            Rule::import_stmt => nodes.push(parse_import(pair, file)),
             Rule::use_stmt => nodes.push(parse_use(pair, file)),
             Rule::let_stmt => nodes.push(parse_let(pair, file)),
             Rule::state_stmt => nodes.push(parse_state(pair, file)),
             Rule::shared_state_stmt => nodes.push(parse_shared_state(pair, file)),
             Rule::computed_stmt => nodes.push(parse_computed(pair, file)),
             Rule::storage_stmt => nodes.push(parse_storage(pair, file)),
+            Rule::server_data_stmt => nodes.push(parse_server_data(pair, file)),
+            Rule::prompt_stmt => nodes.push(parse_prompt_stmt(pair, file)),
             Rule::data_stmt => nodes.push(parse_data(pair, file)),
             Rule::timer_stmt => nodes.push(parse_timer(pair, file)),
             Rule::param_stmt => nodes.push(parse_param_stmt(pair, file)),
+            Rule::server_function_def => nodes.push(parse_server_function(pair, file)),
             Rule::function_def => nodes.push(parse_function_def(pair, file)),
+            Rule::boundary_stmt => nodes.push(parse_boundary_stmt(pair, file)),
+            Rule::meta_stmt => nodes.push(parse_meta_stmt(pair, file)),
+            Rule::guard_def => nodes.push(parse_guard_def(pair, file)),
+            Rule::model_def => nodes.push(parse_model_def(pair, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(pair, file)),
             Rule::match_stmt => nodes.push(parse_match_stmt(pair, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(pair, file)),
@@ -159,14 +167,95 @@ fn parse_page(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
         }
         _ => String::new(),
     };
-    let block = inner.next().unwrap();
-    let contents = parse_block(block, file);
+
+    // Check for optional guard_ref and block
+    let mut guard = None;
+    let mut block_pair = None;
+    for p in inner {
+        match p.as_rule() {
+            Rule::guard_ref => {
+                guard = Some(p.into_inner().next().unwrap().as_str().to_string());
+            }
+            Rule::block => {
+                block_pair = Some(p);
+            }
+            _ => {}
+        }
+    }
+    let contents = parse_block(block_pair.unwrap(), file);
+
+    // Extract dynamic param names from `:param` segments
+    let params: Vec<String> = path
+        .split('/')
+        .filter_map(|seg| seg.strip_prefix(':').map(|s| s.to_string()))
+        .collect();
 
     Node::Page {
         path,
+        params,
+        guard,
         children: contents.nodes,
         span,
     }
+}
+
+fn parse_guard_def(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let name = inner.next().unwrap().as_str().to_string();
+    let mut checks = Vec::new();
+    for check_pair in inner {
+        if check_pair.as_rule() == Rule::guard_check {
+            let mut check_inner = check_pair.into_inner();
+            let condition = parse_pipe_expression(check_inner.next().unwrap());
+            let redirect = match parse_string_lit(check_inner.next().unwrap()) {
+                Value::Str(s) => s,
+                _ => String::new(),
+            };
+            checks.push(GuardCheckAst { condition, redirect });
+        }
+    }
+
+    Node::Guard {
+        name,
+        checks,
+        span,
+    }
+}
+
+fn parse_model_def(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let mut fields = Vec::new();
+    for field_pair in inner {
+        if field_pair.as_rule() == Rule::model_field {
+            let mut field_inner = field_pair.into_inner();
+            let field_name = field_inner.next().unwrap().as_str().to_string();
+            let field_type = field_inner.next().unwrap().as_str().to_string();
+            let mut constraints = Vec::new();
+            for constraint_pair in field_inner {
+                if constraint_pair.as_rule() == Rule::field_constraint {
+                    let text = constraint_pair.as_str().trim().to_string();
+                    let mut inner_parts = constraint_pair.into_inner();
+                    if let Some(default_val) = inner_parts.next() {
+                        // "default X" — inner has the default value (ident/number/string)
+                        constraints.push(format!("default:{}", default_val.as_str()));
+                    } else {
+                        // Simple keyword: "primary" or "unique"
+                        constraints.push(text);
+                    }
+                }
+            }
+            fields.push(ModelField {
+                name: field_name,
+                field_type,
+                constraints,
+            });
+        }
+    }
+    Node::Model { name, fields, span }
 }
 
 fn parse_link(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -262,44 +351,59 @@ fn parse_theme(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let mut colors = Vec::new();
     let mut spacing = Vec::new();
+    let mut name = None;
+    let mut extends = None;
 
-    // theme_def contains a theme_block
-    let theme_block = pair.into_inner().next().unwrap();
-
-    for section in theme_block.into_inner() {
-        if section.as_rule() != Rule::theme_section {
-            continue;
-        }
-
-        let mut section_inner = section.into_inner();
-        let section_name = section_inner.next().unwrap().as_str();
-
-        for entry in section_inner {
-            if entry.as_rule() != Rule::theme_entry {
-                continue;
+    // theme_def contains optional theme_name, optional theme_extends, then theme_block
+    for inner_pair in pair.into_inner() {
+        match inner_pair.as_rule() {
+            Rule::theme_name => {
+                name = Some(inner_pair.into_inner().next().unwrap().as_str().to_string());
             }
+            Rule::theme_extends => {
+                extends = Some(inner_pair.into_inner().next().unwrap().as_str().to_string());
+            }
+            Rule::theme_block => {
+                for section in inner_pair.into_inner() {
+                    if section.as_rule() != Rule::theme_section {
+                        continue;
+                    }
 
-            let mut entry_inner = entry.into_inner();
-            let name = entry_inner.next().unwrap().as_str().to_string();
-            let value = parse_value(entry_inner.next().unwrap());
+                    let mut section_inner = section.into_inner();
+                    let section_name = section_inner.next().unwrap().as_str();
 
-            match section_name {
-                "colors" => {
-                    if let Value::Color(c) = value {
-                        colors.push((name, c));
+                    for entry in section_inner {
+                        if entry.as_rule() != Rule::theme_entry {
+                            continue;
+                        }
+
+                        let mut entry_inner = entry.into_inner();
+                        let token_name = entry_inner.next().unwrap().as_str().to_string();
+                        let value = parse_value(entry_inner.next().unwrap());
+
+                        match section_name {
+                            "colors" => {
+                                if let Value::Color(c) = value {
+                                    colors.push((token_name, c));
+                                }
+                            }
+                            "spacing" => {
+                                if let Value::Num(n, unit) = value {
+                                    spacing.push((token_name, n, unit));
+                                }
+                            }
+                            _ => {}
+                        }
                     }
                 }
-                "spacing" => {
-                    if let Value::Num(n, unit) = value {
-                        spacing.push((name, n, unit));
-                    }
-                }
-                _ => {}
             }
+            _ => {}
         }
     }
 
     Node::Theme {
+        name,
+        extends,
         colors,
         spacing,
         span,
@@ -448,6 +552,13 @@ fn parse_data(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
                         "body" => {
                             config.body = Some(parse_value(val_pair));
                         }
+                        "headers" => {
+                            if let Value::Object(entries) = parse_value(val_pair) {
+                                for (k, v) in entries {
+                                    config.headers.push((k, v));
+                                }
+                            }
+                        }
                         "watch" => {
                             if let Value::Bool(b) = parse_value(val_pair) {
                                 config.watch = b;
@@ -528,6 +639,30 @@ fn parse_duration_ms(pair: pest::iterators::Pair<Rule>) -> u64 {
     }
 }
 
+fn parse_boundary_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let body_block = inner.next().unwrap();
+    let catch_block = inner.next().unwrap();
+
+    Node::Boundary {
+        children: parse_block(body_block, file).nodes,
+        catch_children: parse_block(catch_block, file).nodes,
+        span,
+    }
+}
+
+fn parse_meta_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+
+    let key = inner.next().unwrap().as_str().to_string();
+    let value = parse_value(inner.next().unwrap());
+
+    Node::Meta { key, value, span }
+}
+
 fn parse_if_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let span = span_from_pair(&pair, file);
     let mut inner = pair.into_inner();
@@ -597,6 +732,245 @@ fn parse_function_def(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
         params,
         return_type,
         body,
+        span,
+    }
+}
+
+fn parse_server_function(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    // Collect func_param pairs and server_body
+    let mut params = Vec::new();
+    let mut body = ServerBody {
+        lets: vec![],
+        result: Expression::Literal(Value::Num(0.0, None)),
+    };
+    for p in inner {
+        match p.as_rule() {
+            Rule::func_param => {
+                let mut fp_inner = p.into_inner();
+                let pname = fp_inner.next().unwrap().as_str().to_string();
+                let ty = parse_type(fp_inner.next().unwrap());
+                params.push(FuncParam { name: pname, ty });
+            }
+            Rule::server_body => {
+                body = parse_server_body(p);
+            }
+            Rule::pipe_expression | Rule::expression => {
+                // Fallback for backward compatibility
+                body = ServerBody {
+                    lets: vec![],
+                    result: parse_pipe_expression(p),
+                };
+            }
+            _ => {}
+        }
+    }
+    Node::ServerFunction {
+        name,
+        params,
+        body,
+        span,
+    }
+}
+
+fn parse_server_body(pair: pest::iterators::Pair<Rule>) -> ServerBody {
+    let mut lets = Vec::new();
+    let mut result = Expression::Literal(Value::Num(0.0, None));
+    for p in pair.into_inner() {
+        match p.as_rule() {
+            Rule::server_let => {
+                let mut inner = p.into_inner();
+                let name = inner.next().unwrap().as_str().to_string();
+                let expr_pair = inner.next().unwrap();
+                let server_expr = match expr_pair.as_rule() {
+                    Rule::server_fetch_expr => {
+                        let url = parse_string_lit(expr_pair.into_inner().next().unwrap());
+                        match url {
+                            Value::Str(s) => ServerExpr::Fetch(s),
+                            Value::InterpolatedStr(parts) => {
+                                // Flatten to string for now
+                                let s = parts.into_iter().map(|p| match p {
+                                    StringPart::Literal(s) => s,
+                                    StringPart::Interpolation(segs) => format!("{{{}}}", segs.join(".")),
+                                }).collect();
+                                ServerExpr::Fetch(s)
+                            }
+                            _ => ServerExpr::Fetch(String::new()),
+                        }
+                    }
+                    Rule::server_sql_expr => {
+                        let mut sql_inner = expr_pair.into_inner();
+                        let query = match parse_string_lit(sql_inner.next().unwrap()) {
+                            Value::Str(s) => s,
+                            _ => String::new(),
+                        };
+                        let params = sql_inner
+                            .next()
+                            .map(|params_pair| {
+                                params_pair.into_inner().map(parse_pipe_expression).collect()
+                            })
+                            .unwrap_or_default();
+                        ServerExpr::Sql { query, params }
+                    }
+                    Rule::server_find_expr => parse_server_find(expr_pair),
+                    Rule::server_insert_expr => parse_server_insert(expr_pair),
+                    Rule::server_update_expr => parse_server_update(expr_pair),
+                    Rule::server_delete_expr => parse_server_delete(expr_pair),
+                    _ => ServerExpr::Expr(parse_pipe_expression(expr_pair)),
+                };
+                lets.push((name, server_expr));
+            }
+            Rule::pipe_expression | Rule::expression => {
+                result = parse_pipe_expression(p);
+            }
+            _ => {}
+        }
+    }
+    ServerBody { lets, result }
+}
+
+fn parse_server_find(pair: pest::iterators::Pair<Rule>) -> ServerExpr {
+    let mut inner = pair.into_inner();
+    let model = inner.next().unwrap().as_str().to_string();
+    let mut conditions = Vec::new();
+    let mut order = None;
+    let mut limit = None;
+    for clause in inner {
+        match clause.as_rule() {
+            Rule::query_where => {
+                conditions = parse_query_conditions(clause);
+            }
+            Rule::query_order => {
+                let mut order_inner = clause.into_inner();
+                let field = order_inner.next().unwrap().as_str().to_string();
+                let ascending = order_inner
+                    .next()
+                    .map(|p| p.as_str() == "asc")
+                    .unwrap_or(true);
+                order = Some((field, ascending));
+            }
+            Rule::query_limit => {
+                let limit_expr = clause.into_inner().next().unwrap();
+                limit = Some(parse_pipe_expression(limit_expr));
+            }
+            _ => {}
+        }
+    }
+    ServerExpr::Find {
+        model,
+        conditions,
+        order,
+        limit,
+    }
+}
+
+fn parse_server_insert(pair: pest::iterators::Pair<Rule>) -> ServerExpr {
+    let mut inner = pair.into_inner();
+    let model = inner.next().unwrap().as_str().to_string();
+    let obj = inner.next().unwrap(); // object_lit
+    let fields: Vec<(String, Value)> = obj
+        .into_inner()
+        .map(|entry| {
+            let mut entry_inner = entry.into_inner();
+            let key = entry_inner.next().unwrap().as_str().to_string();
+            let value = parse_value(entry_inner.next().unwrap());
+            (key, value)
+        })
+        .collect();
+    ServerExpr::Insert { model, fields }
+}
+
+fn parse_server_update(pair: pest::iterators::Pair<Rule>) -> ServerExpr {
+    let mut inner = pair.into_inner();
+    let model = inner.next().unwrap().as_str().to_string();
+    let obj = inner.next().unwrap(); // object_lit for "set" fields
+    let set_fields: Vec<(String, Value)> = obj
+        .into_inner()
+        .map(|entry| {
+            let mut entry_inner = entry.into_inner();
+            let key = entry_inner.next().unwrap().as_str().to_string();
+            let value = parse_value(entry_inner.next().unwrap());
+            (key, value)
+        })
+        .collect();
+    let conditions = inner
+        .next()
+        .map(|where_pair| parse_query_conditions(where_pair))
+        .unwrap_or_default();
+    ServerExpr::Update {
+        model,
+        set_fields,
+        conditions,
+    }
+}
+
+fn parse_server_delete(pair: pest::iterators::Pair<Rule>) -> ServerExpr {
+    let mut inner = pair.into_inner();
+    let model = inner.next().unwrap().as_str().to_string();
+    let conditions = inner
+        .next()
+        .map(|where_pair| parse_query_conditions(where_pair))
+        .unwrap_or_default();
+    ServerExpr::Delete { model, conditions }
+}
+
+fn parse_query_conditions(where_pair: pest::iterators::Pair<Rule>) -> Vec<QueryCondition> {
+    where_pair
+        .into_inner()
+        .filter(|p| p.as_rule() == Rule::query_condition)
+        .map(|cond_pair| {
+            let mut cond_inner = cond_pair.into_inner();
+            let field = cond_inner.next().unwrap().as_str().to_string();
+            let op = cond_inner.next().unwrap().as_str().to_string();
+            let value = parse_pipe_expression(cond_inner.next().unwrap());
+            QueryCondition { field, op, value }
+        })
+        .collect()
+}
+
+fn parse_server_data(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let func_name = inner.next().unwrap().as_str().to_string();
+    let mut args = Vec::new();
+    for p in inner {
+        if p.as_rule() == Rule::call_args {
+            args = p.into_inner().map(parse_expression).collect();
+        }
+    }
+    Node::ServerData {
+        name,
+        func_name,
+        args,
+        span,
+    }
+}
+
+fn parse_prompt_stmt(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let provider = inner.next().unwrap().as_str().to_string();
+    let mut props = Vec::new();
+    if let Some(block) = inner.next() {
+        if block.as_rule() == Rule::prompt_block {
+            for prop_pair in block.into_inner() {
+                if prop_pair.as_rule() == Rule::prompt_prop {
+                    let mut prop_inner = prop_pair.into_inner();
+                    let key = prop_inner.next().unwrap().as_str().to_string();
+                    let val = parse_value(prop_inner.next().unwrap());
+                    props.push((key, val));
+                }
+            }
+        }
+    }
+    Node::Prompt {
+        name,
+        provider,
+        props,
         span,
     }
 }
@@ -713,6 +1087,17 @@ fn parse_use(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
     let path_pair = pair.into_inner().next().unwrap();
     let path: Vec<String> = path_pair.as_str().split('/').map(String::from).collect();
     Node::UseStmt { path, span }
+}
+
+fn parse_import(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
+    let span = span_from_pair(&pair, file);
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let source = match parse_string_lit(inner.next().unwrap()) {
+        Value::Str(s) => s,
+        _ => String::new(),
+    };
+    Node::Import { name, source, span }
 }
 
 fn parse_element(pair: pest::iterators::Pair<Rule>, file: &str) -> Node {
@@ -899,16 +1284,24 @@ fn parse_block(pair: pest::iterators::Pair<Rule>, file: &str) -> BlockContents {
             Rule::page_block => nodes.push(parse_page(p, file)),
             Rule::component_def => nodes.push(parse_component(p, file)),
             Rule::template_def => nodes.push(parse_template(p, file)),
+            Rule::import_stmt => nodes.push(parse_import(p, file)),
             Rule::use_stmt => nodes.push(parse_use(p, file)),
             Rule::let_stmt => nodes.push(parse_let(p, file)),
             Rule::state_stmt => nodes.push(parse_state(p, file)),
             Rule::shared_state_stmt => nodes.push(parse_shared_state(p, file)),
             Rule::computed_stmt => nodes.push(parse_computed(p, file)),
             Rule::storage_stmt => nodes.push(parse_storage(p, file)),
+            Rule::server_data_stmt => nodes.push(parse_server_data(p, file)),
+            Rule::prompt_stmt => nodes.push(parse_prompt_stmt(p, file)),
             Rule::data_stmt => nodes.push(parse_data(p, file)),
             Rule::timer_stmt => nodes.push(parse_timer(p, file)),
             Rule::param_stmt => nodes.push(parse_param_stmt(p, file)),
+            Rule::server_function_def => nodes.push(parse_server_function(p, file)),
             Rule::function_def => nodes.push(parse_function_def(p, file)),
+            Rule::boundary_stmt => nodes.push(parse_boundary_stmt(p, file)),
+            Rule::meta_stmt => nodes.push(parse_meta_stmt(p, file)),
+            Rule::guard_def => nodes.push(parse_guard_def(p, file)),
+            Rule::model_def => nodes.push(parse_model_def(p, file)),
             Rule::if_stmt => nodes.push(parse_if_stmt(p, file)),
             Rule::match_stmt => nodes.push(parse_match_stmt(p, file)),
             Rule::each_stmt => nodes.push(parse_each_stmt(p, file)),
@@ -1070,6 +1463,19 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
                 icon,
                 span,
             }
+        }
+        Rule::emit_action => {
+            let mut inner = pair.into_inner();
+            let event_name = inner.next().unwrap().as_str().to_string();
+            Action::Emit { event_name, span }
+        }
+        Rule::set_theme_action => {
+            let mut inner = pair.into_inner();
+            let theme_name = match parse_string_lit(inner.next().unwrap()) {
+                Value::Str(s) => s,
+                _ => String::new(),
+            };
+            Action::SetTheme { theme_name, span }
         }
         _ => panic!("unexpected action rule: {:?}", pair.as_rule()),
     }
@@ -1467,6 +1873,32 @@ mod tests {
     }
 
     #[test]
+    fn parse_use_scoped_package() {
+        let source = "use @naze/ui-kit/button\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::UseStmt { path, .. } => {
+                assert_eq!(path, &["@naze", "ui-kit", "button"]);
+            }
+            _ => panic!("expected UseStmt"),
+        }
+    }
+
+    #[test]
+    fn parse_use_scoped_package_minimal() {
+        let source = "use @org/lib\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::UseStmt { path, .. } => {
+                assert_eq!(path, &["@org", "lib"]);
+            }
+            _ => panic!("expected UseStmt"),
+        }
+    }
+
+    #[test]
     fn parse_element_with_props() {
         let source = "rect width: 100px, height: 50px, color: #ff0000\n";
         let nodes = parse(source, "test.naze").unwrap();
@@ -1580,6 +2012,44 @@ mod tests {
                 assert_eq!(children.len(), 1);
             }
             _ => panic!("expected Template"),
+        }
+    }
+
+    #[test]
+    fn parse_emit_action() {
+        let source = "app \"Test\" {\n  rect {\n    on click: emit toggled\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => match &children[0] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    assert_eq!(handlers[0].event, "click");
+                    match &handlers[0].action {
+                        Action::Emit { event_name, .. } => {
+                            assert_eq!(event_name, "toggled");
+                        }
+                        _ => panic!("expected Emit action"),
+                    }
+                }
+                _ => panic!("expected Element"),
+            },
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_custom_event_name() {
+        let source =
+            "app \"Test\" {\n  rect {\n    on toggle-sidebar: set open = true\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => match &children[0] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers[0].event, "toggle-sidebar");
+                }
+                _ => panic!("expected Element"),
+            },
+            _ => panic!("expected App"),
         }
     }
 
@@ -2028,6 +2498,25 @@ mod tests {
     }
 
     #[test]
+    fn parse_data_with_headers() {
+        let source = "data users: fetch \"/api/users\" {\n  headers: { Authorization: \"Bearer abc123\", X-Api-Key: \"key\" }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Data {
+                name, config, ..
+            } => {
+                assert_eq!(name, "users");
+                assert_eq!(config.headers.len(), 2);
+                assert_eq!(config.headers[0].0, "Authorization");
+                assert!(matches!(&config.headers[0].1, Value::Str(s) if s == "Bearer abc123"));
+                assert_eq!(config.headers[1].0, "X-Api-Key");
+            }
+            _ => panic!("expected Data node"),
+        }
+    }
+
+    #[test]
     fn parse_timer_after() {
         let source = "timer dismiss: after 5s {\n  set visible = false\n}\n";
         let nodes = parse(source, "test.naze").unwrap();
@@ -2340,8 +2829,14 @@ mod tests {
         assert_eq!(nodes.len(), 1);
         match &nodes[0] {
             Node::Theme {
-                colors, spacing, ..
+                name,
+                extends,
+                colors,
+                spacing,
+                ..
             } => {
+                assert!(name.is_none());
+                assert!(extends.is_none());
                 assert_eq!(colors.len(), 2);
                 assert_eq!(colors[0].0, "primary");
                 assert_eq!(colors[0].1, 0x2563eb);
@@ -2360,6 +2855,75 @@ mod tests {
     }
 
     #[test]
+    fn parse_named_theme() {
+        let source = r#"theme dark {
+  colors {
+    primary: #60a5fa
+    bg: #1e293b
+  }
+}
+"#;
+        let nodes = parse(source, "theme.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Theme {
+                name,
+                extends,
+                colors,
+                ..
+            } => {
+                assert_eq!(name.as_deref(), Some("dark"));
+                assert!(extends.is_none());
+                assert_eq!(colors.len(), 2);
+                assert_eq!(colors[0].0, "primary");
+            }
+            other => panic!("expected Theme, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_theme_extends() {
+        let source = r#"theme dark extends light {
+  colors {
+    bg: #1e293b
+  }
+}
+"#;
+        let nodes = parse(source, "theme.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Theme {
+                name, extends, ..
+            } => {
+                assert_eq!(name.as_deref(), Some("dark"));
+                assert_eq!(extends.as_deref(), Some("light"));
+            }
+            other => panic!("expected Theme, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_set_theme_action() {
+        let source = "app \"Test\" {\n  rect {\n    on click: set-theme \"dark\"\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::App { children, .. } => match &children[0] {
+                Node::Element { handlers, .. } => {
+                    assert_eq!(handlers.len(), 1);
+                    match &handlers[0].action {
+                        Action::SetTheme { theme_name, .. } => {
+                            assert_eq!(theme_name, "dark");
+                        }
+                        _ => panic!("expected SetTheme action"),
+                    }
+                }
+                _ => panic!("expected Element"),
+            },
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
     fn parse_page_block() {
         let source = r#"page "/about" {
   heading "About Page"
@@ -2374,6 +2938,76 @@ mod tests {
                 assert_eq!(children.len(), 2);
             }
             other => panic!("expected Page, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_dynamic_page_block() {
+        let source = r#"page "/posts/:id" {
+  heading "Post Detail"
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Page { path, params, children, .. } => {
+                assert_eq!(path, "/posts/:id");
+                assert_eq!(params, &vec!["id".to_string()]);
+                assert_eq!(children.len(), 1);
+            }
+            other => panic!("expected Page, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_catch_all_page() {
+        let source = r#"page "/*" {
+  text "Not found"
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Page { path, params, .. } => {
+                assert_eq!(path, "/*");
+                assert!(params.is_empty());
+            }
+            other => panic!("expected Page, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_multi_param_page() {
+        let source = r#"page "/users/:userId/posts/:postId" {
+  text "User post"
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Page { path, params, .. } => {
+                assert_eq!(path, "/users/:userId/posts/:postId");
+                assert_eq!(params, &vec!["userId".to_string(), "postId".to_string()]);
+            }
+            other => panic!("expected Page, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parse_boundary_stmt() {
+        let source = r#"boundary {
+  data users: fetch "https://api.example.com/users"
+  text "Users loaded"
+} catch {
+  text "Something went wrong"
+}
+"#;
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Boundary { children, catch_children, .. } => {
+                assert_eq!(children.len(), 2); // data + text
+                assert_eq!(catch_children.len(), 1); // text
+            }
+            other => panic!("expected Boundary, got {:?}", other),
         }
     }
 
@@ -2928,6 +3562,537 @@ mod tests {
                 assert!(matches!(expr, Expression::BinOp { .. }));
             }
             _ => panic!("expected Computed node"),
+        }
+    }
+
+    #[test]
+    fn parse_import_stmt() {
+        let source = "import crypto from \"./lib/crypto.wasm\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Import { name, source, .. } => {
+                assert_eq!(name, "crypto");
+                assert_eq!(source, "./lib/crypto.wasm");
+            }
+            _ => panic!("expected Import, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_import_scoped_package() {
+        let source = "import math from \"@naze/math\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Import { name, source, .. } => {
+                assert_eq!(name, "math");
+                assert_eq!(source, "@naze/math");
+            }
+            _ => panic!("expected Import"),
+        }
+    }
+
+    #[test]
+    fn parse_qualified_function_call() {
+        let source = "computed total = crypto.hash(x)\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::Computed { name, expr, .. } => {
+                assert_eq!(name, "total");
+                match expr {
+                    Expression::FunctionCall { name, args } => {
+                        assert_eq!(name, "crypto.hash");
+                        assert_eq!(args.len(), 1);
+                    }
+                    _ => panic!("expected FunctionCall, got {:?}", expr),
+                }
+            }
+            _ => panic!("expected Computed"),
+        }
+    }
+
+    #[test]
+    fn parse_server_function_def() {
+        let source = "server function add(x: number, y: number) {\n  x + y\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerFunction {
+                name,
+                params,
+                body,
+                ..
+            } => {
+                assert_eq!(name, "add");
+                assert_eq!(params.len(), 2);
+                assert_eq!(params[0].name, "x");
+                assert_eq!(params[1].name, "y");
+                assert!(body.lets.is_empty());
+                match &body.result {
+                    Expression::BinOp { op, .. } => {
+                        assert!(matches!(op, BinOp::Add));
+                    }
+                    _ => panic!("expected BinOp, got {:?}", body.result),
+                }
+            }
+            _ => panic!("expected ServerFunction, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_server_function_no_params() {
+        let source = "server function get-config() {\n  42\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerFunction {
+                name, params, body, ..
+            } => {
+                assert_eq!(name, "get-config");
+                assert_eq!(params.len(), 0);
+                assert!(body.lets.is_empty());
+                match &body.result {
+                    Expression::Literal(Value::Num(n, _)) => assert_eq!(*n, 42.0),
+                    _ => panic!("expected Num literal, got {:?}", body.result),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    #[test]
+    fn parse_server_function_with_lets() {
+        let source = "server function get-user(id: number) {\n  let user = fetch \"https://api.example.com/users/{id}\"\n  let name = user.name\n  name\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerFunction {
+                name, params, body, ..
+            } => {
+                assert_eq!(name, "get-user");
+                assert_eq!(params.len(), 1);
+                assert_eq!(params[0].name, "id");
+                assert_eq!(body.lets.len(), 2);
+                assert_eq!(body.lets[0].0, "user");
+                assert!(matches!(body.lets[0].1, ServerExpr::Fetch(_)));
+                assert_eq!(body.lets[1].0, "name");
+                assert!(matches!(body.lets[1].1, ServerExpr::Expr(_)));
+                assert!(matches!(body.result, Expression::StateRef(_)));
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    #[test]
+    fn parse_meta_stmt() {
+        let source = "meta title: \"My Page\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Meta { key, value, .. } => {
+                assert_eq!(key, "title");
+                match value {
+                    Value::Str(s) => assert_eq!(s, "My Page"),
+                    _ => panic!("expected Str value, got {:?}", value),
+                }
+            }
+            _ => panic!("expected Meta, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_meta_in_page_block() {
+        let source = "page \"/about\" {\n  meta title: \"About Us\"\n  meta description: \"Our company info\"\n  text \"hello\"\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Page { children, .. } => {
+                // meta + meta + text = 3 children
+                assert_eq!(children.len(), 3);
+                assert!(matches!(&children[0], Node::Meta { key, .. } if key == "title"));
+                assert!(matches!(&children[1], Node::Meta { key, .. } if key == "description"));
+                assert!(matches!(&children[2], Node::Element { name, .. } if name == "text"));
+            }
+            _ => panic!("expected Page"),
+        }
+    }
+
+    #[test]
+    fn parse_server_data_stmt() {
+        let source = "data result: add(1, 2)\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerData {
+                name,
+                func_name,
+                args,
+                ..
+            } => {
+                assert_eq!(name, "result");
+                assert_eq!(func_name, "add");
+                assert_eq!(args.len(), 2);
+            }
+            _ => panic!("expected ServerData, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_server_data_no_args() {
+        let source = "data config: get-config()\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerData {
+                name,
+                func_name,
+                args,
+                ..
+            } => {
+                assert_eq!(name, "config");
+                assert_eq!(func_name, "get-config");
+                assert_eq!(args.len(), 0);
+            }
+            _ => panic!("expected ServerData"),
+        }
+    }
+
+    #[test]
+    fn parse_prompt_all_props() {
+        let source = "prompt summary: from openai {\n  system: \"Summarize concisely.\"\n  user: \"Tell me about {topic}\"\n  model: \"gpt-4o\"\n  max-tokens: 500\n  temperature: 0.7\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Prompt {
+                name,
+                provider,
+                props,
+                ..
+            } => {
+                assert_eq!(name, "summary");
+                assert_eq!(provider, "openai");
+                assert_eq!(props.len(), 5);
+                assert_eq!(props[0].0, "system");
+                assert_eq!(props[2].0, "model");
+                assert_eq!(props[3].0, "max-tokens");
+                assert_eq!(props[4].0, "temperature");
+            }
+            _ => panic!("expected Prompt, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_prompt_minimal() {
+        let source = "prompt answer: from ollama {\n  system: \"You are helpful.\"\n  user: \"Hello\"\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Prompt {
+                name,
+                provider,
+                props,
+                ..
+            } => {
+                assert_eq!(name, "answer");
+                assert_eq!(provider, "ollama");
+                assert_eq!(props.len(), 2);
+            }
+            _ => panic!("expected Prompt"),
+        }
+    }
+
+    #[test]
+    fn parse_prompt_in_app() {
+        let source = "app \"AI Test\" {\n  prompt reply: from anthropic {\n    system: \"Be concise.\"\n    user: \"Hi\"\n  }\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::App { children, .. } => {
+                assert_eq!(children.len(), 1);
+                match &children[0] {
+                    Node::Prompt { name, provider, .. } => {
+                        assert_eq!(name, "reply");
+                        assert_eq!(provider, "anthropic");
+                    }
+                    _ => panic!("expected Prompt in app"),
+                }
+            }
+            _ => panic!("expected App"),
+        }
+    }
+
+    #[test]
+    fn parse_guard_def() {
+        let source = "guard is-admin\n  check auth-token == false redirect \"/login\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Guard { name, checks, .. } => {
+                assert_eq!(name, "is-admin");
+                assert_eq!(checks.len(), 1);
+                assert_eq!(checks[0].redirect, "/login");
+            }
+            _ => panic!("expected Guard, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_guard_multiple_checks() {
+        let source = "guard require-auth\n  check logged-in == false redirect \"/login\"\n  check is-verified == false redirect \"/verify\"\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Guard { name, checks, .. } => {
+                assert_eq!(name, "require-auth");
+                assert_eq!(checks.len(), 2);
+                assert_eq!(checks[0].redirect, "/login");
+                assert_eq!(checks[1].redirect, "/verify");
+            }
+            _ => panic!("expected Guard"),
+        }
+    }
+
+    #[test]
+    fn parse_page_with_guard() {
+        let source = "page \"/admin\" guard: is-admin {\n  text \"Admin Panel\"\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Page { path, guard, children, .. } => {
+                assert_eq!(path, "/admin");
+                assert_eq!(guard.as_deref(), Some("is-admin"));
+                assert_eq!(children.len(), 1);
+            }
+            _ => panic!("expected Page, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_page_without_guard() {
+        let source = "page \"/about\" {\n  text \"About\"\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Page { guard, .. } => {
+                assert!(guard.is_none());
+            }
+            _ => panic!("expected Page"),
+        }
+    }
+
+    #[test]
+    fn parse_server_function_with_sql() {
+        let source = "server function get-users(limit: number) {\n  let users = sql \"SELECT id, name FROM users LIMIT $1\" [limit]\n  users\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerFunction { name, params, body, .. } => {
+                assert_eq!(name, "get-users");
+                assert_eq!(params.len(), 1);
+                assert_eq!(body.lets.len(), 1);
+                assert_eq!(body.lets[0].0, "users");
+                match &body.lets[0].1 {
+                    ServerExpr::Sql { query, params } => {
+                        assert_eq!(query, "SELECT id, name FROM users LIMIT $1");
+                        assert_eq!(params.len(), 1);
+                    }
+                    _ => panic!("expected ServerExpr::Sql"),
+                }
+            }
+            _ => panic!("expected ServerFunction, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_server_function_sql_no_params() {
+        let source = "server function get-all() {\n  let rows = sql \"SELECT * FROM items\"\n  rows\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerFunction { body, .. } => {
+                assert_eq!(body.lets.len(), 1);
+                match &body.lets[0].1 {
+                    ServerExpr::Sql { query, params } => {
+                        assert_eq!(query, "SELECT * FROM items");
+                        assert!(params.is_empty());
+                    }
+                    _ => panic!("expected ServerExpr::Sql"),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    // ─── M39: Declarative Database Queries ──────────────────────────────────────
+
+    #[test]
+    fn parse_model_def() {
+        let source = "model users {\n  id number primary\n  name text\n  email text unique\n  active bool\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Model { name, fields, .. } => {
+                assert_eq!(name, "users");
+                assert_eq!(fields.len(), 4);
+                assert_eq!(fields[0].name, "id");
+                assert_eq!(fields[0].field_type, "number");
+                assert!(fields[0].constraints.iter().any(|c| c == "primary"));
+                assert_eq!(fields[1].name, "name");
+                assert_eq!(fields[1].field_type, "text");
+                assert!(fields[1].constraints.is_empty());
+                assert_eq!(fields[2].name, "email");
+                assert_eq!(fields[2].field_type, "text");
+                assert!(fields[2].constraints.iter().any(|c| c == "unique"));
+                assert_eq!(fields[3].name, "active");
+                assert_eq!(fields[3].field_type, "bool");
+            }
+            _ => panic!("expected Model, got {:?}", nodes[0]),
+        }
+    }
+
+    #[test]
+    fn parse_model_with_defaults() {
+        let source = "model posts {\n  id number primary\n  title text\n  published bool default false\n  created-at timestamp default now\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::Model { name, fields, .. } => {
+                assert_eq!(name, "posts");
+                assert_eq!(fields.len(), 4);
+                assert!(fields[2].constraints.iter().any(|c| c == "default:false"));
+                assert!(fields[3].constraints.iter().any(|c| c == "default:now"));
+            }
+            _ => panic!("expected Model"),
+        }
+    }
+
+    #[test]
+    fn parse_find_query() {
+        let source = "server function get-users() {\n  let users = find users where active == true order name limit 10\n  users\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        assert_eq!(nodes.len(), 1);
+        match &nodes[0] {
+            Node::ServerFunction { body, .. } => {
+                assert_eq!(body.lets.len(), 1);
+                match &body.lets[0].1 {
+                    ServerExpr::Find { model, conditions, order, limit } => {
+                        assert_eq!(model, "users");
+                        assert_eq!(conditions.len(), 1);
+                        assert_eq!(conditions[0].field, "active");
+                        assert_eq!(conditions[0].op, "==");
+                        assert!(order.is_some());
+                        let (field, asc) = order.as_ref().unwrap();
+                        assert_eq!(field, "name");
+                        assert!(*asc);
+                        assert!(limit.is_some());
+                    }
+                    _ => panic!("expected ServerExpr::Find"),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    #[test]
+    fn parse_find_no_clauses() {
+        let source = "server function get-all() {\n  let items = find items\n  items\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::ServerFunction { body, .. } => {
+                match &body.lets[0].1 {
+                    ServerExpr::Find { model, conditions, order, limit } => {
+                        assert_eq!(model, "items");
+                        assert!(conditions.is_empty());
+                        assert!(order.is_none());
+                        assert!(limit.is_none());
+                    }
+                    _ => panic!("expected ServerExpr::Find"),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    #[test]
+    fn parse_find_multiple_conditions() {
+        let source = "server function search() {\n  let users = find users where active == true and age > 18\n  users\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::ServerFunction { body, .. } => {
+                match &body.lets[0].1 {
+                    ServerExpr::Find { conditions, .. } => {
+                        assert_eq!(conditions.len(), 2);
+                        assert_eq!(conditions[0].field, "active");
+                        assert_eq!(conditions[0].op, "==");
+                        assert_eq!(conditions[1].field, "age");
+                        assert_eq!(conditions[1].op, ">");
+                    }
+                    _ => panic!("expected ServerExpr::Find"),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    #[test]
+    fn parse_insert_query() {
+        let source = "server function create-user(name: text, email: text) {\n  let user = insert users { name: name, email: email }\n  user\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::ServerFunction { body, .. } => {
+                match &body.lets[0].1 {
+                    ServerExpr::Insert { model, fields } => {
+                        assert_eq!(model, "users");
+                        assert_eq!(fields.len(), 2);
+                        assert_eq!(fields[0].0, "name");
+                        assert_eq!(fields[1].0, "email");
+                    }
+                    _ => panic!("expected ServerExpr::Insert"),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    #[test]
+    fn parse_update_query() {
+        let source = "server function update-user(id: number, name: text) {\n  let result = update users set { name: name } where id == id\n  result\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::ServerFunction { body, .. } => {
+                match &body.lets[0].1 {
+                    ServerExpr::Update { model, set_fields, conditions } => {
+                        assert_eq!(model, "users");
+                        assert_eq!(set_fields.len(), 1);
+                        assert_eq!(set_fields[0].0, "name");
+                        assert_eq!(conditions.len(), 1);
+                        assert_eq!(conditions[0].field, "id");
+                        assert_eq!(conditions[0].op, "==");
+                    }
+                    _ => panic!("expected ServerExpr::Update"),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
+        }
+    }
+
+    #[test]
+    fn parse_delete_query() {
+        let source = "server function remove-user(id: number) {\n  let result = delete users where id == id\n  result\n}\n";
+        let nodes = parse(source, "test.naze").unwrap();
+        match &nodes[0] {
+            Node::ServerFunction { body, .. } => {
+                match &body.lets[0].1 {
+                    ServerExpr::Delete { model, conditions } => {
+                        assert_eq!(model, "users");
+                        assert_eq!(conditions.len(), 1);
+                        assert_eq!(conditions[0].field, "id");
+                    }
+                    _ => panic!("expected ServerExpr::Delete"),
+                }
+            }
+            _ => panic!("expected ServerFunction"),
         }
     }
 }

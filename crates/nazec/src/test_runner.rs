@@ -88,6 +88,12 @@ impl TestEnv {
             params: self.render_tree.params.clone(),
             root: resolved,
             pages: vec![],
+            themes: vec![],
+            imports: vec![],
+            server_functions: vec![],
+            server_calls: vec![],
+            prompts: vec![],
+            guards: vec![],
         };
 
         self.layout = Some(naze_layout::compute_layout(&resolved_tree, 1024.0, 768.0));
@@ -260,7 +266,7 @@ fn compile_naze_file(
     project_dir: &Path,
     entry: &str,
 ) -> Result<RenderTree, String> {
-    let project = naze_compiler::resolve::resolve(project_dir, entry);
+    let project = naze_compiler::resolve::resolve(project_dir, entry, &[]);
 
     // Check for resolution errors
     let has_errors = project.errors.iter().any(|e| {

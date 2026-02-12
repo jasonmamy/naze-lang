@@ -9,6 +9,8 @@ members = [
     "crates/naze-renderer",
     "crates/naze-native",
     "crates/naze-lsp",
+    "crates/naze-registry",
+    "crates/naze-playground",
 ]
 # naze-runtime is WASM-only, exclude from default build
 default-members = [
@@ -20,6 +22,7 @@ default-members = [
     "crates/naze-renderer",
     "crates/naze-native",
     "crates/naze-lsp",
+    "crates/naze-registry",
 ]
 resolver = "2"
 

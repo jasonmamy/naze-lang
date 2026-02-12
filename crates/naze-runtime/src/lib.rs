@@ -46,18 +46,29 @@ struct ScrollState {
 }
 
 /// Easing functions for animations.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 enum EasingFn {
     Linear,
     Ease,      // cubic-bezier(0.25, 0.1, 0.25, 1.0)
     EaseIn,    // cubic-bezier(0.42, 0, 1.0, 1.0)
     EaseOut,   // cubic-bezier(0, 0, 0.58, 1.0)
     EaseInOut, // cubic-bezier(0.42, 0, 0.58, 1.0)
+    CubicBezier(f64, f64, f64, f64), // custom cubic-bezier(x1, y1, x2, y2)
 }
 
 impl EasingFn {
     fn from_str(s: &str) -> Self {
-        match s.trim().to_lowercase().as_str() {
+        let trimmed = s.trim();
+        let lower = trimmed.to_lowercase();
+        // Parse cubic-bezier(x1, y1, x2, y2)
+        if lower.starts_with("cubic-bezier(") && lower.ends_with(')') {
+            let inner = &trimmed[13..trimmed.len() - 1];
+            let params: Vec<f64> = inner.split(',').filter_map(|p| p.trim().parse().ok()).collect();
+            if params.len() == 4 {
+                return EasingFn::CubicBezier(params[0], params[1], params[2], params[3]);
+            }
+        }
+        match lower.as_str() {
             "linear" => EasingFn::Linear,
             "ease" => EasingFn::Ease,
             "ease-in" => EasingFn::EaseIn,
@@ -75,6 +86,7 @@ impl EasingFn {
             EasingFn::EaseIn => cubic_bezier(0.42, 0.0, 1.0, 1.0, t),
             EasingFn::EaseOut => cubic_bezier(0.0, 0.0, 0.58, 1.0, t),
             EasingFn::EaseInOut => cubic_bezier(0.42, 0.0, 0.58, 1.0, t),
+            EasingFn::CubicBezier(x1, y1, x2, y2) => cubic_bezier(*x1, *y1, *x2, *y2, t),
         }
     }
 }
@@ -120,45 +132,270 @@ fn bezier_derivative(p1: f64, p2: f64, t: f64) -> f64 {
     3.0 * mt * mt * p1 + 6.0 * mt * t * (p2 - p1) + 3.0 * t2 * (1.0 - p2)
 }
 
+/// Spring physics state for damped oscillation animations.
+#[derive(Clone, Debug)]
+struct SpringState {
+    position: f64, // 0.0 = start, 1.0 = target
+    velocity: f64,
+}
+
+impl SpringState {
+    fn new() -> Self {
+        SpringState {
+            position: 0.0,
+            velocity: 0.0,
+        }
+    }
+
+    /// Advance the spring simulation by dt_ms milliseconds.
+    /// Returns (clamped_position, settled).
+    fn step(&mut self, dt_ms: f64, stiffness: f64, damping: f64) -> (f64, bool) {
+        let dt = dt_ms / 1000.0; // Convert to seconds
+        let force = -stiffness * (self.position - 1.0) - damping * self.velocity;
+        self.velocity += force * dt;
+        self.position += self.velocity * dt;
+        let settled =
+            (self.position - 1.0).abs() < 0.001 && self.velocity.abs() < 0.001;
+        (self.position.clamp(-0.5, 2.0), settled)
+    }
+}
+
+/// Animation driver — determines how progress is computed.
+#[derive(Clone, Debug)]
+enum AnimDriver {
+    /// Fixed-duration with easing curve.
+    Timed {
+        duration_ms: f64,
+        easing: EasingFn,
+    },
+    /// Spring physics — runs until settled.
+    Spring {
+        stiffness: f64,
+        damping: f64,
+        state: SpringState,
+        last_time: f64,
+    },
+    /// Multi-value keyframe sequence.
+    Keyframe {
+        values: Vec<AnimValue>,
+        duration_ms: f64,
+        easing: EasingFn,
+    },
+}
+
+/// Spec for how an animation is driven.
+#[derive(Clone, Debug)]
+enum AnimDriverSpec {
+    Timed { duration_ms: f64, easing: EasingFn },
+    Spring { stiffness: f64, damping: f64 },
+}
+
 /// Parsed transition specification.
 #[derive(Clone, Debug)]
 struct TransitionSpec {
     property: String, // e.g., "color", "opacity", "background"
-    duration_ms: f64, // Duration in milliseconds
-    easing: EasingFn,
+    driver: AnimDriverSpec,
 }
 
 impl TransitionSpec {
-    /// Parse transition string: "color 150ms ease" or "opacity 200ms linear"
+    /// Parse transition string.
+    /// Formats:
+    ///   "color 150ms ease"
+    ///   "opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)"
+    ///   "color spring(300, 20)"
     fn parse(s: &str) -> Option<Self> {
-        let parts: Vec<&str> = s.split_whitespace().collect();
-        if parts.is_empty() {
+        let s = s.trim();
+        if s.is_empty() {
             return None;
         }
-        let property = parts[0].to_string();
-        let mut duration_ms = 200.0; // Default 200ms
+
+        // Extract property name (first token)
+        let first_space = s.find(' ')?;
+        let property = s[..first_space].to_string();
+        let rest = s[first_space..].trim();
+
+        // Check for spring(stiffness, damping)
+        if let Some(spring_start) = rest.find("spring(") {
+            let after_spring = &rest[spring_start + 7..];
+            if let Some(paren_end) = after_spring.find(')') {
+                let params: Vec<f64> = after_spring[..paren_end]
+                    .split(',')
+                    .filter_map(|p| p.trim().parse().ok())
+                    .collect();
+                if params.len() == 2 {
+                    return Some(TransitionSpec {
+                        property,
+                        driver: AnimDriverSpec::Spring {
+                            stiffness: params[0],
+                            damping: params[1],
+                        },
+                    });
+                }
+            }
+        }
+
+        // Timed animation: parse duration + easing
+        let mut duration_ms = 200.0;
         let mut easing = EasingFn::Ease;
 
-        for part in parts.iter().skip(1) {
-            if part.ends_with("ms") {
-                if let Ok(d) = part.trim_end_matches("ms").parse::<f64>() {
+        // Reassemble rest to handle cubic-bezier(...) as a single token
+        // Split on whitespace but rejoin cubic-bezier tokens
+        let tokens = tokenize_transition(rest);
+        for token in &tokens {
+            if token.ends_with("ms") {
+                if let Ok(d) = token.trim_end_matches("ms").parse::<f64>() {
                     duration_ms = d;
                 }
-            } else if part.ends_with('s') && !part.ends_with("ms") {
-                if let Ok(d) = part.trim_end_matches('s').parse::<f64>() {
+            } else if token.ends_with('s') && !token.ends_with("ms") {
+                if let Ok(d) = token.trim_end_matches('s').parse::<f64>() {
                     duration_ms = d * 1000.0;
                 }
             } else {
-                easing = EasingFn::from_str(part);
+                easing = EasingFn::from_str(token);
             }
         }
 
         Some(TransitionSpec {
             property,
+            driver: AnimDriverSpec::Timed {
+                duration_ms,
+                easing,
+            },
+        })
+    }
+}
+
+/// Tokenize a transition string, keeping `cubic-bezier(...)` as a single token.
+fn tokenize_transition(s: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut chars = s.chars().peekable();
+    let mut current = String::new();
+
+    while let Some(&ch) = chars.peek() {
+        if ch == '(' {
+            // Consume until matching ')'
+            current.push(ch);
+            chars.next();
+            while let Some(&inner) = chars.peek() {
+                current.push(inner);
+                chars.next();
+                if inner == ')' {
+                    break;
+                }
+            }
+        } else if ch.is_whitespace() {
+            if !current.is_empty() {
+                tokens.push(current.clone());
+                current.clear();
+            }
+            chars.next();
+        } else {
+            current.push(ch);
+            chars.next();
+        }
+    }
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+    tokens
+}
+
+/// Parsed keyframe animation specification.
+#[derive(Clone, Debug)]
+struct KeyframeSpec {
+    property: String,       // e.g., "scale", "opacity", "color"
+    values: Vec<AnimValue>, // Keyframe stops (min 2)
+    duration_ms: f64,
+    easing: EasingFn,
+}
+
+impl KeyframeSpec {
+    /// Parse: "scale [1, 1.2, 0.95, 1] 400ms ease-in-out"
+    /// or:   "opacity [0, 1] 200ms ease"
+    /// or:   "color [#ff0000, #00ff00, #0000ff] 1s linear"
+    fn parse(s: &str) -> Option<Self> {
+        let s = s.trim();
+        if s.is_empty() {
+            return None;
+        }
+
+        // Extract property name (first token before space or '[')
+        let prop_end = s.find(|c: char| c.is_whitespace() || c == '[')?;
+        let property = s[..prop_end].trim().to_string();
+        let rest = s[prop_end..].trim();
+
+        // Extract values between [ and ]
+        let bracket_start = rest.find('[')?;
+        let bracket_end = rest.find(']')?;
+        let values_str = &rest[bracket_start + 1..bracket_end];
+        let values: Vec<AnimValue> = values_str
+            .split(',')
+            .filter_map(|v| {
+                let v = v.trim();
+                if v.starts_with('#') && v.len() == 7 {
+                    u32::from_str_radix(&v[1..], 16)
+                        .ok()
+                        .map(AnimValue::Color)
+                } else {
+                    v.parse::<f64>().ok().map(AnimValue::Number)
+                }
+            })
+            .collect();
+
+        if values.len() < 2 {
+            return None;
+        }
+
+        // Parse duration + easing from remainder after ']'
+        let after_bracket = rest[bracket_end + 1..].trim();
+        let mut duration_ms = 400.0; // Default
+        let mut easing = EasingFn::Ease;
+
+        let tokens = tokenize_transition(after_bracket);
+        for token in &tokens {
+            if token.ends_with("ms") {
+                if let Ok(d) = token.trim_end_matches("ms").parse::<f64>() {
+                    duration_ms = d;
+                }
+            } else if token.ends_with('s') && !token.ends_with("ms") {
+                if let Ok(d) = token.trim_end_matches('s').parse::<f64>() {
+                    duration_ms = d * 1000.0;
+                }
+            } else {
+                easing = EasingFn::from_str(token);
+            }
+        }
+
+        Some(KeyframeSpec {
+            property,
+            values,
             duration_ms,
             easing,
         })
     }
+}
+
+/// Split an animate prop value on commas that are outside brackets.
+/// e.g., "scale [1, 1.2, 1] 400ms, opacity [0, 1] 200ms" → ["scale [1, 1.2, 1] 400ms", "opacity [0, 1] 200ms"]
+fn split_animate_specs(s: &str) -> Vec<&str> {
+    let mut result = Vec::new();
+    let mut depth = 0;
+    let mut start = 0;
+    for (i, ch) in s.char_indices() {
+        match ch {
+            '[' => depth += 1,
+            ']' => depth -= 1,
+            ',' if depth == 0 => {
+                result.push(&s[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if start < s.len() {
+        result.push(&s[start..]);
+    }
+    result
 }
 
 /// An active animation for a specific element property.
@@ -169,8 +406,7 @@ struct ActiveAnimation {
     start_value: AnimValue, // Starting value
     end_value: AnimValue,   // Target value
     start_time: f64,        // Animation start time (performance.now())
-    duration_ms: f64,       // Duration in milliseconds
-    easing: EasingFn,
+    driver: AnimDriver,
 }
 
 /// Values that can be animated.
@@ -213,6 +449,30 @@ impl AnimValue {
 }
 
 /// Persistent app state for the render loop.
+/// Inspector event log entry.
+#[derive(Clone)]
+struct EventRecord {
+    timestamp_ms: f64,
+    event_type: String,
+    target_kind: String,
+    target_path: String,
+    state_changes: Vec<(String, String, String)>, // (var, old_val, new_val)
+}
+
+/// Inspector network log entry.
+#[derive(Clone)]
+struct NetworkRecord {
+    timestamp_ms: f64,
+    url: String,
+    method: String,
+    status: u16,
+    duration_ms: f64,
+    preview: String,
+}
+
+const MAX_EVENT_LOG: usize = 200;
+const MAX_NETWORK_LOG: usize = 100;
+
 struct App {
     render_tree: RenderTree,
     state_store: HashMap<String, RenderValue>,
@@ -231,6 +491,17 @@ struct App {
     caret_interval_id: Option<i32>,   // setInterval ID for caret blinking
     drag_state: Option<DragState>,    // Active drag operation
     scroll_states: HashMap<String, ScrollState>, // Scroll position per container
+    // Touch scroll state
+    touch_start_x: f32,
+    touch_start_y: f32,
+    touch_scroll_id: Option<String>,
+    touch_identifier: Option<i32>,
+    // Accessibility: previous text content for live region announcements
+    prev_a11y_texts: Vec<String>,
+    // Inspector state
+    highlight_path: Option<String>,
+    event_log: Vec<EventRecord>,
+    network_log: Vec<NetworkRecord>,
 }
 
 thread_local! {
@@ -267,6 +538,26 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
         state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
     }
 
+    // 3a2. Initialize server call state variables (same three-state pattern)
+    for call in &render_tree.server_calls {
+        state_store.insert(format!("{}.loading", call.name), RenderValue::Bool(true));
+        state_store.insert(
+            format!("{}.error", call.name),
+            RenderValue::Str(String::new()),
+        );
+        state_store.insert(format!("{}.data", call.name), RenderValue::List(vec![]));
+    }
+
+    // 3a3. Initialize prompt state variables (same three-state pattern)
+    for prompt in &render_tree.prompts {
+        state_store.insert(format!("{}.loading", prompt.name), RenderValue::Bool(true));
+        state_store.insert(
+            format!("{}.error", prompt.name),
+            RenderValue::Str(String::new()),
+        );
+        state_store.insert(format!("{}.data", prompt.name), RenderValue::Str(String::new()));
+    }
+
     // 3b. Initialize storage-backed state (read from localStorage/sessionStorage)
     init_storage(&render_tree.storage, &mut state_store);
 
@@ -298,6 +589,30 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
         .map(|d| (d.name.clone(), d.url.clone()))
         .collect();
 
+    // 6c. Collect server call declarations (evaluate args against current state)
+    let server_calls: Vec<(String, String, Vec<RenderValue>)> = render_tree
+        .server_calls
+        .iter()
+        .map(|call| {
+            let args: Vec<RenderValue> = call
+                .args
+                .iter()
+                .map(|a| evaluate_expr(a, &state_store))
+                .collect();
+            (call.name.clone(), call.func_name.clone(), args)
+        })
+        .collect();
+
+    // 6d. Collect prompt declarations with interpolation vars from current state
+    let prompt_calls: Vec<(String, HashMap<String, String>)> = render_tree
+        .prompts
+        .iter()
+        .map(|p| {
+            let vars = collect_prompt_vars(&p.system, &p.user, &state_store);
+            (p.name.clone(), vars)
+        })
+        .collect();
+
     // 7. Store in global for render loop and future event handlers
     APP.with(|cell| {
         *cell.borrow_mut() = Some(App {
@@ -317,6 +632,14 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
             caret_interval_id: None,
             drag_state: None,
             scroll_states: HashMap::new(),
+            touch_start_x: 0.0,
+            touch_start_y: 0.0,
+            touch_scroll_id: None,
+            touch_identifier: None,
+            prev_a11y_texts: Vec::new(),
+            highlight_path: None,
+            event_log: Vec::new(),
+            network_log: Vec::new(),
         });
     });
 
@@ -343,6 +666,16 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
     // 13b. Connect WebSocket/SSE streams
     for (name, url) in stream_connects {
         connect_stream(&name, &url);
+    }
+
+    // 13c. Fire off server function calls
+    for (name, func_name, args) in server_calls {
+        call_server_function(&name, &func_name, args);
+    }
+
+    // 13d. Fire off prompt calls
+    for (name, vars) in prompt_calls {
+        call_prompt(&name, vars);
     }
 
     // 14. Set up timers
@@ -393,6 +726,26 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
         state_store.insert(format!("{}.data", decl.name), RenderValue::List(vec![]));
     }
 
+    // 2b2. Initialize server call state variables
+    for call in &render_tree.server_calls {
+        state_store.insert(format!("{}.loading", call.name), RenderValue::Bool(true));
+        state_store.insert(
+            format!("{}.error", call.name),
+            RenderValue::Str(String::new()),
+        );
+        state_store.insert(format!("{}.data", call.name), RenderValue::List(vec![]));
+    }
+
+    // 2b3. Initialize prompt state variables
+    for prompt in &render_tree.prompts {
+        state_store.insert(format!("{}.loading", prompt.name), RenderValue::Bool(true));
+        state_store.insert(
+            format!("{}.error", prompt.name),
+            RenderValue::Str(String::new()),
+        );
+        state_store.insert(format!("{}.data", prompt.name), RenderValue::Str(String::new()));
+    }
+
     // 2c. Initialize storage-backed state
     init_storage(&render_tree.storage, &mut state_store);
 
@@ -401,6 +754,30 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
 
     // 2e. Evaluate computed values
     recompute_computed(&render_tree.computed, &mut state_store);
+
+    // 2f. Collect server calls to fire after state update
+    let server_calls: Vec<(String, String, Vec<RenderValue>)> = render_tree
+        .server_calls
+        .iter()
+        .map(|call| {
+            let args: Vec<RenderValue> = call
+                .args
+                .iter()
+                .map(|a| evaluate_expr(a, &state_store))
+                .collect();
+            (call.name.clone(), call.func_name.clone(), args)
+        })
+        .collect();
+
+    // 2g. Collect prompt declarations with interpolation vars
+    let prompt_calls: Vec<(String, HashMap<String, String>)> = render_tree
+        .prompts
+        .iter()
+        .map(|p| {
+            let vars = collect_prompt_vars(&p.system, &p.user, &state_store);
+            (p.name.clone(), vars)
+        })
+        .collect();
 
     // 3. Update global app state
     APP.with(|cell| {
@@ -426,6 +803,9 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
             app.scroll_states.clear(); // Clear scroll positions
             app.animations.clear(); // Clear running animations
             app.prev_props.clear(); // Clear previous prop values for animations
+            app.touch_scroll_id = None; // Clear touch scroll state
+            app.touch_identifier = None;
+            app.prev_a11y_texts.clear(); // Reset live region tracking
         }
     });
 
@@ -435,7 +815,486 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
     // 4. Re-render with new content
     do_render()?;
 
+    // 5. Fire off server function calls
+    for (name, func_name, args) in server_calls {
+        call_server_function(&name, &func_name, args);
+    }
+
+    // 5b. Fire off prompt calls
+    for (name, vars) in prompt_calls {
+        call_prompt(&name, vars);
+    }
+
     Ok(())
+}
+
+// ─── Inspector exports ──────────────────────────────────────────────────────
+
+/// Return the node tree as JSON for the inspector panel.
+#[wasm_bindgen]
+pub fn inspector_get_tree() -> String {
+    APP.with(|cell| {
+        let borrow = cell.borrow();
+        let app = match borrow.as_ref() {
+            Some(a) => a,
+            None => return "null".into(),
+        };
+
+        // Use the resolved + layout tree for accurate display
+        let resolved = resolve_tree(&app.render_tree, &app.state_store);
+        let (page_nodes, _params) = get_page_nodes(&resolved, &app.current_path);
+        let combined: Vec<RenderNode> = if resolved.pages.is_empty() {
+            resolved.root.clone()
+        } else {
+            let mut c = resolved.root.clone();
+            c.extend(page_nodes.iter().cloned());
+            c
+        };
+
+        let mut json = String::with_capacity(4096);
+        json.push('[');
+        for (i, node) in combined.iter().enumerate() {
+            if i > 0 { json.push(','); }
+            node_to_json(node, &mut json, "".into(), i);
+        }
+        json.push(']');
+        json
+    })
+}
+
+/// Return all state variables as JSON for the inspector panel.
+#[wasm_bindgen]
+pub fn inspector_get_state() -> String {
+    APP.with(|cell| {
+        let borrow = cell.borrow();
+        let app = match borrow.as_ref() {
+            Some(a) => a,
+            None => return "{}".into(),
+        };
+
+        let mut json = String::with_capacity(2048);
+        json.push('{');
+        let mut first = true;
+        let mut keys: Vec<&String> = app.state_store.keys().collect();
+        keys.sort();
+        for key in keys {
+            let val = &app.state_store[key];
+            if !first { json.push(','); }
+            first = false;
+            json.push('"');
+            json_escape_into(key, &mut json);
+            json.push_str("\":");
+            render_value_to_json(val, &mut json);
+        }
+        json.push('}');
+        json
+    })
+}
+
+/// Hit-test at canvas coordinates and return node info as JSON.
+#[wasm_bindgen]
+pub fn inspector_node_at(x: f32, y: f32) -> String {
+    APP.with(|cell| {
+        let borrow = cell.borrow();
+        let app = match borrow.as_ref() {
+            Some(a) => a,
+            None => return "null".into(),
+        };
+
+        let layout = match &app.layout {
+            Some(l) => l,
+            None => return "null".into(),
+        };
+
+        // Walk positioned nodes to find deepest hit
+        if let Some(hit) = find_node_at(&layout.root, x, y, String::new()) {
+            let mut json = String::with_capacity(512);
+            json.push_str("{\"kind\":\"");
+            json_escape_into(&hit.kind, &mut json);
+            json.push_str("\",\"path\":\"");
+            json_escape_into(&hit.path, &mut json);
+            json.push_str("\",\"layout\":{\"x\":");
+            json.push_str(&hit.bounds.0.to_string());
+            json.push_str(",\"y\":");
+            json.push_str(&hit.bounds.1.to_string());
+            json.push_str(",\"w\":");
+            json.push_str(&hit.bounds.2.to_string());
+            json.push_str(",\"h\":");
+            json.push_str(&hit.bounds.3.to_string());
+            json.push_str("},\"handlers\":");
+            json.push_str(&hit.handlers_count.to_string());
+            json.push_str(",\"props\":{");
+            let mut first = true;
+            for (k, v) in &hit.props {
+                if !first { json.push(','); }
+                first = false;
+                json.push('"');
+                json_escape_into(k, &mut json);
+                json.push_str("\":");
+                render_value_to_json(v, &mut json);
+            }
+            json.push_str("}}");
+            json
+        } else {
+            "null".into()
+        }
+    })
+}
+
+/// Set or clear the highlighted node path for the inspector overlay.
+#[wasm_bindgen]
+pub fn inspector_set_highlight(path: &str) {
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        if let Some(app) = borrow.as_mut() {
+            if path.is_empty() {
+                app.highlight_path = None;
+            } else {
+                app.highlight_path = Some(path.to_string());
+            }
+            app.raf_pending = false; // Force re-render
+        }
+    });
+    schedule_render();
+}
+
+/// Return the event log as JSON for the inspector debugger.
+#[wasm_bindgen]
+pub fn inspector_get_event_log() -> String {
+    APP.with(|cell| {
+        let borrow = cell.borrow();
+        let app = match borrow.as_ref() {
+            Some(a) => a,
+            None => return "[]".into(),
+        };
+
+        let mut json = String::with_capacity(2048);
+        json.push('[');
+        for (i, evt) in app.event_log.iter().enumerate() {
+            if i > 0 { json.push(','); }
+            json.push_str("{\"t\":");
+            json.push_str(&evt.timestamp_ms.to_string());
+            json.push_str(",\"type\":\"");
+            json_escape_into(&evt.event_type, &mut json);
+            json.push_str("\",\"target\":\"");
+            json_escape_into(&evt.target_kind, &mut json);
+            json.push_str("\",\"path\":\"");
+            json_escape_into(&evt.target_path, &mut json);
+            json.push_str("\",\"changes\":[");
+            for (j, (var, old, new)) in evt.state_changes.iter().enumerate() {
+                if j > 0 { json.push(','); }
+                json.push_str("{\"var\":\"");
+                json_escape_into(var, &mut json);
+                json.push_str("\",\"old\":\"");
+                json_escape_into(old, &mut json);
+                json.push_str("\",\"new\":\"");
+                json_escape_into(new, &mut json);
+                json.push_str("\"}");
+            }
+            json.push_str("]}");
+        }
+        json.push(']');
+        json
+    })
+}
+
+/// Return the network log as JSON for the inspector debugger.
+#[wasm_bindgen]
+pub fn inspector_get_network_log() -> String {
+    APP.with(|cell| {
+        let borrow = cell.borrow();
+        let app = match borrow.as_ref() {
+            Some(a) => a,
+            None => return "[]".into(),
+        };
+
+        let mut json = String::with_capacity(1024);
+        json.push('[');
+        for (i, net) in app.network_log.iter().enumerate() {
+            if i > 0 { json.push(','); }
+            json.push_str("{\"t\":");
+            json.push_str(&net.timestamp_ms.to_string());
+            json.push_str(",\"url\":\"");
+            json_escape_into(&net.url, &mut json);
+            json.push_str("\",\"method\":\"");
+            json_escape_into(&net.method, &mut json);
+            json.push_str("\",\"status\":");
+            json.push_str(&net.status.to_string());
+            json.push_str(",\"ms\":");
+            json.push_str(&net.duration_ms.to_string());
+            json.push_str(",\"preview\":\"");
+            json_escape_into(&net.preview, &mut json);
+            json.push_str("\"}");
+        }
+        json.push(']');
+        json
+    })
+}
+
+// ─── Inspector helpers ─────────────────────────────────────────────────────
+
+/// Convert a RenderNode to JSON for the inspector tree view.
+fn node_to_json(node: &RenderNode, json: &mut String, prefix: String, index: usize) {
+    let path = if prefix.is_empty() {
+        index.to_string()
+    } else {
+        format!("{}.{}", prefix, index)
+    };
+
+    json.push_str("{\"kind\":\"");
+    json_escape_into(&node.kind, json);
+    json.push_str("\",\"path\":\"");
+    json_escape_into(&path, json);
+    json.push_str("\",\"props\":{");
+    let mut first = true;
+    for (k, v) in &node.props {
+        if !first { json.push(','); }
+        first = false;
+        json.push('"');
+        json_escape_into(k, json);
+        json.push_str("\":");
+        render_value_to_json(v, json);
+    }
+    json.push_str("},\"handlers\":");
+    json.push_str(&node.handlers.len().to_string());
+    json.push_str(",\"children\":[");
+    for (i, child) in node.children.iter().enumerate() {
+        if i > 0 { json.push(','); }
+        node_to_json(child, json, path.clone(), i);
+    }
+    json.push_str("]}");
+}
+
+/// Convert a RenderValue to JSON string.
+fn render_value_to_json(val: &RenderValue, json: &mut String) {
+    match val {
+        RenderValue::Str(s) => {
+            json.push('"');
+            json_escape_into(s, json);
+            json.push('"');
+        }
+        RenderValue::Num(n, unit) => {
+            if let Some(u) = unit {
+                json.push('"');
+                json.push_str(&n.to_string());
+                json_escape_into(u, json);
+                json.push('"');
+            } else {
+                json.push_str(&n.to_string());
+            }
+        }
+        RenderValue::Color(c) => {
+            json.push_str(&format!("\"#{:06x}\"", c));
+        }
+        RenderValue::Bool(b) => {
+            json.push_str(if *b { "true" } else { "false" });
+        }
+        RenderValue::InterpolatedStr(parts) => {
+            json.push('"');
+            for part in parts {
+                match part {
+                    naze_ir::TextPart::Literal(s) => json_escape_into(s, json),
+                    naze_ir::TextPart::StateRef(s) => {
+                        json.push_str("{");
+                        json_escape_into(s, json);
+                        json.push_str("}");
+                    }
+                }
+            }
+            json.push('"');
+        }
+        RenderValue::List(items) => {
+            json.push('[');
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 { json.push(','); }
+                render_value_to_json(item, json);
+            }
+            json.push(']');
+        }
+        RenderValue::Object(fields) => {
+            json.push('{');
+            for (i, (k, v)) in fields.iter().enumerate() {
+                if i > 0 { json.push(','); }
+                json.push('"');
+                json_escape_into(k, json);
+                json.push_str("\":");
+                render_value_to_json(v, json);
+            }
+            json.push('}');
+        }
+        RenderValue::Bind(name) => {
+            json.push_str("\"bind:");
+            json_escape_into(name, json);
+            json.push('"');
+        }
+    }
+}
+
+/// Escape a string for JSON output.
+fn json_escape_into(s: &str, out: &mut String) {
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c < '\x20' => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+}
+
+/// Hit info from find_node_at.
+struct HitInfo {
+    kind: String,
+    props: HashMap<String, RenderValue>,
+    handlers_count: usize,
+    path: String,
+    bounds: (f32, f32, f32, f32),
+}
+
+/// Find the deepest node at (x, y) in the positioned node tree.
+fn find_node_at(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+    prefix: String,
+) -> Option<HitInfo> {
+    let mut result = None;
+    for (i, pn) in nodes.iter().enumerate() {
+        let path = if prefix.is_empty() {
+            i.to_string()
+        } else {
+            format!("{}.{}", prefix, i)
+        };
+        let (nx, ny, nw, nh) = (pn.x, pn.y, pn.width, pn.height);
+        if x >= nx && x <= nx + nw && y >= ny && y <= ny + nh {
+            result = Some(HitInfo {
+                kind: pn.kind.clone(),
+                props: pn.props.clone(),
+                handlers_count: pn.handlers.len(),
+                path: path.clone(),
+                bounds: (nx, ny, nw, nh),
+            });
+            // Check children for deeper hit
+            if let Some(deeper) = find_node_at(&pn.children, x, y, path) {
+                result = Some(deeper);
+            }
+        }
+    }
+    result
+}
+
+/// Log an event to the inspector event log (standalone — borrows APP internally).
+#[allow(dead_code)]
+fn log_event(event_type: &str, target_kind: &str, target_path: &str, state_changes: Vec<(String, String, String)>) {
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        if let Some(app) = borrow.as_mut() {
+            log_event_direct(app, event_type, target_kind, target_path, state_changes);
+        }
+    });
+}
+
+/// Log an event directly on a borrowed App (for use within existing APP.with closures).
+fn log_event_direct(app: &mut App, event_type: &str, target_kind: &str, target_path: &str, state_changes: Vec<(String, String, String)>) {
+    let ts = get_now_ms();
+    app.event_log.push(EventRecord {
+        timestamp_ms: ts,
+        event_type: event_type.into(),
+        target_kind: target_kind.into(),
+        target_path: target_path.into(),
+        state_changes,
+    });
+    if app.event_log.len() > MAX_EVENT_LOG {
+        app.event_log.remove(0);
+    }
+}
+
+/// Log a network request to the inspector network log.
+fn log_network(url: &str, method: &str, status: u16, duration_ms: f64, preview: &str) {
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        if let Some(app) = borrow.as_mut() {
+            let ts = get_now_ms();
+            app.network_log.push(NetworkRecord {
+                timestamp_ms: ts,
+                url: url.into(),
+                method: method.into(),
+                status,
+                duration_ms,
+                preview: if preview.len() > 200 {
+                    format!("{}...", &preview[..200])
+                } else {
+                    preview.into()
+                },
+            });
+            if app.network_log.len() > MAX_NETWORK_LOG {
+                app.network_log.remove(0);
+            }
+        }
+    });
+}
+
+/// Snapshot state variables for diff tracking.
+#[allow(dead_code)]
+fn snapshot_state_for_diff(vars: &[&str]) -> HashMap<String, String> {
+    APP.with(|cell| {
+        let borrow = cell.borrow();
+        let app = match borrow.as_ref() {
+            Some(a) => a,
+            None => return HashMap::new(),
+        };
+        let mut snap = HashMap::new();
+        for &var in vars {
+            if let Some(val) = app.state_store.get(var) {
+                snap.insert(var.into(), render_value_brief(val));
+            }
+        }
+        snap
+    })
+}
+
+/// Brief display of a RenderValue for inspector logs.
+#[allow(dead_code)]
+fn render_value_brief(val: &RenderValue) -> String {
+    match val {
+        RenderValue::Str(s) => {
+            if s.len() > 50 { format!("\"{}...\"", &s[..50]) } else { format!("\"{}\"", s) }
+        }
+        RenderValue::Num(n, _) => n.to_string(),
+        RenderValue::Bool(b) => b.to_string(),
+        RenderValue::Color(c) => format!("#{:06x}", c),
+        RenderValue::List(items) => format!("[{} items]", items.len()),
+        RenderValue::Object(fields) => format!("{{{} fields}}", fields.len()),
+        _ => "...".into(),
+    }
+}
+
+/// Find node layout bounds by tree path (e.g., "0.1.2").
+fn find_node_bounds_by_path(
+    nodes: &[PositionedNode],
+    target_path: &str,
+    prefix: &String,
+    _depth: usize,
+) -> Option<(f32, f32, f32, f32)> {
+    for (i, pn) in nodes.iter().enumerate() {
+        let path = if prefix.is_empty() {
+            i.to_string()
+        } else {
+            format!("{}.{}", prefix, i)
+        };
+        if path == target_path {
+            return Some((pn.x, pn.y, pn.width, pn.height));
+        }
+        if target_path.starts_with(&format!("{}.", path)) {
+            if let Some(result) = find_node_bounds_by_path(&pn.children, target_path, &path, _depth + 1) {
+                return Some(result);
+            }
+        }
+    }
+    None
 }
 
 // ─── Render loop ────────────────────────────────────────────────────────────
@@ -474,32 +1333,78 @@ fn parse_transitions(props: &HashMap<String, RenderValue>) -> Vec<TransitionSpec
 }
 
 /// Process animations for a render tree, starting new animations and interpolating values.
-/// Returns (modified_props_by_node_key, has_active_animations).
+/// Returns (modified_props_by_node_key, has_active_animations, all_layout_invariant).
 fn process_animations(
     root: &[RenderNode],
     animations: &mut Vec<ActiveAnimation>,
     prev_props: &mut HashMap<String, HashMap<String, RenderValue>>,
     now: f64,
-) -> (HashMap<String, HashMap<String, RenderValue>>, bool) {
+) -> (HashMap<String, HashMap<String, RenderValue>>, bool, bool) {
     let mut animated_props: HashMap<String, HashMap<String, RenderValue>> = HashMap::new();
 
     // First, remove completed animations
-    animations.retain(|anim| {
-        let elapsed = now - anim.start_time;
-        elapsed < anim.duration_ms
+    animations.retain(|anim| match &anim.driver {
+        AnimDriver::Timed { duration_ms, .. } => {
+            let elapsed = now - anim.start_time;
+            elapsed < *duration_ms
+        }
+        AnimDriver::Spring { state, .. } => {
+            // Springs settle or hard-timeout at 5 seconds
+            let settled =
+                (state.position - 1.0).abs() < 0.001 && state.velocity.abs() < 0.001;
+            let timed_out = (now - anim.start_time) > 5000.0;
+            !settled && !timed_out
+        }
+        AnimDriver::Keyframe { duration_ms, .. } => {
+            let elapsed = now - anim.start_time;
+            elapsed < *duration_ms
+        }
     });
 
     // Compute interpolated values for active animations
-    for anim in animations.iter() {
-        let elapsed = now - anim.start_time;
-        let progress = (elapsed / anim.duration_ms).min(1.0);
-        let eased = anim.easing.apply(progress);
-        let current = anim.start_value.interpolate(&anim.end_value, eased);
+    for anim in animations.iter_mut() {
+        let (current, target_prop) = match &mut anim.driver {
+            AnimDriver::Timed {
+                duration_ms,
+                easing,
+            } => {
+                let elapsed = now - anim.start_time;
+                let progress = (elapsed / *duration_ms).min(1.0);
+                let eased = easing.apply(progress);
+                let val = anim.start_value.interpolate(&anim.end_value, eased);
+                (val.to_render_value(), anim.property.clone())
+            }
+            AnimDriver::Spring {
+                stiffness,
+                damping,
+                state,
+                last_time,
+            } => {
+                let dt = now - *last_time;
+                *last_time = now;
+                let (pos, _settled) = state.step(dt, *stiffness, *damping);
+                let val = anim.start_value.interpolate(&anim.end_value, pos);
+                (val.to_render_value(), anim.property.clone())
+            }
+            AnimDriver::Keyframe {
+                values,
+                duration_ms,
+                easing,
+            } => {
+                let elapsed = now - anim.start_time;
+                let progress = (elapsed / *duration_ms).min(1.0);
+                let eased = easing.apply(progress);
+                let val = interpolate_keyframes(values, eased);
+                let rv = keyframe_to_render_value(&anim.property, &val);
+                let prop = keyframe_target_prop(&anim.property);
+                (rv, prop)
+            }
+        };
 
         animated_props
             .entry(anim.node_key.clone())
             .or_default()
-            .insert(anim.property.clone(), current.to_render_value());
+            .insert(target_prop, current);
     }
 
     // Walk tree to detect new property changes that need animations
@@ -508,7 +1413,52 @@ fn process_animations(
     // Check if we have any active animations
     let has_active = !animations.is_empty();
 
-    (animated_props, has_active)
+    // Check if all animations are layout-invariant (transform/opacity/color only)
+    let layout_invariant = !animations.is_empty()
+        && animations.iter().all(|a| {
+            matches!(
+                a.property.as_str(),
+                "transform"
+                    | "opacity"
+                    | "color"
+                    | "border-color"
+                    | "shadow"
+                    | "scale"
+                    | "rotate"
+            )
+        });
+
+    (animated_props, has_active, layout_invariant)
+}
+
+/// Interpolate between keyframe values at a given progress (0.0-1.0).
+fn interpolate_keyframes(values: &[AnimValue], progress: f64) -> AnimValue {
+    if values.len() < 2 {
+        return values.first().cloned().unwrap_or(AnimValue::Number(0.0));
+    }
+    let n = values.len() - 1;
+    let segment_progress = progress * n as f64;
+    let segment_index = (segment_progress.floor() as usize).min(n - 1);
+    let local_progress = segment_progress - segment_index as f64;
+    values[segment_index].interpolate(&values[segment_index + 1], local_progress)
+}
+
+/// Map keyframe property names to their render prop target.
+fn keyframe_target_prop(property: &str) -> String {
+    match property {
+        "scale" | "rotate" => "transform".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Convert an interpolated keyframe AnimValue to a RenderValue, applying
+/// property-specific formatting (e.g., scale → "scale(N)").
+fn keyframe_to_render_value(property: &str, val: &AnimValue) -> RenderValue {
+    match (property, val) {
+        ("scale", AnimValue::Number(n)) => RenderValue::Str(format!("scale({})", n)),
+        ("rotate", AnimValue::Number(n)) => RenderValue::Str(format!("rotate({}deg)", n)),
+        _ => val.to_render_value(),
+    }
 }
 
 /// Walk the tree to detect property changes and start new animations.
@@ -527,20 +1477,16 @@ fn detect_new_animations(
             format!("{}_{}_{}", parent_key, node.kind, i)
         };
 
-        // Get transitions defined on this node
+        // --- Transition-based animations (value-change driven) ---
         let transitions = parse_transitions(&node.props);
 
         if !transitions.is_empty() {
-            // Get previous props for this node
             let prev = prev_props.entry(node_key.clone()).or_default();
 
             for spec in transitions {
-                // Get current value for the transitioned property
                 if let Some(current_value) = node.props.get(&spec.property) {
-                    // Check if there's a previous value that's different
                     if let Some(prev_value) = prev.get(&spec.property) {
                         if current_value != prev_value {
-                            // Value changed! Check if animatable
                             if let (Some(start), Some(end)) = (
                                 render_value_to_anim(prev_value),
                                 render_value_to_anim(current_value),
@@ -550,22 +1496,74 @@ fn detect_new_animations(
                                     !(a.node_key == node_key && a.property == spec.property)
                                 });
 
-                                // Start new animation
+                                let driver = match spec.driver {
+                                    AnimDriverSpec::Timed {
+                                        duration_ms,
+                                        easing,
+                                    } => AnimDriver::Timed {
+                                        duration_ms,
+                                        easing,
+                                    },
+                                    AnimDriverSpec::Spring {
+                                        stiffness,
+                                        damping,
+                                    } => AnimDriver::Spring {
+                                        stiffness,
+                                        damping,
+                                        state: SpringState::new(),
+                                        last_time: now,
+                                    },
+                                };
+
                                 animations.push(ActiveAnimation {
                                     node_key: node_key.clone(),
                                     property: spec.property.clone(),
                                     start_value: start,
                                     end_value: end,
                                     start_time: now,
-                                    duration_ms: spec.duration_ms,
-                                    easing: spec.easing,
+                                    driver,
                                 });
                             }
                         }
                     }
 
-                    // Update previous value
                     prev.insert(spec.property.clone(), current_value.clone());
+                }
+            }
+        }
+
+        // --- Keyframe animations (trigger on node appearance) ---
+        if let Some(RenderValue::Str(animate_str)) = node.props.get("animate") {
+            // Split on commas that are OUTSIDE brackets
+            for part in split_animate_specs(animate_str) {
+                if let Some(kf) = KeyframeSpec::parse(part.trim()) {
+                    let already_running = animations.iter().any(|a| {
+                        a.node_key == node_key && a.property == kf.property
+                    });
+                    if !already_running {
+                        let first = kf
+                            .values
+                            .first()
+                            .cloned()
+                            .unwrap_or(AnimValue::Number(0.0));
+                        let last = kf
+                            .values
+                            .last()
+                            .cloned()
+                            .unwrap_or(AnimValue::Number(1.0));
+                        animations.push(ActiveAnimation {
+                            node_key: node_key.clone(),
+                            property: kf.property,
+                            start_value: first,
+                            end_value: last,
+                            start_time: now,
+                            driver: AnimDriver::Keyframe {
+                                values: kf.values,
+                                duration_ms: kf.duration_ms,
+                                easing: kf.easing,
+                            },
+                        });
+                    }
                 }
             }
         }
@@ -605,12 +1603,34 @@ fn apply_animated_values(
                 props: new_props,
                 children: apply_animated_values(&node.children, animated_props, &node_key),
                 handlers: node.handlers.clone(),
+                span: node.span.clone(),
                 condition: node.condition.clone(),
                 else_children: node.else_children.clone(),
                 each_binding: node.each_binding.clone(),
             }
         })
         .collect()
+}
+
+/// Apply animated values directly to a positioned layout tree (fast path — no re-layout).
+fn apply_animated_values_to_layout(
+    nodes: &mut Vec<naze_layout::PositionedNode>,
+    animated_props: &HashMap<String, HashMap<String, RenderValue>>,
+    parent_key: &str,
+) {
+    for (i, node) in nodes.iter_mut().enumerate() {
+        let node_key = if let Some(RenderValue::Str(id)) = node.props.get("id") {
+            format!("{}_{}", parent_key, id)
+        } else {
+            format!("{}_{}_{}", parent_key, node.kind, i)
+        };
+        if let Some(node_anims) = animated_props.get(&node_key) {
+            for (prop_name, value) in node_anims {
+                node.props.insert(prop_name.clone(), value.clone());
+            }
+        }
+        apply_animated_values_to_layout(&mut node.children, animated_props, &node_key);
+    }
 }
 
 /// Schedule an animation frame (for continuous animations).
@@ -653,7 +1673,11 @@ fn do_render() -> Result<(), JsValue> {
         let resolved = resolve_tree(&app.render_tree, &app.state_store);
 
         // 2. Build combined tree: root content (headers, nav) + current page content
-        let page_nodes = get_page_nodes(&resolved, &app.current_path);
+        let (page_nodes, route_params) = get_page_nodes(&resolved, &app.current_path);
+        // Inject route params into state store so {params.id} etc. resolve
+        for (name, value) in &route_params {
+            app.state_store.insert(format!("params.{name}"), RenderValue::Str(value.clone()));
+        }
         let combined_root: Vec<RenderNode> = if resolved.pages.is_empty() {
             // Single-page app - just use root
             resolved.root.clone()
@@ -665,7 +1689,7 @@ fn do_render() -> Result<(), JsValue> {
         };
 
         // 2a. Process animations and detect new ones
-        let (animated_props, has_active) = process_animations(
+        let (animated_props, has_active, layout_invariant) = process_animations(
             &combined_root,
             &mut app.animations,
             &mut app.prev_props,
@@ -685,6 +1709,12 @@ fn do_render() -> Result<(), JsValue> {
             params: vec![],
             root: animated_root,
             pages: vec![],
+            themes: resolved.themes.clone(),
+            imports: vec![],
+            server_functions: vec![],
+            server_calls: vec![],
+            prompts: vec![],
+            guards: vec![],
         };
 
         // 3. Get viewport size
@@ -695,8 +1725,14 @@ fn do_render() -> Result<(), JsValue> {
         // 4. Set canvas size to viewport
         app.renderer.set_size(vw as f64, vh as f64);
 
-        // 5. Compute layout
-        let layout = {
+        // 5. Compute layout (or reuse cached layout for layout-invariant animations)
+        let layout = if has_active && layout_invariant && app.layout.is_some() {
+            // Fast path: only transform/opacity/color changed — skip layout, patch props
+            let mut cached = app.layout.as_ref().unwrap().clone();
+            apply_animated_values_to_layout(&mut cached.root, &animated_props, "");
+            apply_animated_values_to_layout(&mut cached.overlays, &animated_props, "");
+            cached
+        } else {
             let renderer = &app.renderer;
             let text_measure = |text: &str, font_size: f32| -> (f32, f32) {
                 let is_heading = font_size > 20.0;
@@ -761,6 +1797,21 @@ fn do_render() -> Result<(), JsValue> {
         // 9. Update screen reader accessibility DOM
         update_a11y_dom(&layout);
 
+        // 9a. Draw inspector highlight overlay if active
+        if let Some(ref highlight_path) = app.highlight_path {
+            if let Some(bounds) = find_node_bounds_by_path(&layout.root, highlight_path, &String::new(), 0) {
+                let (hx, hy, hw, hh) = bounds;
+                // Draw translucent blue fill + blue dashed border
+                app.renderer.draw_rect(
+                    hx as f64, hy as f64, hw as f64, hh as f64,
+                    "rgba(59,130,246,0.1)", 0.0,
+                );
+                app.renderer.draw_drop_highlight(
+                    hx as f64, hy as f64, hw as f64, hh as f64,
+                );
+            }
+        }
+
         // 10. Store layout for hit testing
         app.layout = Some(layout);
 
@@ -822,36 +1873,97 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
             .iter()
             .map(|page| PageDef {
                 path: page.path.clone(),
+                params: page.params.clone(),
+                is_catch_all: page.is_catch_all,
+                guard: page.guard.clone(),
+                meta: page.meta.clone(),
                 root: resolve_nodes(&page.root, state),
             })
             .collect(),
+        themes: tree.themes.clone(),
+        imports: tree.imports.clone(),
+        server_functions: tree.server_functions.clone(),
+        server_calls: tree.server_calls.clone(),
+        prompts: tree.prompts.clone(),
     }
 }
 
 /// Get the content nodes for the current page.
 /// If the app has pages, returns the matching page's content.
 /// Otherwise returns the root nodes.
-fn get_page_nodes<'a>(tree: &'a RenderTree, current_path: &str) -> &'a [RenderNode] {
-    if tree.pages.is_empty() {
-        return &tree.root;
+/// Match a URL path against a route pattern with `:param` segments and `/*` catch-all.
+/// Returns extracted param values as (name, value) pairs if the route matches.
+fn match_route(pattern: &str, actual: &str, params: &[String], is_catch_all: bool) -> Option<Vec<(String, String)>> {
+    if is_catch_all {
+        // Catch-all matches everything — no params extracted
+        return Some(vec![]);
     }
 
-    // Find matching page
-    for page in &tree.pages {
-        if page.path == current_path {
-            return &page.root;
+    let pat_segs: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
+    let act_segs: Vec<&str> = actual.split('/').filter(|s| !s.is_empty()).collect();
+
+    if pat_segs.len() != act_segs.len() {
+        return None;
+    }
+
+    let mut extracted = Vec::new();
+    let mut param_idx = 0;
+
+    for (p, a) in pat_segs.iter().zip(act_segs.iter()) {
+        if p.starts_with(':') {
+            // Dynamic segment — extract value
+            let name = if param_idx < params.len() {
+                params[param_idx].clone()
+            } else {
+                p[1..].to_string()
+            };
+            extracted.push((name, a.to_string()));
+            param_idx += 1;
+        } else if p != a {
+            return None;
         }
     }
 
-    // Try to find "/" page as fallback
+    Some(extracted)
+}
+
+fn get_page_nodes<'a>(tree: &'a RenderTree, current_path: &str) -> (&'a [RenderNode], Vec<(String, String)>) {
+    if tree.pages.is_empty() {
+        return (&tree.root, vec![]);
+    }
+
+    // 1. Try exact match first (fastest path)
+    for page in &tree.pages {
+        if !page.is_catch_all && page.params.is_empty() && page.path == current_path {
+            return (&page.root, vec![]);
+        }
+    }
+
+    // 2. Try dynamic routes (pattern matching)
+    for page in &tree.pages {
+        if !page.params.is_empty() {
+            if let Some(extracted) = match_route(&page.path, current_path, &page.params, false) {
+                return (&page.root, extracted);
+            }
+        }
+    }
+
+    // 3. Try catch-all route
+    for page in &tree.pages {
+        if page.is_catch_all {
+            return (&page.root, vec![]);
+        }
+    }
+
+    // 4. Try "/" page as fallback
     for page in &tree.pages {
         if page.path == "/" {
-            return &page.root;
+            return (&page.root, vec![]);
         }
     }
 
     // Final fallback to root nodes (non-page content like navigation bars)
-    &tree.root
+    (&tree.root, vec![])
 }
 
 fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> Vec<RenderNode> {
@@ -893,6 +2005,7 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                         .collect(),
                     children: resolve_nodes(&node.children, state),
                     handlers: node.handlers.clone(),
+                    span: node.span.clone(),
                     condition: None,
                     else_children: None,
                     each_binding: None,
@@ -1569,6 +2682,65 @@ fn setup_event_listeners() -> Result<(), JsValue> {
         .add_event_listener_with_callback("contextmenu", contextmenu_cb.as_ref().unchecked_ref())?;
     contextmenu_cb.forget();
 
+    // Touch handlers — enable scroll containers on mobile/touch devices
+    let canvas_for_touch = canvas.clone();
+    let touchstart_cb =
+        Closure::<dyn Fn(web_sys::TouchEvent)>::new(move |event: web_sys::TouchEvent| {
+            let touches = event.changed_touches();
+            if touches.length() == 0 {
+                return;
+            }
+            let touch = touches.get(0).unwrap();
+            let rect = canvas_for_touch.get_bounding_client_rect();
+            let x = touch.client_x() as f32 - rect.left() as f32;
+            let y = touch.client_y() as f32 - rect.top() as f32;
+            let captured = handle_touchstart(x, y, touch.identifier());
+            if captured {
+                event.prevent_default();
+            }
+        });
+    canvas.add_event_listener_with_callback(
+        "touchstart",
+        touchstart_cb.as_ref().unchecked_ref(),
+    )?;
+    touchstart_cb.forget();
+
+    let canvas_for_touchmove = canvas.clone();
+    let touchmove_cb =
+        Closure::<dyn Fn(web_sys::TouchEvent)>::new(move |event: web_sys::TouchEvent| {
+            let touches = event.changed_touches();
+            if touches.length() == 0 {
+                return;
+            }
+            let touch = touches.get(0).unwrap();
+            let rect = canvas_for_touchmove.get_bounding_client_rect();
+            let x = touch.client_x() as f32 - rect.left() as f32;
+            let y = touch.client_y() as f32 - rect.top() as f32;
+            let needs_render = handle_touchmove(x, y, touch.identifier());
+            if needs_render {
+                event.prevent_default();
+                schedule_render();
+            }
+        });
+    canvas
+        .add_event_listener_with_callback("touchmove", touchmove_cb.as_ref().unchecked_ref())?;
+    touchmove_cb.forget();
+
+    let touchend_cb =
+        Closure::<dyn Fn(web_sys::TouchEvent)>::new(move |event: web_sys::TouchEvent| {
+            let touches = event.changed_touches();
+            if touches.length() == 0 {
+                return;
+            }
+            let touch = touches.get(0).unwrap();
+            handle_touchend(touch.identifier());
+        });
+    canvas
+        .add_event_listener_with_callback("touchend", touchend_cb.as_ref().unchecked_ref())?;
+    canvas
+        .add_event_listener_with_callback("touchcancel", touchend_cb.as_ref().unchecked_ref())?;
+    touchend_cb.forget();
+
     Ok(())
 }
 
@@ -1735,12 +2907,30 @@ fn handle_click(x: f32, y: f32) -> bool {
             return false;
         }
 
+        // Snapshot state before executing actions for event logging
+        let state_before: Vec<(String, String)> = app.state_store.iter()
+            .map(|(k, v)| (k.clone(), render_value_brief(v)))
+            .collect();
+
         let mut changed = false;
         for handler in &handlers {
             if execute_action(&handler.action, &mut app.state_store) {
                 changed = true;
             }
         }
+
+        // Log the click event with state changes
+        let mut state_changes = Vec::new();
+        for (k, old_val) in &state_before {
+            if let Some(new_v) = app.state_store.get(k) {
+                let new_val = render_value_brief(new_v);
+                if *old_val != new_val {
+                    state_changes.push((k.clone(), old_val.clone(), new_val));
+                }
+            }
+        }
+        log_event_direct(app, "click", "", "", state_changes);
+
         changed
     })
 }
@@ -1996,6 +3186,35 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             // WebSocket send — stub until Batch 6 (data streams)
             web_sys::console::log_1(&format!("send to {}: (stub)", stream_name).into());
             false
+        }
+        IrAction::JsCall { function_name, args, target } => {
+            // JS interop call — stub
+            let arg_vals: Vec<String> = args.iter().map(|a| {
+                let v = evaluate_expr(a, state);
+                render_value_to_string(&v)
+            }).collect();
+            web_sys::console::log_1(
+                &format!("js-call: {}({}) -> {:?}", function_name, arg_vals.join(", "), target).into(),
+            );
+            false
+        }
+        IrAction::Notify { title, body, .. } => {
+            // Show notification via browser alert (simplified)
+            let text = if body.is_empty() {
+                title.clone()
+            } else {
+                format!("{}: {}", title, body)
+            };
+            if let Some(window) = web_sys::window() {
+                let _ = window.alert_with_message(&text);
+            }
+            false
+        }
+        IrAction::SetTheme { name } => {
+            // TODO: full theme switching — for now log and update state
+            web_sys::console::log_1(&format!("set-theme: {}", name).into());
+            state.insert("active-theme".to_string(), RenderValue::Str(name.clone()));
+            true
         }
     }
 }
@@ -2284,6 +3503,61 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
             let source_val = evaluate_expr(source, state);
             eval_pipeline(source_val, stages, state)
         }
+        IrExpression::WasmCall {
+            module,
+            function,
+            args,
+        } => {
+            let arg_vals: Vec<RenderValue> = args.iter().map(|a| evaluate_expr(a, state)).collect();
+            call_wasm_import(module, function, &arg_vals)
+        }
+        IrExpression::EnvRef(_) => {
+            // Env refs are resolved at compile time for client code;
+            // this branch should not be reached in the WASM runtime.
+            RenderValue::Str(String::new())
+        }
+    }
+}
+
+/// Call an imported WASM module function via the JS bridge.
+/// Invokes `window.__naze_wasm_call(module, func, args)` which is set up
+/// by the generated `wasm_imports.js` loader script.
+fn call_wasm_import(module: &str, func: &str, args: &[RenderValue]) -> RenderValue {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return RenderValue::Num(0.0, None),
+    };
+    let call_fn = js_sys::Reflect::get(&window, &JsValue::from_str("__naze_wasm_call"))
+        .ok()
+        .and_then(|v| v.dyn_into::<js_sys::Function>().ok());
+    let Some(call_fn) = call_fn else {
+        web_sys::console::error_1(&JsValue::from_str("WASM import bridge not found"));
+        return RenderValue::Num(0.0, None);
+    };
+    let js_args = js_sys::Array::new();
+    js_args.push(&JsValue::from_str(module));
+    js_args.push(&JsValue::from_str(func));
+    let js_arg_array = js_sys::Array::new();
+    for arg in args {
+        match arg {
+            RenderValue::Num(n, _) => { js_arg_array.push(&JsValue::from_f64(*n)); }
+            RenderValue::Str(s) => { js_arg_array.push(&JsValue::from_str(s)); }
+            RenderValue::Bool(b) => { js_arg_array.push(&JsValue::from_bool(*b)); }
+            _ => { js_arg_array.push(&JsValue::from_f64(0.0)); }
+        }
+    }
+    js_args.push(&js_arg_array);
+    match call_fn.apply(&JsValue::NULL, &js_args) {
+        Ok(result) => {
+            if let Some(n) = result.as_f64() {
+                RenderValue::Num(n, None)
+            } else if let Some(s) = result.as_string() {
+                RenderValue::Str(s)
+            } else {
+                RenderValue::Num(0.0, None)
+            }
+        }
+        Err(_) => RenderValue::Num(0.0, None),
     }
 }
 
@@ -3551,6 +4825,75 @@ fn set_cursor(cursor: &str) {
 
 // ─── Scroll Handling ─────────────────────────────────────────────────────────
 
+/// Apply scroll delta to a named scroll container. Returns true if scroll changed.
+/// Shared by wheel and touch handlers.
+fn apply_scroll_delta(app: &mut App, layout: &LayoutTree, scroll_id: &str, delta_x: f32, delta_y: f32) -> bool {
+    // Find the scroll container's info by walking the layout tree
+    let scroll_info_bounds = find_scroll_by_id(&layout.root, scroll_id);
+    let (scroll_info, bounds) = match scroll_info_bounds {
+        Some(v) => v,
+        None => return false,
+    };
+    let (_, _, container_w, container_h) = bounds;
+
+    let max_scroll_x = (scroll_info.content_width - container_w).max(0.0);
+    let max_scroll_y = (scroll_info.content_height - container_h).max(0.0);
+
+    let state = app.scroll_states.entry(scroll_id.to_string()).or_default();
+    let mut changed = false;
+
+    let scroll_speed = 1.0;
+    if scroll_info.overflow_y && max_scroll_y > 0.0 {
+        let new_scroll_y = (state.scroll_y + delta_y * scroll_speed)
+            .max(0.0)
+            .min(max_scroll_y);
+        if (new_scroll_y - state.scroll_y).abs() > 0.001 {
+            state.scroll_y = new_scroll_y;
+            changed = true;
+        }
+    }
+    if scroll_info.overflow_x && max_scroll_x > 0.0 {
+        let new_scroll_x = (state.scroll_x + delta_x * scroll_speed)
+            .max(0.0)
+            .min(max_scroll_x);
+        if (new_scroll_x - state.scroll_x).abs() > 0.001 {
+            state.scroll_x = new_scroll_x;
+            changed = true;
+        }
+    }
+
+    if changed {
+        if let Some(handlers) = find_scroll_handlers(&layout.root, scroll_id) {
+            for handler in &handlers {
+                execute_action(&handler.action, &mut app.state_store);
+            }
+        }
+    }
+
+    changed
+}
+
+/// Find a scroll container by its ID, returning (ScrollInfo, bounds).
+fn find_scroll_by_id(
+    nodes: &[PositionedNode],
+    target_id: &str,
+) -> Option<(ScrollInfo, (f32, f32, f32, f32))> {
+    for node in nodes {
+        if node.kind == "scroll" {
+            if let Some(ref info) = node.scroll_info {
+                let scroll_id = format!("scroll_{}_{}", node.x as i32, node.y as i32);
+                if scroll_id == target_id {
+                    return Some((info.clone(), (node.x, node.y, node.width, node.height)));
+                }
+            }
+        }
+        if let Some(result) = find_scroll_by_id(&node.children, target_id) {
+            return Some(result);
+        }
+    }
+    None
+}
+
 /// Handle wheel event for scrolling.
 fn handle_wheel(x: f32, y: f32, delta_x: f32, delta_y: f32) -> bool {
     APP.with(|cell| {
@@ -3567,58 +4910,96 @@ fn handle_wheel(x: f32, y: f32, delta_x: f32, delta_y: f32) -> bool {
         // Check if any visible overlay has scroll-lock: true — suppress scrolling
         for overlay in layout.overlays.iter().rev() {
             if let Some(RenderValue::Bool(true)) = overlay.props.get("scroll-lock") {
-                return false; // Scroll locked by overlay
+                return false;
             }
         }
 
-        // Find scroll container at point
-        if let Some((scroll_id, scroll_info, bounds)) = find_scroll_at_point(&layout.root, x, y) {
-            let (_, _, container_w, container_h) = bounds;
-
-            // Calculate max scroll values
-            let max_scroll_x = (scroll_info.content_width - container_w).max(0.0);
-            let max_scroll_y = (scroll_info.content_height - container_h).max(0.0);
-
-            // Get or create scroll state
-            let state = app.scroll_states.entry(scroll_id.clone()).or_default();
-
-            let mut changed = false;
-
-            // Apply scroll deltas (with scroll multiplier for smoother feel)
-            let scroll_speed = 1.0;
-            if scroll_info.overflow_y && max_scroll_y > 0.0 {
-                let new_scroll_y = (state.scroll_y + delta_y * scroll_speed)
-                    .max(0.0)
-                    .min(max_scroll_y);
-                if (new_scroll_y - state.scroll_y).abs() > 0.001 {
-                    state.scroll_y = new_scroll_y;
-                    changed = true;
-                }
-            }
-            if scroll_info.overflow_x && max_scroll_x > 0.0 {
-                let new_scroll_x = (state.scroll_x + delta_x * scroll_speed)
-                    .max(0.0)
-                    .min(max_scroll_x);
-                if (new_scroll_x - state.scroll_x).abs() > 0.001 {
-                    state.scroll_x = new_scroll_x;
-                    changed = true;
-                }
-            }
-
-            // Fire scroll handlers on the scroll container
-            if changed {
-                if let Some(handlers) = find_scroll_handlers(&layout.root, &scroll_id) {
-                    for handler in &handlers {
-                        execute_action(&handler.action, &mut app.state_store);
-                    }
-                }
-            }
-
-            return changed;
+        if let Some((scroll_id, _scroll_info, _bounds)) = find_scroll_at_point(&layout.root, x, y) {
+            return apply_scroll_delta(app, &layout, &scroll_id, delta_x, delta_y);
         }
 
         false
     })
+}
+
+/// Handle touchstart: find scroll container at touch point, store state.
+fn handle_touchstart(x: f32, y: f32, identifier: i32) -> bool {
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        let app = match borrow.as_mut() {
+            Some(a) => a,
+            None => return false,
+        };
+        let layout = match &app.layout {
+            Some(l) => l.clone(),
+            None => return false,
+        };
+
+        // Check scroll-lock
+        for overlay in layout.overlays.iter().rev() {
+            if let Some(RenderValue::Bool(true)) = overlay.props.get("scroll-lock") {
+                return false;
+            }
+        }
+
+        if let Some((scroll_id, _info, _bounds)) = find_scroll_at_point(&layout.root, x, y) {
+            app.touch_start_x = x;
+            app.touch_start_y = y;
+            app.touch_scroll_id = Some(scroll_id);
+            app.touch_identifier = Some(identifier);
+            return true; // We're capturing this touch
+        }
+
+        // Clear touch state if not in a scroll container
+        app.touch_scroll_id = None;
+        app.touch_identifier = None;
+        false
+    })
+}
+
+/// Handle touchmove: compute delta, apply scroll.
+fn handle_touchmove(x: f32, y: f32, identifier: i32) -> bool {
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        let app = match borrow.as_mut() {
+            Some(a) => a,
+            None => return false,
+        };
+
+        // Only handle the touch we're tracking
+        if app.touch_identifier != Some(identifier) || app.touch_scroll_id.is_none() {
+            return false;
+        }
+
+        let layout = match &app.layout {
+            Some(l) => l.clone(),
+            None => return false,
+        };
+
+        let scroll_id = app.touch_scroll_id.clone().unwrap();
+        // Touch scroll is inverted: dragging down scrolls up (negative delta)
+        let delta_x = app.touch_start_x - x;
+        let delta_y = app.touch_start_y - y;
+
+        // Update start position for next move event
+        app.touch_start_x = x;
+        app.touch_start_y = y;
+
+        apply_scroll_delta(app, &layout, &scroll_id, delta_x, delta_y)
+    })
+}
+
+/// Handle touchend/touchcancel: clear touch state.
+fn handle_touchend(identifier: i32) {
+    APP.with(|cell| {
+        let mut borrow = cell.borrow_mut();
+        if let Some(app) = borrow.as_mut() {
+            if app.touch_identifier == Some(identifier) {
+                app.touch_scroll_id = None;
+                app.touch_identifier = None;
+            }
+        }
+    });
 }
 
 /// Find scroll handlers for a scroll container by its ID.
@@ -4059,6 +5440,7 @@ fn find_handlers_by_element_id(
 // ─── Screen Reader Accessibility DOM ─────────────────────────────────────────
 
 const A11Y_CONTAINER_ID: &str = "__naze_a11y";
+const A11Y_LIVE_REGION_ID: &str = "__naze_a11y_live";
 
 /// Create a hidden container for screen reader content.
 /// This DOM mirrors the canvas content with ARIA attributes.
@@ -4096,7 +5478,31 @@ fn create_a11y_container() -> Result<(), JsValue> {
     container.set_attribute("role", "application")?;
 
     // Append to body
-    document.body().ok_or("no body")?.append_child(&container)?;
+    let body = document.body().ok_or("no body")?;
+    body.append_child(&container)?;
+
+    // Create live region for dynamic content announcements
+    if document.get_element_by_id(A11Y_LIVE_REGION_ID).is_none() {
+        let live = document.create_element("div")?;
+        live.set_id(A11Y_LIVE_REGION_ID);
+        live.set_attribute("aria-live", "polite")?;
+        live.set_attribute("aria-atomic", "true")?;
+        // Same sr-only styling
+        let live_style = live
+            .dyn_ref::<web_sys::HtmlElement>()
+            .ok_or("not an HtmlElement")?
+            .style();
+        live_style.set_property("position", "absolute")?;
+        live_style.set_property("width", "1px")?;
+        live_style.set_property("height", "1px")?;
+        live_style.set_property("padding", "0")?;
+        live_style.set_property("margin", "-1px")?;
+        live_style.set_property("overflow", "hidden")?;
+        live_style.set_property("clip", "rect(0, 0, 0, 0)")?;
+        live_style.set_property("white-space", "nowrap")?;
+        live_style.set_property("border", "0")?;
+        body.append_child(&live)?;
+    }
 
     Ok(())
 }
@@ -4117,11 +5523,48 @@ fn update_a11y_dom(layout: &LayoutTree) {
         // Build accessible DOM from layout tree
         build_a11y_nodes(&document, &container, &layout.root)?;
 
+        // Collect current text content for live region diff
+        let mut current_texts = Vec::new();
+        collect_visible_texts(&layout.root, &mut current_texts);
+
+        // Diff against previous texts and announce new ones
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                let new_texts: Vec<&String> = current_texts
+                    .iter()
+                    .filter(|t| !app.prev_a11y_texts.contains(t))
+                    .collect();
+
+                if !new_texts.is_empty() {
+                    // Announce the first new text via the live region
+                    if let Some(live_el) = document.get_element_by_id(A11Y_LIVE_REGION_ID) {
+                        live_el.set_text_content(Some(new_texts[0]));
+                    }
+                }
+
+                app.prev_a11y_texts = current_texts;
+            }
+        });
+
         Ok(())
     })();
 
     if let Err(e) = result {
         web_sys::console::warn_1(&format!("a11y update failed: {:?}", e).into());
+    }
+}
+
+/// Collect all visible text content from the layout tree.
+fn collect_visible_texts(nodes: &[PositionedNode], texts: &mut Vec<String>) {
+    for node in nodes {
+        if matches!(node.kind.as_str(), "text" | "heading" | "link") {
+            let text = naze_renderer::get_text_content(&node.props);
+            if !text.is_empty() {
+                texts.push(text);
+            }
+        }
+        collect_visible_texts(&node.children, texts);
     }
 }
 
@@ -4197,6 +5640,19 @@ fn build_a11y_nodes(
                 }
             }
             _ => {}
+        }
+
+        // Set aria-live for status/alert roles
+        if let Some(RenderValue::Str(role_str)) = node.props.get("role") {
+            match role_str.as_str() {
+                "status" => {
+                    el.set_attribute("aria-live", "polite")?;
+                }
+                "alert" => {
+                    el.set_attribute("aria-live", "assertive")?;
+                }
+                _ => {}
+            }
         }
 
         // Handle interactive elements
@@ -4358,6 +5814,285 @@ fn fetch_data(name: &str, url: &str, method: &str) {
     });
 }
 
+/// Call a server function via POST /api/{func_name} and update three-state variables.
+fn call_server_function(name: &str, func_name: &str, args: Vec<RenderValue>) {
+    use wasm_bindgen_futures::spawn_local;
+
+    let name = name.to_string();
+    let func_name = func_name.to_string();
+
+    spawn_local(async move {
+        let result = do_server_call(&func_name, &args).await;
+
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                // Set loading to false
+                app.state_store
+                    .insert(format!("{}.loading", name), RenderValue::Bool(false));
+
+                match result {
+                    Ok(data) => {
+                        app.state_store.insert(format!("{}.data", name), data);
+                        app.state_store
+                            .insert(format!("{}.error", name), RenderValue::Str(String::new()));
+                    }
+                    Err(err) => {
+                        app.state_store
+                            .insert(format!("{}.error", name), RenderValue::Str(err));
+                    }
+                }
+            }
+        });
+
+        schedule_render();
+    });
+}
+
+/// POST to /api/{func_name} with JSON body { "args": [...] }.
+async fn do_server_call(func_name: &str, args: &[RenderValue]) -> Result<RenderValue, String> {
+    let start_ms = get_now_ms();
+    let window = web_sys::window().ok_or("no window")?;
+
+    // Build JSON body: { "args": [arg1, arg2, ...] }
+    let args_array = js_sys::Array::new();
+    for arg in args {
+        args_array.push(&render_value_to_jsvalue(arg));
+    }
+    let body_obj = js_sys::Object::new();
+    js_sys::Reflect::set(&body_obj, &"args".into(), &args_array)
+        .map_err(|_| "failed to set args")?;
+    let body_str = js_sys::JSON::stringify(&body_obj)
+        .map_err(|_| "failed to stringify body")?
+        .as_string()
+        .unwrap_or_default();
+
+    let url = format!("/api/{}", func_name);
+    let opts = web_sys::RequestInit::new();
+    opts.set_method("POST");
+    opts.set_body(&JsValue::from_str(&body_str));
+
+    let request = web_sys::Request::new_with_str_and_init(&url, &opts)
+        .map_err(|e| format!("failed to create request: {:?}", e))?;
+    request
+        .headers()
+        .set("Content-Type", "application/json")
+        .map_err(|e| format!("failed to set header: {:?}", e))?;
+
+    let resp_promise = window.fetch_with_request(&request);
+    let resp_value = wasm_bindgen_futures::JsFuture::from(resp_promise)
+        .await
+        .map_err(|e| {
+            log_network(&url, "POST", 0, get_now_ms() - start_ms, "server call failed");
+            format!("server call failed: {:?}", e)
+        })?;
+
+    let resp: web_sys::Response = resp_value
+        .dyn_into()
+        .map_err(|_| "response is not a Response")?;
+
+    let status = resp.status();
+
+    if !resp.ok() {
+        log_network(&url, "POST", status, get_now_ms() - start_ms, "");
+        return Err(format!("server error: {}", status));
+    }
+
+    let json_promise = resp
+        .json()
+        .map_err(|e| format!("failed to get JSON: {:?}", e))?;
+    let json_value = wasm_bindgen_futures::JsFuture::from(json_promise)
+        .await
+        .map_err(|e| format!("JSON parse failed: {:?}", e))?;
+
+    // Extract "data" field from response { "data": ... }
+    let data = js_sys::Reflect::get(&json_value, &"data".into())
+        .unwrap_or(JsValue::NULL);
+
+    // Check for "error" field
+    if let Ok(err_val) = js_sys::Reflect::get(&json_value, &"error".into()) {
+        if let Some(err_str) = err_val.as_string() {
+            if !err_str.is_empty() {
+                log_network(&url, "POST", status, get_now_ms() - start_ms, &err_str);
+                return Err(err_str);
+            }
+        }
+    }
+
+    log_network(&url, "POST", status, get_now_ms() - start_ms, "ok");
+    Ok(js_to_render_value(&data))
+}
+
+/// Extract `{variable}` references from prompt system/user templates and
+/// collect their current values from the state store as strings.
+fn collect_prompt_vars(
+    system: &str,
+    user: &str,
+    state_store: &HashMap<String, RenderValue>,
+) -> HashMap<String, String> {
+    let mut vars = HashMap::new();
+    for template in [system, user] {
+        let mut chars = template.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if ch == '{' {
+                let mut var_name = String::new();
+                for c in chars.by_ref() {
+                    if c == '}' {
+                        break;
+                    }
+                    var_name.push(c);
+                }
+                if !var_name.is_empty() && !vars.contains_key(&var_name) {
+                    let val = state_store
+                        .get(&var_name)
+                        .map(render_value_to_string)
+                        .unwrap_or_default();
+                    vars.insert(var_name, val);
+                }
+            }
+        }
+    }
+    vars
+}
+
+/// Call a prompt via POST /api/prompt/{name} and update three-state variables.
+fn call_prompt(name: &str, vars: HashMap<String, String>) {
+    use wasm_bindgen_futures::spawn_local;
+
+    let name = name.to_string();
+
+    spawn_local(async move {
+        let result = do_prompt_call(&name, &vars).await;
+
+        APP.with(|cell| {
+            let mut borrow = cell.borrow_mut();
+            if let Some(app) = borrow.as_mut() {
+                app.state_store
+                    .insert(format!("{}.loading", name), RenderValue::Bool(false));
+
+                match result {
+                    Ok(text) => {
+                        app.state_store
+                            .insert(format!("{}.data", name), RenderValue::Str(text));
+                        app.state_store
+                            .insert(format!("{}.error", name), RenderValue::Str(String::new()));
+                    }
+                    Err(err) => {
+                        app.state_store
+                            .insert(format!("{}.error", name), RenderValue::Str(err));
+                    }
+                }
+            }
+        });
+
+        schedule_render();
+    });
+}
+
+/// POST to /api/prompt/{name} with JSON body { "vars": { "key": "value" } }.
+async fn do_prompt_call(
+    name: &str,
+    vars: &HashMap<String, String>,
+) -> Result<String, String> {
+    let start_ms = get_now_ms();
+    let window = web_sys::window().ok_or("no window")?;
+
+    // Build JSON body: { "vars": { "key": "value", ... } }
+    let vars_obj = js_sys::Object::new();
+    for (k, v) in vars {
+        js_sys::Reflect::set(&vars_obj, &JsValue::from_str(k), &JsValue::from_str(v))
+            .map_err(|_| "failed to set var")?;
+    }
+    let body_obj = js_sys::Object::new();
+    js_sys::Reflect::set(&body_obj, &"vars".into(), &vars_obj)
+        .map_err(|_| "failed to set vars")?;
+    let body_str = js_sys::JSON::stringify(&body_obj)
+        .map_err(|_| "failed to stringify body")?
+        .as_string()
+        .unwrap_or_default();
+
+    let url = format!("/api/prompt/{}", name);
+    let opts = web_sys::RequestInit::new();
+    opts.set_method("POST");
+    opts.set_body(&JsValue::from_str(&body_str));
+
+    let request = web_sys::Request::new_with_str_and_init(&url, &opts)
+        .map_err(|e| format!("failed to create request: {:?}", e))?;
+    request
+        .headers()
+        .set("Content-Type", "application/json")
+        .map_err(|e| format!("failed to set header: {:?}", e))?;
+
+    let resp_promise = window.fetch_with_request(&request);
+    let resp_value = wasm_bindgen_futures::JsFuture::from(resp_promise)
+        .await
+        .map_err(|e| {
+            log_network(&url, "POST", 0, get_now_ms() - start_ms, "prompt call failed");
+            format!("prompt call failed: {:?}", e)
+        })?;
+
+    let resp: web_sys::Response = resp_value
+        .dyn_into()
+        .map_err(|_| "response is not a Response")?;
+
+    let status = resp.status();
+
+    if !resp.ok() {
+        log_network(&url, "POST", status, get_now_ms() - start_ms, "");
+        return Err(format!("prompt error: {}", status));
+    }
+
+    let json_promise = resp
+        .json()
+        .map_err(|e| format!("failed to get JSON: {:?}", e))?;
+    let json_value = wasm_bindgen_futures::JsFuture::from(json_promise)
+        .await
+        .map_err(|e| format!("JSON parse failed: {:?}", e))?;
+
+    // Check for "error" field first
+    if let Ok(err_val) = js_sys::Reflect::get(&json_value, &"error".into()) {
+        if let Some(err_str) = err_val.as_string() {
+            if !err_str.is_empty() {
+                log_network(&url, "POST", status, get_now_ms() - start_ms, &err_str);
+                return Err(err_str);
+            }
+        }
+    }
+
+    // Extract "data" field (string response from AI provider)
+    let data = js_sys::Reflect::get(&json_value, &"data".into())
+        .unwrap_or(JsValue::NULL);
+    let result = data.as_string().unwrap_or_default();
+    let preview = if result.len() > 80 { &result[..80] } else { &result };
+    log_network(&url, "POST", status, get_now_ms() - start_ms, preview);
+    Ok(result)
+}
+
+/// Convert a RenderValue to a JsValue for use in fetch body serialization.
+fn render_value_to_jsvalue(v: &RenderValue) -> JsValue {
+    match v {
+        RenderValue::Str(s) => JsValue::from_str(s),
+        RenderValue::Num(n, _) => JsValue::from_f64(*n),
+        RenderValue::Bool(b) => JsValue::from_bool(*b),
+        RenderValue::Color(c) => JsValue::from_str(&format!("#{:06x}", c)),
+        RenderValue::List(items) => {
+            let arr = js_sys::Array::new();
+            for item in items {
+                arr.push(&render_value_to_jsvalue(item));
+            }
+            arr.into()
+        }
+        RenderValue::Object(entries) => {
+            let obj = js_sys::Object::new();
+            for (k, v) in entries {
+                let _ = js_sys::Reflect::set(&obj, &JsValue::from_str(k), &render_value_to_jsvalue(v));
+            }
+            obj.into()
+        }
+        _ => JsValue::NULL,
+    }
+}
+
 /// Connect to a WebSocket stream and append incoming messages to the data list.
 fn connect_stream(name: &str, url: &str) {
     use wasm_bindgen::closure::Closure;
@@ -4437,6 +6172,7 @@ fn connect_stream(name: &str, url: &str) {
 
 /// Perform the actual HTTP fetch and parse JSON response.
 async fn do_fetch(url: &str, method: &str) -> Result<RenderValue, String> {
+    let start_ms = get_now_ms();
     let window = web_sys::window().ok_or("no window")?;
 
     // Create request with configured method
@@ -4457,15 +6193,21 @@ async fn do_fetch(url: &str, method: &str) -> Result<RenderValue, String> {
     let resp_promise = window.fetch_with_request(&request);
     let resp_value = wasm_bindgen_futures::JsFuture::from(resp_promise)
         .await
-        .map_err(|e| format!("fetch failed: {:?}", e))?;
+        .map_err(|e| {
+            log_network(url, method, 0, get_now_ms() - start_ms, "fetch failed");
+            format!("fetch failed: {:?}", e)
+        })?;
 
     let resp: web_sys::Response = resp_value
         .dyn_into()
         .map_err(|_| "response is not a Response")?;
 
+    let status = resp.status();
+
     // Check status
     if !resp.ok() {
-        return Err(format!("HTTP error: {}", resp.status()));
+        log_network(url, method, status, get_now_ms() - start_ms, "");
+        return Err(format!("HTTP error: {}", status));
     }
 
     // Get JSON
@@ -4476,6 +6218,8 @@ async fn do_fetch(url: &str, method: &str) -> Result<RenderValue, String> {
     let json_value = wasm_bindgen_futures::JsFuture::from(json_promise)
         .await
         .map_err(|e| format!("JSON parse failed: {:?}", e))?;
+
+    log_network(url, method, status, get_now_ms() - start_ms, "ok");
 
     // Convert JS value to RenderValue
     Ok(js_to_render_value(&json_value))

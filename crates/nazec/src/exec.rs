@@ -108,6 +108,7 @@ pub(crate) fn resolve_nodes(
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 });
             }
         }
@@ -189,6 +190,17 @@ pub(crate) fn evaluate_expr(
         IrExpression::Pipeline { source, stages } => {
             let source_val = evaluate_expr(source, state);
             eval_pipeline(source_val, stages, state)
+        }
+        IrExpression::WasmCall { .. } => {
+            // WASM imports not supported in CLI executor
+            RenderValue::Num(0.0, None)
+        }
+        IrExpression::EnvRef(name) => {
+            // Server-side env var resolution at runtime
+            match std::env::var(name) {
+                Ok(val) => RenderValue::Str(val),
+                Err(_) => RenderValue::Str(String::new()),
+            }
         }
     }
 }

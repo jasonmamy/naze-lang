@@ -14,6 +14,8 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{CursorIcon, Window, WindowId};
 
+use naze_compiler::resolve::BuildCache;
+
 use crate::build;
 use crate::diagnostic::Format;
 use crate::manifest::Manifest;
@@ -44,6 +46,7 @@ struct App {
     layout: Option<LayoutTree>,
     cursor_pos: Option<(f32, f32)>,
     focused_input: Option<FocusedInput>,
+    build_cache: BuildCache,
 }
 
 impl ApplicationHandler<AppEvent> for App {
@@ -214,7 +217,8 @@ impl ApplicationHandler<AppEvent> for App {
 impl App {
     fn rebuild_and_reload(&mut self) {
         eprintln!("change detected, rebuilding...");
-        match build::run(&self.manifest, Format::Text) {
+        let start = std::time::Instant::now();
+        match build::run_incremental(&self.manifest, Format::Text, &mut self.build_cache, &[], false) {
             Ok(()) => {
                 let bin_path = Path::new(&self.manifest.build.output).join("app_data.bin");
                 match std::fs::read(&bin_path)
@@ -228,7 +232,7 @@ impl App {
                         self.render_tree = tree;
                         self.state_store = state_store;
                         self.render();
-                        eprintln!("reloaded");
+                        eprintln!("  rebuilt in {}ms", start.elapsed().as_millis());
                     }
                     Err(e) => eprintln!("reload error: {e}"),
                 }
@@ -419,6 +423,7 @@ pub fn run(manifest: &Manifest) -> Result<(), Box<dyn std::error::Error>> {
         layout: None,
         cursor_pos: None,
         focused_input: None,
+        build_cache: BuildCache::new(),
     };
     event_loop.run_app(&mut app)?;
 
@@ -438,6 +443,12 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
+        themes: tree.themes.clone(),
+        imports: tree.imports.clone(),
+        server_functions: tree.server_functions.clone(),
+        server_calls: tree.server_calls.clone(),
+        prompts: tree.prompts.clone(),
+        guards: tree.guards.clone(),
     }
 }
 
@@ -520,6 +531,7 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                     condition: None,
                     else_children: None,
                     each_binding: None,
+                    span: None,
                 });
             }
         }
@@ -776,6 +788,14 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
         IrExpression::Pipeline { source, stages } => {
             let source_val = evaluate_expr(source, state);
             eval_pipeline(source_val, stages, state)
+        }
+        IrExpression::WasmCall { .. } => {
+            // WASM imports not supported in native runner
+            RenderValue::Num(0.0, None)
+        }
+        IrExpression::EnvRef(_) => {
+            // Env vars resolved at compile time; should not appear at runtime
+            RenderValue::Str(String::new())
         }
     }
 }

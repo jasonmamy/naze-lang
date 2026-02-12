@@ -234,6 +234,26 @@ fn parse_responsive_layout() {
     parse_example("responsive-layout.naze");
 }
 
+#[test]
+fn parse_toggle_btn() {
+    parse_example("components/toggle-btn.naze");
+}
+
+#[test]
+fn parse_emit_events() {
+    parse_example("emit-events.naze");
+}
+
+#[test]
+fn parse_theme_switching() {
+    parse_example("theme-switching.naze");
+}
+
+#[test]
+fn parse_advanced_animation() {
+    parse_example("advanced-animation.naze");
+}
+
 // ─── Test file parsing (.test.naze) ──────────────────────────────────────────
 
 fn parse_test_example(name: &str) {

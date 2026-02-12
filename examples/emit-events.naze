@@ -1,0 +1,22 @@
+-- Emit events example
+-- Components emit custom events to parents via the `emit` action
+
+use components/toggle-btn
+
+app "Emit Events Demo" {
+  state sidebar-open = true
+
+  column padding: 20px, gap: 16px {
+    heading "Emit Events"
+
+    toggle-btn label: "Toggle Sidebar" {
+      on toggled: set sidebar-open = sidebar-open == false
+    }
+
+    if sidebar-open {
+      rect width: 200px, height: 300px, color: #e2e8f0, radius: 8px, padding: 16px {
+        text "Sidebar Content"
+      }
+    }
+  }
+}

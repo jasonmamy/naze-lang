@@ -11,20 +11,38 @@ NEWLINE_CHAR = _{ "\n" }
 
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
-statement = _{ comment | use_stmt | function_def | component_def | template_def | app_block | page_block | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | data_stmt | timer_stmt | param_stmt | if_stmt | match_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
+statement = _{ comment | import_stmt | use_stmt | server_function_def | function_def | component_def | template_def | app_block | page_block | guard_def | model_def | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | server_data_stmt | prompt_stmt | data_stmt | timer_stmt | param_stmt | boundary_stmt | meta_stmt | if_stmt | match_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
 
 // -- Comments
 comment = @{ "--" ~ (!NEWLINE_CHAR ~ ANY)* }
 
-// -- Use statement: use components/toolbar
+// -- Import statement: import crypto from "./lib/crypto.wasm"
+import_stmt = { "import" ~ ident ~ "from" ~ string_lit ~ NEWLINE_CHAR }
+
+// -- Use statement: use components/toolbar  |  use @org/package/component
 use_stmt = { "use" ~ use_path ~ NEWLINE_CHAR }
-use_path = @{ ident_raw ~ ("/" ~ ident_raw)* }
+use_path = @{ ("@" ~ ident_raw ~ "/" ~ ident_raw ~ ("/" ~ ident_raw)*) | (ident_raw ~ ("/" ~ ident_raw)*) }
 
 // -- App block: app "Title" { ... }
 app_block = { "app" ~ string_lit ~ block }
 
-// -- Page block: page "/path" { ... }
-page_block = { "page" ~ string_lit ~ block }
+// -- Page block: page "/path" guard: name { ... }
+page_block = { "page" ~ string_lit ~ guard_ref? ~ block }
+guard_ref = { "guard" ~ ":" ~ ident }
+
+// -- Guard definition: guard name check condition redirect "/path"
+guard_def = { "guard" ~ ident ~ NEWLINE_CHAR ~ guard_check+ }
+guard_check = { "check" ~ pipe_expression ~ "redirect" ~ string_lit ~ NEWLINE_CHAR }
+
+// -- Model definition: model users { id number primary \n name text \n ... }
+model_def = { "model" ~ ident ~ "{" ~ NEWLINE_CHAR* ~ model_field+ ~ "}" ~ NEWLINE_CHAR }
+model_field = { ident ~ field_type ~ field_constraint* ~ NEWLINE_CHAR }
+field_type = { "timestamp" | "number" | "text" | "bool" }
+field_constraint = { "primary" | "unique" | ("default" ~ (ident | number_lit | string_lit)) }
+
+// -- Meta statement: meta title: "Page Title"  |  meta description: "..."
+meta_stmt = { "meta" ~ meta_key ~ ":" ~ value ~ NEWLINE_CHAR }
+meta_key = @{ "title" | "description" | "image" | "canonical" | "robots" }
 
 // -- Link element: link "text" to: "/path"
 link_element = { "link" ~ string_lit ~ "," ~ "to" ~ ":" ~ string_lit ~ (block | NEWLINE_CHAR) }
@@ -39,8 +57,10 @@ type_name = { "text" | "number" | "bool" | "color" }
 template_def = { "template" ~ ident ~ template_slot_list? ~ block }
 template_slot_list = { "(" ~ ident ~ ("," ~ ident)* ~ ")" }
 
-// -- Theme definition: theme { colors { ... } spacing { ... } }
-theme_def = { "theme" ~ theme_block }
+// -- Theme definition: theme name? extends parent? { colors { ... } spacing { ... } }
+theme_def = { "theme" ~ theme_name? ~ theme_extends? ~ theme_block }
+theme_name = { ident }
+theme_extends = { "extends" ~ ident }
 theme_block = { "{" ~ (NEWLINE_CHAR | theme_section)* ~ "}" }
 theme_section = { theme_section_name ~ "{" ~ (NEWLINE_CHAR | theme_entry)* ~ "}" }
 theme_section_name = { "colors" | "spacing" }
@@ -63,6 +83,16 @@ computed_stmt = { "computed" ~ ident ~ "=" ~ pipe_expression ~ NEWLINE_CHAR }
 storage_stmt = { "storage" ~ ident ~ ":" ~ storage_type ~ string_lit ~ "default" ~ ":" ~ value ~ NEWLINE_CHAR }
 storage_type = { "local" | "session" }
 
+// -- Server data declaration: data user: get-user(42)
+server_data_stmt = { "data" ~ ident ~ ":" ~ ident ~ "(" ~ call_args? ~ ")" ~ NEWLINE_CHAR }
+
+// -- Prompt declaration (AI): prompt summary: from openai { system: "..." user: "..." }
+prompt_stmt = { "prompt" ~ ident ~ ":" ~ "from" ~ ident ~ prompt_block }
+prompt_block = { "{" ~ (NEWLINE_CHAR | prompt_prop)* ~ "}" }
+prompt_prop = { prompt_prop_key ~ ":" ~ prompt_prop_value ~ NEWLINE_CHAR? }
+prompt_prop_key = { "system" | "user" | "model" | "max-tokens" | "temperature" }
+prompt_prop_value = _{ value }
+
 // -- Data declaration (async fetch or stream): data users: fetch "url" { ... } or data chat: stream "wss://..."
 data_stmt = { "data" ~ ident ~ ":" ~ data_source ~ string_lit ~ (data_block | NEWLINE_CHAR) }
 data_source = { "fetch" | "stream" | "js" | "device" }
@@ -80,10 +110,10 @@ param_stmt = { "param" ~ ident ~ ":" ~ type_name ~ "default" ~ ":" ~ value ~ NEW
 
 // -- Event handler: on click: set count = count + 1, with optional debounce/throttle
 on_handler = { "on" ~ event_name ~ event_modifier? ~ ":" ~ action ~ NEWLINE_CHAR }
-event_name = { "click-outside" | "click" | "context-menu" | "pointer-move" | "arrow-up" | "arrow-down" | "arrow-left" | "arrow-right" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" }
+event_name = { "click-outside" | "click" | "context-menu" | "pointer-move" | "arrow-up" | "arrow-down" | "arrow-left" | "arrow-right" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" | ident }
 event_modifier = { modifier_kind ~ duration_lit }
 modifier_kind = { "debounce" | "throttle" }
-action = _{ set_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action | js_action | notify_action }
+action = _{ set_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action | js_action | notify_action | emit_action | set_theme_action }
 set_action = { "set" ~ ident ~ "=" ~ expression }
 navigate_action = { "navigate" ~ string_lit }
 scroll_to_action = { "scroll-to" ~ string_lit }
@@ -96,6 +126,11 @@ notify_action = { "notify" ~ string_lit ~ notify_block? }
 notify_block = { "{" ~ (NEWLINE_CHAR | notify_prop)* ~ "}" }
 notify_prop = { notify_prop_key ~ ":" ~ value ~ NEWLINE_CHAR? }
 notify_prop_key = { "body" | "icon" }
+emit_action = { "emit" ~ ident }
+set_theme_action = { "set-theme" ~ string_lit }
+
+// -- Error boundary: boundary { ... } catch { ... }
+boundary_stmt = { "boundary" ~ block ~ "catch" ~ block }
 
 // -- Conditional: if expr { ... } else { ... }
 if_stmt = { "if" ~ expression ~ block ~ else_clause? }
@@ -104,6 +139,28 @@ else_clause = _{ "else" ~ (if_stmt | block) }
 // -- Iteration: each item in list { ... }
 // -- or with pipeline: each item in items | filter score > 80 | sort-by name { ... }
 each_stmt = { "each" ~ ident ~ "in" ~ pipe_expression ~ block }
+
+// -- Server function definition: server function name(param: type, ...) { body }
+// Body can be a single expression or a sequence of let bindings + result expression
+server_function_def = { "server" ~ "function" ~ ident ~ "(" ~ (func_param ~ ("," ~ func_param)*)? ~ ")" ~ "{" ~ NEWLINE_CHAR* ~ server_body ~ NEWLINE_CHAR* ~ "}" ~ NEWLINE_CHAR }
+server_body = { (server_let ~ NEWLINE_CHAR+)* ~ pipe_expression }
+server_let = { "let" ~ ident ~ "=" ~ server_expr }
+server_expr = _{ server_fetch_expr | server_sql_expr | server_find_expr | server_insert_expr | server_update_expr | server_delete_expr | pipe_expression }
+server_fetch_expr = { "fetch" ~ string_lit }
+server_sql_expr = { "sql" ~ string_lit ~ ("[" ~ sql_params ~ "]")? }
+sql_params = { pipe_expression ~ ("," ~ pipe_expression)* }
+
+// -- Declarative query expressions (compile to parameterized SQL)
+server_find_expr = { "find" ~ ident ~ query_clause* }
+server_insert_expr = { "insert" ~ ident ~ object_lit }
+server_update_expr = { "update" ~ ident ~ "set" ~ object_lit ~ query_where? }
+server_delete_expr = { "delete" ~ ident ~ query_where? }
+query_clause = _{ query_where | query_order | query_limit }
+query_where = { "where" ~ query_condition ~ ("and" ~ query_condition)* }
+query_condition = { ident ~ query_cmp_op ~ pipe_expression }
+query_cmp_op = { "==" | "!=" | ">=" | "<=" | ">" | "<" }
+query_order = { "order" ~ ident ~ ("asc" | "desc")? }
+query_limit = { "limit" ~ pipe_expression }
 
 // -- Pure function definition: function name(param: type, ...) -> return_type { expression }
 function_def = { "function" ~ ident ~ func_param_list ~ "->" ~ type_name ~ "{" ~ NEWLINE_CHAR* ~ pipe_expression ~ NEWLINE_CHAR* ~ "}" }
@@ -133,8 +190,8 @@ expression = { expr_atom ~ (bin_op ~ expr_atom)* }
 expr_atom = { number_lit | bool_lit | string_lit | "(" ~ expression ~ ")" | function_call | ref_path | ident }
 bin_op = { "==" | "!=" | ">=" | "<=" | ">" | "<" | "&&" | "||" | "+" | "-" | "*" | "/" }
 
-// -- Function call: name(arg1, arg2)
-function_call = { ident ~ "(" ~ call_args? ~ ")" }
+// -- Function call: name(arg1, arg2) or module.func(arg1, arg2)
+function_call = { (ref_path | ident) ~ "(" ~ call_args? ~ ")" }
 call_args = { expression ~ ("," ~ expression)* }
 
 // -- Elements

@@ -570,6 +570,7 @@ fn node_to_symbol(node: &Node, content: &str) -> Option<DocumentSymbol> {
             path,
             children,
             span,
+            ..
         } => {
             let range = span_to_range(span, content);
 

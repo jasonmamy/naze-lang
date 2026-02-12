@@ -2,6 +2,7 @@
 
 use std::path::Path;
 use std::process::Command;
+use std::time::Instant;
 
 use crate::build;
 use crate::diagnostic::Format;
@@ -13,7 +14,7 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
     let app_name = &manifest.app.name;
 
     // Step 1: Build app_data.bin using existing web build
-    build::run(manifest, format)?;
+    build::run(manifest, format, &[], false)?;
 
     let app_data_path = output_dir.join("app_data.bin");
     if !app_data_path.exists() {
@@ -74,6 +75,7 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
         eprintln!("compiling native binary...");
     }
 
+    let build_start = Instant::now();
     let status = Command::new("cargo")
         .args(["build", "--release"])
         .current_dir(&build_dir)
@@ -81,6 +83,10 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
 
     if !status.success() {
         return Err("cargo build failed".into());
+    }
+
+    if format == Format::Text {
+        eprintln!("  compiled in {}ms", build_start.elapsed().as_millis());
     }
 
     // Step 10: Copy binary to output directory
@@ -105,7 +111,11 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
     }
 
     if format == Format::Text {
-        eprintln!("  created: {}", output_binary.display());
+        let size_bytes = std::fs::metadata(&output_binary)
+            .map(|m| m.len())
+            .unwrap_or(0);
+        let size_mb = size_bytes as f64 / (1024.0 * 1024.0);
+        eprintln!("  created: {} ({:.1}MB)", output_binary.display(), size_mb);
     }
 
     Ok(())
@@ -344,6 +354,7 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         params: tree.params.clone(),
         root: resolve_nodes(&tree.root, state),
         pages: tree.pages.clone(),
+        themes: tree.themes.clone(),
     }
 }
 

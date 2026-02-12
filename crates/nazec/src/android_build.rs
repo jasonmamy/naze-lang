@@ -13,7 +13,7 @@ pub fn run(manifest: &Manifest, format: Format) -> Result<(), Box<dyn std::error
     let app_name = &manifest.app.name;
 
     // Step 1: Build app_data.bin using existing web build
-    build::run(manifest, format)?;
+    build::run(manifest, format, &[], false)?;
 
     // Step 2: Create android project directory
     let android_dir = output_dir.join("android");

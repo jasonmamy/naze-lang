@@ -1,0 +1,7 @@
+-- Toggle button component that emits a custom event
+component toggle-btn(label: text) {
+  rect width: 120px, height: 40px, color: #2563eb, radius: 8px {
+    text "{label}" color: #ffffff
+    on click: emit toggled
+  }
+}
