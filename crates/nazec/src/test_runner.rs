@@ -70,6 +70,12 @@ impl TestEnv {
     }
 
     fn refresh_layout(&mut self) {
+        // Re-evaluate computed values after state changes
+        for comp in &self.render_tree.computed {
+            let val = exec::evaluate_expr(&comp.expr, &self.state);
+            self.state.insert(comp.name.clone(), val);
+        }
+
         // Get the nodes for the current page
         let nodes = self.get_current_page_nodes();
         let resolved = exec::resolve_nodes(&nodes, &self.state);
@@ -299,28 +305,44 @@ fn compile_naze_file(
 }
 
 /// Resolve a component name from test `use` paths to a .naze file path.
+/// Searches: project_dir, test_file_dir, test_file_dir/../ (common tests/ convention).
 fn resolve_component_path(
     project_dir: &Path,
+    test_file_dir: &Path,
     uses: &[String],
     component_name: &str,
 ) -> Option<PathBuf> {
+    // Directories to search, in priority order
+    let search_dirs: Vec<&Path> = {
+        let mut dirs = vec![project_dir, test_file_dir];
+        // Parent of test file dir (common convention: tests/ is one level below source)
+        if let Some(parent) = test_file_dir.parent() {
+            dirs.push(parent);
+        }
+        dirs
+    };
+
     // First check if the component name directly matches a use path's last segment
     for use_path in uses {
         let segments: Vec<&str> = use_path.split('/').collect();
         if let Some(last) = segments.last() {
             if *last == component_name {
-                let file_path = project_dir.join(format!("{}.naze", use_path));
-                if file_path.exists() {
-                    return Some(file_path);
+                for dir in &search_dirs {
+                    let file_path = dir.join(format!("{}.naze", use_path));
+                    if file_path.exists() {
+                        return Some(file_path);
+                    }
                 }
             }
         }
     }
 
-    // Try as a direct file name
-    let direct = project_dir.join(format!("{}.naze", component_name));
-    if direct.exists() {
-        return Some(direct);
+    // Try as a direct file name in each search directory
+    for dir in &search_dirs {
+        let direct = dir.join(format!("{}.naze", component_name));
+        if direct.exists() {
+            return Some(direct);
+        }
     }
 
     None
@@ -329,12 +351,13 @@ fn resolve_component_path(
 /// Build a RenderTree for a component by wrapping it in a synthetic app entry.
 fn compile_component(
     project_dir: &Path,
+    test_file_dir: &Path,
     uses: &[String],
     component_name: &str,
     props: &[naze_parser::ast::Prop],
 ) -> Result<RenderTree, String> {
     // Try to find the component's source file
-    let component_path = resolve_component_path(project_dir, uses, component_name);
+    let component_path = resolve_component_path(project_dir, test_file_dir, uses, component_name);
 
     if let Some(path) = &component_path {
         // Check if this is a full app file (contains app block at top level)
@@ -464,6 +487,9 @@ fn run_test_file(
     let test_file = naze_parser::parse_test_file(&source, &file_str)
         .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
 
+    // Compute the test file's directory for relative component resolution
+    let test_file_dir = test_path.parent().unwrap_or(project_dir);
+
     let mut results = Vec::new();
 
     // Run test blocks
@@ -473,7 +499,7 @@ fn run_test_file(
                 continue;
             }
         }
-        let result = run_test_block(project_dir, &test_file, &test_block.name, &test_block.steps);
+        let result = run_test_block(project_dir, test_file_dir, &test_file, &test_block.name, &test_block.steps);
         results.push(result);
     }
 
@@ -484,7 +510,7 @@ fn run_test_file(
                 continue;
             }
         }
-        let result = run_flow_block(project_dir, &test_file, &flow_block.name, &flow_block.steps);
+        let result = run_flow_block(project_dir, test_file_dir, &test_file, &flow_block.name, &flow_block.steps);
         results.push(result);
     }
 
@@ -506,6 +532,7 @@ fn run_test_file(
 /// Run a single test block (component-scoped).
 fn run_test_block(
     project_dir: &Path,
+    test_file_dir: &Path,
     test_file: &TestFile,
     name: &str,
     steps: &[TestStep],
@@ -520,7 +547,7 @@ fn run_test_block(
             TestStep::Render {
                 component, props, ..
             } => {
-                match compile_component(project_dir, &test_file.uses, component, props) {
+                match compile_component(project_dir, test_file_dir, &test_file.uses, component, props) {
                     Ok(tree) => {
                         env = Some(TestEnv::new(tree));
                     }
@@ -589,6 +616,7 @@ fn run_test_block(
 /// Run a single flow block (app-scoped with navigation).
 fn run_flow_block(
     project_dir: &Path,
+    test_file_dir: &Path,
     test_file: &TestFile,
     name: &str,
     steps: &[TestStep],
@@ -604,7 +632,7 @@ fn run_flow_block(
                 component, props, ..
             } => {
                 // In a flow block, render compiles the target (app or component)
-                match compile_component(project_dir, &test_file.uses, component, props) {
+                match compile_component(project_dir, test_file_dir, &test_file.uses, component, props) {
                     Ok(tree) => {
                         env = Some(TestEnv::new(tree));
                     }

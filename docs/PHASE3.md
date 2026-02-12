@@ -499,9 +499,9 @@ First-class testing using the same Naze language. Essential for CI/CD and confid
 - [x] Grammar: action steps (render, click, fill, navigate, wait)
 - [x] Parser: `parse_test_file` for `.test.naze` files
 - [x] `nazec test` CLI command: discover `.test.naze` files, run, report results
-- [ ] Headless renderer: software-only (reuses `naze-layout` + `naze-native` renderer), no canvas/GPU *(deferred)*
-- [ ] Component test runner: render with props → simulate events → assert output/state *(deferred)*
-- [ ] Structured output: JSON results for CI integration *(deferred)*
+- [x] Headless renderer: software-only layout engine (`naze-layout`), no canvas/GPU — 1024x768 viewport
+- [x] Component test runner: compile → render → simulate click/fill/navigate → assert text/state/page
+- [x] Structured output: `nazec test --format json` with per-suite/per-test/per-assertion detail
 - [ ] Screenshot comparison for visual regression *(stretch goal)*
 
 **Example syntax:**

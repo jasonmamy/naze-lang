@@ -2,7 +2,7 @@
 
 **Goal:** Close remaining gaps after Phase 5 core (M31-M38). M39 adds declarative database queries. M40 completes browser API parity. M41 optimizes WASM binary size.
 
-**Phase 5 status:** M31-M38 all complete. M39-M41 complete. 382 workspace tests passing. WASM binary: 374KB. See [PHASE5.md](PHASE5.md).
+**Phase 5 status:** M31-M38 all complete. M39-M41 complete. 385 workspace tests passing. WASM binary: 374KB. See [PHASE5.md](PHASE5.md).
 
 ---
 

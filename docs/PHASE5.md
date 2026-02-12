@@ -2,7 +2,7 @@
 
 **Goal:** Close the critical gaps vs Next.js/React for production SaaS applications. After Phase 5, Naze apps can have configurable deployments, dynamic URL-driven pages, server-side data access with databases, protected routes, graceful error handling, and per-page SEO metadata.
 
-**Status:** M31-M38 all complete. M39-M41 complete (see [PHASE5B.md](PHASE5B.md)). 382 workspace tests passing. WASM binary: 374KB.
+**Status:** M31-M38 all complete. M39-M41 complete (see [PHASE5B.md](PHASE5B.md)). 385 workspace tests passing. WASM binary: 374KB.
 
 **Architecture shift:** Phase 4 added server-side capabilities (SSR/SSG, server functions, AI prompts) and the package ecosystem. Phase 5 deepens the server story (multi-statement server functions, database queries, auth) and adds production infrastructure (env vars, dynamic routing, guards, error boundaries, head management).
 
@@ -140,6 +140,6 @@ SQL queries inside server function bodies, with parameterized queries preventing
 | Metric | Value |
 |--------|-------|
 | Milestones | 11 (M31-M41) |
-| Workspace tests | 382 |
+| Workspace tests | 385 |
 | WASM binary | 374KB |
 | Grammar rules | ~138 |
