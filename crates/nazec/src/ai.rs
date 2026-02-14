@@ -135,71 +135,7 @@ fn extract_code(response: &str) -> String {
 
 // ─── Prompt templates ────────────────────────────────────────────────────────
 
-const LANGUAGE_REFERENCE: &str = r#"## Naze Language Reference
-
-Naze is a declarative UI language. Every file is an `app` block containing UI elements.
-
-### Structure
-app "Title" {
-  <state declarations>
-  <element tree>
-}
-
-### Elements
-- `rect` — rectangle: width, height, color, radius, padding, border, opacity
-- `text "content"` — text: color, font-size, font-weight, font-style, align
-- `heading "content"` — heading: font-size, color, font-weight, align
-- `image` — image: src, width, height, radius, object-fit
-- `row` — horizontal layout: gap, padding, align, color, radius, width, height
-- `column` — vertical layout: gap, padding, align, color, radius, width, height
-- `container` — generic box: padding, color, radius, width, height, border
-- `stack` — overlapping children: width, height, padding
-- `grid` — grid layout: columns, gap, padding
-- `spacer` — flexible space: size
-
-### Properties
-- Sizes: `width: 200px`, `height: 50px`, `padding: 16px`, `gap: 8px`
-- Colors: `color: #2563eb`, `color: #ffffff`
-- Text: `font-size: 16px`, `font-weight: bold`, `align: center`
-- Visual: `radius: 8px`, `opacity: 0.5`, `border: 1px solid #e5e7eb`
-
-### State & Events
-state count = 0
-state name = "hello"
-on click: set count = count + 1
-on click: set name = "world"
-
-### String Interpolation
-text "Count is {count}"
-heading "Hello {name}"
-
-### Conditionals
-if count > 0 { text "Positive" }
-if name { text "Name: {name}" }
-
-### Computed Values
-computed total = price * quantity
-
-### Data Fetching
-data items: fetch "https://api.example.com/items"
-if items.loading { text "Loading..." }
-if items.data { each item in items.data { text "{item.name}" } }
-
-### Iteration
-each item in items.data {
-  text "{item.name}"
-}
-
-### Components
-component Card(title: text, bg: color = #ffffff) {
-  container padding: 16px, color: bg, radius: 8px {
-    heading title
-  }
-}
-
-### Comments
--- This is a comment
-"#;
+const LANGUAGE_REFERENCE: &str = include_str!("../../../docs/AGENTS.md");
 
 const EXAMPLE_COUNTER: &str = r#"-- Counter with increment and reset
 app "Counter" {
@@ -277,19 +213,203 @@ app "Posts" {
   }
 }"#;
 
+const EXAMPLE_PIPELINE: &str = r#"-- Pipeline operators: filter, sort, aggregate
+app "Student Scores" {
+  state students = [{name: "Alice", score: 92}, {name: "Bob", score: 67}, {name: "Carol", score: 85}, {name: "Dave", score: 45}]
+
+  computed passing = students | filter score > 60
+  computed total-score = students | map score | sum
+  computed student-count = students | count
+
+  column padding: 20px, gap: 16px {
+    heading "Student Scores"
+    text "Total students: {student-count}"
+    text "Total score: {total-score}"
+
+    heading "Passing (score > 60):" font-size: 18px
+    each student in students | filter score > 60 | sort-by name {
+      text "{student.name}: {student.score}"
+    }
+  }
+}"#;
+
+const EXAMPLE_FORM: &str = r#"-- Form with validation and error display
+app "Sign Up" {
+  state username = ""
+  state email = ""
+
+  column padding: 20px, gap: 12px {
+    heading "Create Account"
+
+    text "Username"
+    input bind: username, placeholder: "Enter username", validate: { required: true, min-length: 3, max-length: 20 }
+    if username_error {
+      text "{username_error}" color: #dc2626
+    }
+
+    text "Email"
+    input bind: email, type: "email", placeholder: "Enter email", validate: { required: true }
+    if email_error {
+      text "{email_error}" color: #dc2626
+    }
+
+    row gap: 8px {
+      if username_valid {
+        text "Username OK" color: #16a34a
+      }
+      if email_valid {
+        text "Email OK" color: #16a34a
+      }
+    }
+  }
+}"#;
+
+const EXAMPLE_ROUTING: &str = r#"-- Multi-page app with navigation
+app "My Site" {
+  row padding: 16px, gap: 24px, color: #1e293b {
+    heading "My App" color: #ffffff, font-size: 18px
+    link "Home", to: "/"
+    link "About", to: "/about"
+  }
+
+  page "/" {
+    column padding: 24px, gap: 16px {
+      heading "Welcome Home"
+      text "Click the links above to navigate."
+    }
+  }
+
+  page "/about" {
+    column padding: 24px, gap: 16px {
+      heading "About Us"
+      text "Built with Naze."
+    }
+  }
+}"#;
+
+const EXAMPLE_COMPONENT: &str = r#"-- Component definition with typed parameters and defaults
+component card(bg: color = #ffffff, width: number = 200px) {
+  container padding: 16px, color: bg, radius: 8px, width: width {
+    column gap: 8px {
+      heading "Card Title" font-size: 16px
+      text "Card content goes here."
+    }
+  }
+}"#;
+
+const EXAMPLE_MATCH: &str = r#"-- Pattern matching for conditional rendering
+app "Match Demo" {
+  state status = "active"
+
+  column padding: 20px, gap: 16px {
+    heading "Pattern Matching"
+
+    match status {
+      "active": text "Status: Active" color: #16a34a
+      "inactive": text "Status: Inactive" color: #dc2626
+      "pending": text "Status: Pending..." color: #eab308
+      _: text "Status: Unknown"
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "Active" color: #ffffff
+        on click: set status = "active"
+      }
+      rect width: 80px, height: 36px, color: #dc2626, radius: 4px {
+        text "Inactive" color: #ffffff
+        on click: set status = "inactive"
+      }
+    }
+  }
+}"#;
+
+const EXAMPLE_THEME: &str = r#"-- Named themes with extends and runtime switching
+theme light {
+  colors {
+    bg: #ffffff
+    fg: #0f172a
+    primary: #2563eb
+  }
+  spacing {
+    sm: 8px
+    md: 16px
+  }
+}
+
+theme dark extends light {
+  colors {
+    bg: #1e293b
+    fg: #f8fafc
+    primary: #60a5fa
+  }
+}
+
+app "Theme Demo" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Theme Switching" color: theme.colors.fg
+    row gap: 12px {
+      rect width: 100px, height: 40px, color: theme.colors.primary, radius: 8px {
+        text "Light" color: #ffffff
+        on click: set-theme "light"
+      }
+      rect width: 100px, height: 40px, color: theme.colors.primary, radius: 8px {
+        text "Dark" color: #ffffff
+        on click: set-theme "dark"
+      }
+    }
+  }
+}"#;
+
+const EXAMPLE_ANIMATION: &str = r#"-- Transitions and interactive toggle
+app "Animation" {
+  state expanded = false
+
+  column gap: 16px, padding: 20px {
+    heading "Animation Demo"
+
+    if expanded {
+      row width: 200px, height: 150px, color: #3b82f6, radius: 8px, padding: 16px, transition: "height 300ms ease-out" {
+        text "Click to shrink" color: #ffffff
+        on click: set expanded = false
+      }
+    }
+    if expanded == false {
+      row width: 200px, height: 60px, color: #3b82f6, radius: 8px, padding: 16px, transition: "height 300ms ease-out" {
+        text "Click to expand" color: #ffffff
+        on click: set expanded = true
+      }
+    }
+  }
+}"#;
+
 fn build_system_prompt() -> String {
     format!(
         "You are a Naze language expert. Generate valid .naze code based on the user's description.\n\
          Output ONLY the raw .naze code. No markdown fences, no explanations, no commentary.\n\n\
          {}\n\n\
-         ## Examples\n\n\
+         ## Additional Examples\n\n\
          ### Counter app\n```\n{}\n```\n\n\
          ### Dashboard layout\n```\n{}\n```\n\n\
-         ### Data fetching\n```\n{}\n```",
+         ### Data fetching\n```\n{}\n```\n\n\
+         ### Pipeline operators\n```\n{}\n```\n\n\
+         ### Form with validation\n```\n{}\n```\n\n\
+         ### Multi-page routing\n```\n{}\n```\n\n\
+         ### Component definition\n```\n{}\n```\n\n\
+         ### Pattern matching\n```\n{}\n```\n\n\
+         ### Theming\n```\n{}\n```\n\n\
+         ### Animation\n```\n{}\n```",
         LANGUAGE_REFERENCE,
         EXAMPLE_COUNTER,
         EXAMPLE_DASHBOARD,
         EXAMPLE_DATA_FETCH,
+        EXAMPLE_PIPELINE,
+        EXAMPLE_FORM,
+        EXAMPLE_ROUTING,
+        EXAMPLE_COMPONENT,
+        EXAMPLE_MATCH,
+        EXAMPLE_THEME,
+        EXAMPLE_ANIMATION,
     )
 }
 
@@ -686,6 +806,13 @@ mod tests {
             ("counter", EXAMPLE_COUNTER),
             ("dashboard", EXAMPLE_DASHBOARD),
             ("data-fetch", EXAMPLE_DATA_FETCH),
+            ("pipeline", EXAMPLE_PIPELINE),
+            ("form", EXAMPLE_FORM),
+            ("routing", EXAMPLE_ROUTING),
+            ("component", EXAMPLE_COMPONENT),
+            ("match", EXAMPLE_MATCH),
+            ("theme", EXAMPLE_THEME),
+            ("animation", EXAMPLE_ANIMATION),
         ] {
             let errors = validate_source(code);
             assert!(

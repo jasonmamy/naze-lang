@@ -1,0 +1,10 @@
+# Naze Language
+
+> Declarative, AI-native UI language that compiles .naze files to Canvas2D via WASM. One canonical form per concept, ~100 grammar rules, designed for constrained LLM decoding.
+
+## Documentation
+
+- [AI Agent Reference](docs/AGENTS.md): Concise full-stack reference optimized for AI context windows (~970 lines)
+- [Full Language Reference](docs/LANGUAGE.md): Complete language documentation (3700+ lines)
+- [Project Architecture](CLAUDE.md): Build system, workspace structure, design decisions
+- [Token Efficiency Analysis](docs/TOKEN_EFFICIENCY.md): AI cost model and multi-language comparison

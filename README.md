@@ -365,6 +365,26 @@ cd crates/naze-runtime
 wasm-pack build --target web --release
 ```
 
+## Try the Toolkit
+
+Test the end-user experience: package the compiler with docs and examples, then use it like a real user would.
+
+```bash
+make try
+```
+
+This builds the release binary, packages it with reference docs and examples, and extracts to `/tmp/naze-toolkit/`. From there:
+
+```bash
+cd /tmp/naze-toolkit/starter
+../bin/nazec build
+../bin/nazec dev
+```
+
+Or point an AI agent at `/tmp/naze-toolkit/README.md` and let it build apps.
+
+Re-run `make try` after compiler changes — it rebuilds and re-extracts automatically.
+
 ## Language Features (Phase 1)
 
 - `app` blocks with title
