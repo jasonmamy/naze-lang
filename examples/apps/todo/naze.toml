@@ -1,0 +1,6 @@
+[app]
+name = "todo"
+version = "0.1.0"
+
+[build]
+entry = "app.naze"

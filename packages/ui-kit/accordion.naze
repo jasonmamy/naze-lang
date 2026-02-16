@@ -1,0 +1,10 @@
+-- Collapsible content section
+component accordion(title: text, color: color = #f8fafc) {
+  column {
+    rect color: color, padding: 12px {
+      text "{title}"
+      on click: emit toggle
+    }
+    slot
+  }
+}

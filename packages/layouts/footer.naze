@@ -1,0 +1,8 @@
+-- Page footer
+component footer(color: color = #f1f5f9) {
+  container color: color, padding: 24px {
+    row gap: 16px {
+      slot
+    }
+  }
+}

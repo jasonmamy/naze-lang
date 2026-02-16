@@ -1,0 +1,9 @@
+-- Top navigation bar
+component navbar(title: text, color: color = #1e293b) {
+  row padding: 16px, gap: 24px, color: color {
+    heading "{title}" color: #ffffff, font-size: 20px
+    row gap: 16px {
+      slot
+    }
+  }
+}

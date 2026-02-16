@@ -1,0 +1,10 @@
+-- Hero/banner section
+component hero(title: text, subtitle: text = "", color: color = #1e293b) {
+  container color: color, padding: 48px {
+    column gap: 12px, align: center {
+      heading "{title}" color: #ffffff, font-size: 36px
+      text "{subtitle}" color: #94a3b8, font-size: 18px
+      slot
+    }
+  }
+}

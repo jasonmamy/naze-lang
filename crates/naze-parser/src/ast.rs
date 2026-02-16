@@ -296,6 +296,16 @@ pub enum Action {
         theme_name: String,
         span: Span,
     },
+    Append {
+        item: Expression,
+        target: String,
+        span: Span,
+    },
+    Remove {
+        index: Expression,
+        target: String,
+        span: Span,
+    },
 }
 
 /// Pipeline function identifiers.

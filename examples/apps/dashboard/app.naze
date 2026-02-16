@@ -1,0 +1,257 @@
+-- Dashboard App: validates routing, data fetch, pipelines, theme switching,
+-- grid layout, select, computed, link/navigate, shared state
+
+theme light {
+  colors {
+    bg: #f8fafc
+    fg: #0f172a
+    primary: #2563eb
+    accent: #8b5cf6
+    card: #ffffff
+    muted: #64748b
+    success: #16a34a
+    warning: #f59e0b
+    danger: #dc2626
+    nav-bg: #1e293b
+  }
+  spacing {
+    sm: 8px
+    md: 16px
+    lg: 24px
+    xl: 32px
+  }
+}
+
+theme dark extends light {
+  colors {
+    bg: #0f172a
+    fg: #f8fafc
+    primary: #60a5fa
+    accent: #a78bfa
+    card: #1e293b
+    muted: #94a3b8
+    nav-bg: #020617
+  }
+}
+
+app "Dashboard" {
+  shared state active-theme = "light"
+  state time-range = "7d"
+
+  -- Sales data
+  state sales = [
+    {region: "North", product: "Widget", amount: 12400, units: 62},
+    {region: "South", product: "Gadget", amount: 8750, units: 35},
+    {region: "East", product: "Widget", amount: 15200, units: 76},
+    {region: "West", product: "Gadget", amount: 6300, units: 21},
+    {region: "North", product: "Gadget", amount: 9100, units: 45},
+    {region: "South", product: "Widget", amount: 11800, units: 59},
+    {region: "East", product: "Gadget", amount: 7400, units: 37},
+    {region: "West", product: "Widget", amount: 13600, units: 68}
+  ]
+
+  -- Pipeline computations
+  computed total-revenue = sales | map amount | sum
+  computed total-units = sales | map units | sum
+  computed top-sales = sales | sort-by amount | take 3
+  computed region-count = sales | map region | distinct | count
+  computed widget-rev = sales | filter product == "Widget" | map amount | sum
+  computed gadget-rev = sales | filter product == "Gadget" | map amount | sum
+
+  -- Navigation header (persistent across pages)
+  column color: theme.colors.bg {
+    row padding: 16px, gap: 24px, color: theme.colors.nav-bg {
+      heading "Dashboard" color: #ffffff, font-size: 20px
+
+      link "Overview", to: "/"
+      link "Sales", to: "/sales"
+      link "Settings", to: "/settings"
+
+      spacer
+
+      rect padding: 8px, color: theme.colors.primary, radius: 6px {
+        on click: set-theme "dark"
+        text "Dark" color: #ffffff, font-size: 13px
+      }
+      rect padding: 8px, color: theme.colors.accent, radius: 6px {
+        on click: set-theme "light"
+        text "Light" color: #ffffff, font-size: 13px
+      }
+    }
+
+    -- Overview page
+    page "/" {
+      column padding: 24px, gap: 24px {
+        heading "Overview" color: theme.colors.fg, font-size: 24px
+
+        -- KPI cards in a grid
+        grid columns: 4, gap: 16px {
+          rect padding: 20px, color: theme.colors.card, radius: 12px {
+            column gap: 8px {
+              text "Total Revenue" color: theme.colors.muted, font-size: 13px
+              text "${total-revenue}" color: theme.colors.fg, font-size: 28px
+            }
+          }
+          rect padding: 20px, color: theme.colors.card, radius: 12px {
+            column gap: 8px {
+              text "Units Sold" color: theme.colors.muted, font-size: 13px
+              text "{total-units}" color: theme.colors.fg, font-size: 28px
+            }
+          }
+          rect padding: 20px, color: theme.colors.card, radius: 12px {
+            column gap: 8px {
+              text "Widget Revenue" color: theme.colors.muted, font-size: 13px
+              text "${widget-rev}" color: theme.colors.fg, font-size: 28px
+            }
+          }
+          rect padding: 20px, color: theme.colors.card, radius: 12px {
+            column gap: 8px {
+              text "Regions" color: theme.colors.muted, font-size: 13px
+              text "{region-count}" color: theme.colors.fg, font-size: 28px
+            }
+          }
+        }
+
+        -- Top sales table
+        rect padding: 20px, color: theme.colors.card, radius: 12px {
+          column gap: 12px {
+            text "Top 3 Sales" color: theme.colors.fg, font-size: 18px
+
+            row gap: 16px, padding: 8px, color: theme.colors.bg, radius: 6px {
+              text "Region" color: theme.colors.muted, font-size: 13px
+              text "Product" color: theme.colors.muted, font-size: 13px
+              text "Amount" color: theme.colors.muted, font-size: 13px
+              text "Units" color: theme.colors.muted, font-size: 13px
+            }
+
+            each sale in sales | sort-by amount | take 3 {
+              row gap: 16px, padding: 8px {
+                text "{sale.region}" color: theme.colors.fg, font-size: 14px
+                text "{sale.product}" color: theme.colors.fg, font-size: 14px
+                text "${sale.amount}" color: theme.colors.success, font-size: 14px
+                text "{sale.units}" color: theme.colors.fg, font-size: 14px
+              }
+            }
+          }
+        }
+      }
+    }
+
+    -- Sales page
+    page "/sales" {
+      column padding: 24px, gap: 24px {
+        row gap: 16px {
+          heading "Sales Breakdown" color: theme.colors.fg, font-size: 24px
+          spacer
+          select bind: time-range {
+            option "Last 7 days" value: "7d"
+            option "Last 30 days" value: "30d"
+            option "Last 90 days" value: "90d"
+          }
+        }
+
+        -- Widget sales
+        rect padding: 20px, color: theme.colors.card, radius: 12px {
+          column gap: 12px {
+            text "Widget Sales" color: theme.colors.fg, font-size: 18px
+            each item in sales | filter product == "Widget" | sort-by amount {
+              row gap: 12px, padding: 8px {
+                text "{item.region}" color: theme.colors.fg, font-size: 14px
+                rect width: 200px, height: 24px, color: theme.colors.bg, radius: 4px {
+                  rect height: 24px, color: theme.colors.primary, radius: 4px
+                }
+                text "${item.amount}" color: theme.colors.success, font-size: 14px
+                text "({item.units} units)" color: theme.colors.muted, font-size: 13px
+              }
+            }
+          }
+        }
+
+        -- Gadget sales
+        rect padding: 20px, color: theme.colors.card, radius: 12px {
+          column gap: 12px {
+            text "Gadget Sales" color: theme.colors.fg, font-size: 18px
+            each item in sales | filter product == "Gadget" | sort-by amount {
+              row gap: 12px, padding: 8px {
+                text "{item.region}" color: theme.colors.fg, font-size: 14px
+                rect width: 200px, height: 24px, color: theme.colors.bg, radius: 4px {
+                  rect height: 24px, color: theme.colors.accent, radius: 4px
+                }
+                text "${item.amount}" color: theme.colors.success, font-size: 14px
+                text "({item.units} units)" color: theme.colors.muted, font-size: 13px
+              }
+            }
+          }
+        }
+
+        -- Revenue summary
+        grid columns: 2, gap: 16px {
+          rect padding: 20px, color: theme.colors.card, radius: 12px {
+            column gap: 8px {
+              text "Widget Revenue" color: theme.colors.muted, font-size: 13px
+              text "${widget-rev}" color: theme.colors.fg, font-size: 24px
+            }
+          }
+          rect padding: 20px, color: theme.colors.card, radius: 12px {
+            column gap: 8px {
+              text "Gadget Revenue" color: theme.colors.muted, font-size: 13px
+              text "${gadget-rev}" color: theme.colors.fg, font-size: 24px
+            }
+          }
+        }
+      }
+    }
+
+    -- Settings page
+    page "/settings" {
+      column padding: 24px, gap: 24px {
+        heading "Settings" color: theme.colors.fg, font-size: 24px
+
+        rect padding: 20px, color: theme.colors.card, radius: 12px {
+          column gap: 16px {
+            text "Appearance" color: theme.colors.fg, font-size: 18px
+
+            row gap: 12px {
+              text "Theme:" color: theme.colors.muted
+              rect padding: 12px, color: theme.colors.primary, radius: 8px {
+                on click: set-theme "light"
+                text "Light" color: #ffffff, font-size: 14px
+              }
+              rect padding: 12px, color: theme.colors.accent, radius: 8px {
+                on click: set-theme "dark"
+                text "Dark" color: #ffffff, font-size: 14px
+              }
+            }
+
+            row gap: 12px {
+              text "Time Range:" color: theme.colors.muted
+              select bind: time-range {
+                option "Last 7 days" value: "7d"
+                option "Last 30 days" value: "30d"
+                option "Last 90 days" value: "90d"
+              }
+            }
+
+            text "Current range: {time-range}" color: theme.colors.muted, font-size: 13px
+          }
+        }
+
+        rect padding: 20px, color: theme.colors.card, radius: 12px {
+          column gap: 12px {
+            text "Quick Links" color: theme.colors.fg, font-size: 18px
+            row gap: 12px {
+              rect padding: 12px, color: theme.colors.primary, radius: 8px {
+                on click: navigate "/"
+                text "Go to Overview" color: #ffffff, font-size: 14px
+              }
+              rect padding: 12px, color: theme.colors.accent, radius: 8px {
+                on click: navigate "/sales"
+                text "Go to Sales" color: #ffffff, font-size: 14px
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

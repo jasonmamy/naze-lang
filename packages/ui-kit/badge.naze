@@ -1,0 +1,6 @@
+-- Small status indicator
+component badge(label: text, color: color = #6366f1) {
+  rect color: color, radius: 12px, padding: 6px {
+    text "{label}" color: #ffffff, font-size: 12px
+  }
+}

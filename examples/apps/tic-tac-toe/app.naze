@@ -1,0 +1,188 @@
+-- Tic-Tac-Toe: validates complex state logic, match/wildcard, computed, conditional rendering
+app "Tic-Tac-Toe" {
+  -- Board cells (9 individual state vars since we need per-cell updates)
+  state c0 = ""
+  state c1 = ""
+  state c2 = ""
+  state c3 = ""
+  state c4 = ""
+  state c5 = ""
+  state c6 = ""
+  state c7 = ""
+  state c8 = ""
+
+  -- Current player: "X" or "O"
+  state turn = "X"
+
+  -- Game status: "playing", "X", "O", "draw"
+  state status = "playing"
+
+  -- Move counter
+  state moves = 0
+
+  column gap: 0px {
+    -- Header
+    container color: #1e293b, padding: 24px {
+      column gap: 8px, align: center {
+        heading "Tic-Tac-Toe" color: #ffffff, font-size: 28px
+
+        match status {
+          "playing": text "Current turn: {turn}" color: #94a3b8, font-size: 16px
+          "draw": text "It's a draw!" color: #f59e0b, font-size: 16px
+          _: text "{status} wins!" color: #22c55e, font-size: 16px
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px, align: center {
+      -- Board: 3x3 grid
+      grid columns: 3, gap: 4px {
+        -- Row 1
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c0 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c0 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c1 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c1 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c2 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c2 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+
+        -- Row 2
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c3 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c3 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c4 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c4 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c5 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c5 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+
+        -- Row 3
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c6 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c6 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c7 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c7 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+        rect width: 100px, height: 100px, color: #f1f5f9, radius: 4px {
+          on click: set c8 = turn
+          on click: set moves = moves + 1
+          column align: center, justify: center {
+            match c8 {
+              "X": text "X" color: #2563eb, font-size: 40px, font-weight: bold
+              "O": text "O" color: #dc2626, font-size: 40px, font-weight: bold
+              _: text " " font-size: 40px
+            }
+          }
+        }
+      }
+
+      -- Game info
+      text "Moves: {moves}" color: #64748b, font-size: 14px
+
+      match turn {
+        "X": text "Next: X" color: #2563eb, font-size: 16px
+        "O": text "Next: O" color: #dc2626, font-size: 16px
+        _: text " " font-size: 16px
+      }
+
+      -- Reset button
+      rect height: 44px, padding: 20px, color: #2563eb, radius: 8px {
+        on click: set c0 = ""
+        on click: set c1 = ""
+        on click: set c2 = ""
+        on click: set c3 = ""
+        on click: set c4 = ""
+        on click: set c5 = ""
+        on click: set c6 = ""
+        on click: set c7 = ""
+        on click: set c8 = ""
+        on click: set turn = "X"
+        on click: set status = "playing"
+        on click: set moves = 0
+        column align: center, justify: center {
+          text "New Game" color: #ffffff, font-size: 16px
+        }
+      }
+
+      -- Status display
+      if status != "playing" {
+        rect padding: 20px, color: #f0fdf4, radius: 12px {
+          column gap: 8px, align: center {
+            match status {
+              "draw": text "Game Over - Draw!" color: #f59e0b, font-size: 20px, font-weight: bold
+              _: text "{status} Wins!" color: #22c55e, font-size: 20px, font-weight: bold
+            }
+            text "Click New Game to play again" color: #64748b, font-size: 14px
+          }
+        }
+      }
+    }
+  }
+}

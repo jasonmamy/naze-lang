@@ -152,6 +152,10 @@ pub enum IrExpression {
     },
     /// Server-side env var reference, resolved at runtime via std::env::var().
     EnvRef(String),
+    /// List literal in expressions (e.g., [] or [1, 2, 3])
+    List(Vec<IrExpression>),
+    /// Object literal in expressions (e.g., {text: "hello", done: false})
+    Object(Vec<(String, IrExpression)>),
 }
 
 /// An action triggered by an event handler.
@@ -193,6 +197,14 @@ pub enum IrAction {
     },
     SetTheme {
         name: String,
+    },
+    Append {
+        item: IrExpression,
+        target: String,
+    },
+    Remove {
+        index: IrExpression,
+        target: String,
     },
 }
 
@@ -293,6 +305,23 @@ pub struct ImportDecl {
     pub functions: Vec<String>,
 }
 
+/// A model (database table) declaration.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ModelDecl {
+    pub name: String,
+    pub fields: Vec<ModelFieldDecl>,
+}
+
+/// A single field in a model declaration.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ModelFieldDecl {
+    pub name: String,
+    pub field_type: String,       // "number", "text", "bool", "timestamp"
+    pub constraints: Vec<String>, // "primary", "unique", "default", etc.
+}
+
 /// A server function declaration (body evaluated server-side).
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -363,6 +392,7 @@ pub struct RenderTree {
     pub server_calls: Vec<ServerCallDecl>, // Server function data sources
     pub prompts: Vec<PromptDecl>,    // AI prompt declarations
     pub guards: Vec<GuardDef>,       // Guard definitions for route protection
+    pub models: Vec<ModelDecl>,      // Model (database table) definitions
 }
 
 // ─── Simple binary encoding ─────────────────────────────────────────────────
@@ -566,6 +596,20 @@ pub fn serialize(tree: &RenderTree) -> Vec<u8> {
             write_string(&mut buf, &check.redirect);
         }
     }
+    // Models (database table definitions)
+    write_u32(&mut buf, tree.models.len() as u32);
+    for m in &tree.models {
+        write_string(&mut buf, &m.name);
+        write_u32(&mut buf, m.fields.len() as u32);
+        for f in &m.fields {
+            write_string(&mut buf, &f.name);
+            write_string(&mut buf, &f.field_type);
+            write_u32(&mut buf, f.constraints.len() as u32);
+            for c in &f.constraints {
+                write_string(&mut buf, c);
+            }
+        }
+    }
     buf
 }
 
@@ -719,6 +763,30 @@ pub fn serialize_with_source_map(tree: &RenderTree) -> (Vec<u8>, SourceMap) {
         write_string(&mut buf, &p.model);
         write_u32(&mut buf, p.max_tokens);
         buf.extend_from_slice(&p.temperature.to_le_bytes());
+    }
+    // Guards
+    write_u32(&mut buf, tree.guards.len() as u32);
+    for g in &tree.guards {
+        write_string(&mut buf, &g.name);
+        write_u32(&mut buf, g.checks.len() as u32);
+        for check in &g.checks {
+            write_expression(&mut buf, &check.condition);
+            write_string(&mut buf, &check.redirect);
+        }
+    }
+    // Models (database table definitions)
+    write_u32(&mut buf, tree.models.len() as u32);
+    for m in &tree.models {
+        write_string(&mut buf, &m.name);
+        write_u32(&mut buf, m.fields.len() as u32);
+        for f in &m.fields {
+            write_string(&mut buf, &f.name);
+            write_string(&mut buf, &f.field_type);
+            write_u32(&mut buf, f.constraints.len() as u32);
+            for c in &f.constraints {
+                write_string(&mut buf, c);
+            }
+        }
     }
 
     (buf, source_map)
@@ -1092,6 +1160,34 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
     } else {
         vec![]
     };
+    // Model (database table) definitions - optional for backward compatibility
+    let models = if cursor.pos < cursor.data.len() {
+        let count = cursor.read_u32()? as usize;
+        let mut models = Vec::with_capacity(count);
+        for _ in 0..count {
+            let name = cursor.read_string()?;
+            let field_count = cursor.read_u32()? as usize;
+            let mut fields = Vec::with_capacity(field_count);
+            for _ in 0..field_count {
+                let fname = cursor.read_string()?;
+                let field_type = cursor.read_string()?;
+                let constraint_count = cursor.read_u32()? as usize;
+                let mut constraints = Vec::with_capacity(constraint_count);
+                for _ in 0..constraint_count {
+                    constraints.push(cursor.read_string()?);
+                }
+                fields.push(ModelFieldDecl {
+                    name: fname,
+                    field_type,
+                    constraints,
+                });
+            }
+            models.push(ModelDecl { name, fields });
+        }
+        models
+    } else {
+        vec![]
+    };
     Ok(RenderTree {
         title,
         root,
@@ -1108,6 +1204,7 @@ pub fn deserialize(data: &[u8]) -> Result<RenderTree, String> {
         server_calls,
         prompts,
         guards,
+        models,
     })
 }
 
@@ -1303,6 +1400,16 @@ fn write_action(buf: &mut Vec<u8>, action: &IrAction) {
             buf.push(9);
             write_string(buf, name);
         }
+        IrAction::Append { item, target } => {
+            buf.push(10);
+            write_expression(buf, item);
+            write_string(buf, target);
+        }
+        IrAction::Remove { index, target } => {
+            buf.push(11);
+            write_expression(buf, index);
+            write_string(buf, target);
+        }
     }
 }
 
@@ -1368,6 +1475,21 @@ fn write_expression(buf: &mut Vec<u8>, expr: &IrExpression) {
         IrExpression::EnvRef(name) => {
             buf.push(7);
             write_string(buf, name);
+        }
+        IrExpression::List(items) => {
+            buf.push(8);
+            write_u32(buf, items.len() as u32);
+            for item in items {
+                write_expression(buf, item);
+            }
+        }
+        IrExpression::Object(entries) => {
+            buf.push(9);
+            write_u32(buf, entries.len() as u32);
+            for (key, val) in entries {
+                write_string(buf, key);
+                write_expression(buf, val);
+            }
         }
     }
 }
@@ -1621,6 +1743,16 @@ impl<'a> Cursor<'a> {
                 let name = self.read_string()?;
                 Ok(IrAction::SetTheme { name })
             }
+            10 => {
+                let item = self.read_expression()?;
+                let target = self.read_string()?;
+                Ok(IrAction::Append { item, target })
+            }
+            11 => {
+                let index = self.read_expression()?;
+                let target = self.read_string()?;
+                Ok(IrAction::Remove { index, target })
+            }
             _ => Err(format!("unknown action tag: {}", tag)),
         }
     }
@@ -1686,6 +1818,24 @@ impl<'a> Cursor<'a> {
                 })
             }
             7 => Ok(IrExpression::EnvRef(self.read_string()?)),
+            8 => {
+                let count = self.read_u32()? as usize;
+                let mut items = Vec::with_capacity(count);
+                for _ in 0..count {
+                    items.push(self.read_expression()?);
+                }
+                Ok(IrExpression::List(items))
+            }
+            9 => {
+                let count = self.read_u32()? as usize;
+                let mut entries = Vec::with_capacity(count);
+                for _ in 0..count {
+                    let key = self.read_string()?;
+                    let val = self.read_expression()?;
+                    entries.push((key, val));
+                }
+                Ok(IrExpression::Object(entries))
+            }
             _ => Err(format!("unknown expression tag: {}", tag)),
         }
     }
@@ -1745,6 +1895,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -1790,6 +1941,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -1848,6 +2000,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -1910,6 +2063,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -1985,6 +2139,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2052,6 +2207,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2113,6 +2269,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2153,6 +2310,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2228,6 +2386,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2278,6 +2437,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2343,6 +2503,7 @@ mod tests {
             }],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2395,6 +2556,7 @@ mod tests {
                     temperature: 0.5,
                 },
             ],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2443,6 +2605,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2500,6 +2663,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2545,6 +2709,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2599,6 +2764,7 @@ mod tests {
                 }],
             }],
             prompts: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2649,6 +2815,7 @@ mod tests {
             server_calls: vec![],
             guards: vec![],
             prompts: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();
@@ -2693,6 +2860,7 @@ mod tests {
             server_calls: vec![],
             guards: vec![],
             prompts: vec![],
+            models: vec![],
         };
         let bytes = serialize(&tree);
         let restored = deserialize(&bytes).unwrap();

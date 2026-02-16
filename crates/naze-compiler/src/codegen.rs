@@ -71,17 +71,23 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
     let mut server_calls = Vec::new();
     let mut prompts = Vec::new();
     let mut guards = Vec::new();
+    let mut models = Vec::new();
     let mut let_scope: HashMap<String, RenderValue> = HashMap::new();
 
-    // Pre-populate scope with theme tokens from the default (first) theme
-    let default_theme = &project.themes[0];
-    for (name, color) in &default_theme.colors {
-        let key = format!("theme.colors.{}", name);
-        let_scope.insert(key, RenderValue::Color(*color));
-    }
-    for (name, value) in &default_theme.spacing {
-        let key = format!("theme.spacing.{}", name);
-        let_scope.insert(key, RenderValue::Num(*value, Some("px".to_string())));
+    // Pre-populate scope with theme tokens from the default (first) theme.
+    // When named themes exist (runtime switching possible), skip inlining so
+    // theme refs survive to runtime as InterpolatedStr state refs.
+    let has_named_themes = project.themes.len() > 1;
+    if !has_named_themes {
+        let default_theme = &project.themes[0];
+        for (name, color) in &default_theme.colors {
+            let key = format!("theme.colors.{}", name);
+            let_scope.insert(key, RenderValue::Color(*color));
+        }
+        for (name, value) in &default_theme.spacing {
+            let key = format!("theme.spacing.{}", name);
+            let_scope.insert(key, RenderValue::Num(*value, Some("px".to_string())));
+        }
     }
 
     for node in &project.entry.nodes {
@@ -326,6 +332,19 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
                     checks: ir_checks,
                 });
             }
+            Node::Model { name, fields, .. } => {
+                models.push(naze_ir::ModelDecl {
+                    name: name.clone(),
+                    fields: fields
+                        .iter()
+                        .map(|f| naze_ir::ModelFieldDecl {
+                            name: f.name.clone(),
+                            field_type: f.field_type.clone(),
+                            constraints: f.constraints.clone(),
+                        })
+                        .collect(),
+                });
+            }
             // Skip use statements, comments, component defs at top level
             _ => {}
         }
@@ -369,6 +388,7 @@ pub fn lower(project: &ResolvedProject) -> RenderTree {
         server_calls,
         prompts,
         guards,
+        models,
     }
 }
 
@@ -1664,17 +1684,22 @@ fn lower_value(value: &Value, scope: &HashMap<String, RenderValue>) -> RenderVal
                 return val.clone();
             }
 
+            // Theme refs not in scope → emit as runtime state refs (for runtime switching)
+            if parts.len() >= 2 && parts[0] == "theme" {
+                return RenderValue::InterpolatedStr(vec![TextPart::StateRef(full_key)]);
+            }
+
             // Single-segment fallback
             if parts.len() == 1 {
                 if let Some(val) = scope.get(&parts[0]) {
                     val.clone()
                 } else {
-                    // Unresolved ref — produce a placeholder string
-                    RenderValue::Str(format!("<unresolved:{}>", parts[0]))
+                    // Bare identifier used as enum-like value (e.g. align: center, justify: end)
+                    RenderValue::Str(parts[0].clone())
                 }
             } else {
-                // Multi-segment ref not found in scope
-                RenderValue::Str(format!("<unresolved:{}>", full_key))
+                // Multi-segment ref not found in scope — emit as string
+                RenderValue::Str(full_key)
             }
         }
         Value::Bind(name) => RenderValue::Bind(name.clone()),
@@ -1775,6 +1800,14 @@ fn lower_action(a: &Action) -> IrAction {
         Action::SetTheme { theme_name, .. } => IrAction::SetTheme {
             name: theme_name.clone(),
         },
+        Action::Append { item, target, .. } => IrAction::Append {
+            item: lower_expression(item),
+            target: target.clone(),
+        },
+        Action::Remove { index, target, .. } => IrAction::Remove {
+            index: lower_expression(index),
+            target: target.clone(),
+        },
     }
 }
 
@@ -1837,6 +1870,15 @@ fn lower_expression(e: &Expression) -> IrExpression {
         Expression::Literal(Value::Num(n, _)) => IrExpression::Num(*n),
         Expression::Literal(Value::Str(s)) => IrExpression::Str(s.clone()),
         Expression::Literal(Value::Bool(b)) => IrExpression::Bool(*b),
+        Expression::Literal(Value::List(items)) => {
+            IrExpression::List(items.iter().map(lower_value_to_expr).collect())
+        }
+        Expression::Literal(Value::Object(entries)) => IrExpression::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), lower_value_to_expr(v)))
+                .collect(),
+        ),
         Expression::Literal(_) => IrExpression::Str(String::new()),
         Expression::StateRef(name) => {
             // Handle env var references: env.NAME
@@ -1913,6 +1955,40 @@ fn lower_expression(e: &Expression) -> IrExpression {
                 }
             })
         }
+    }
+}
+
+/// Convert an AST Value to an IrExpression (for list/object literals in expressions).
+fn lower_value_to_expr(v: &Value) -> IrExpression {
+    match v {
+        Value::Num(n, _) => IrExpression::Num(*n),
+        Value::Str(s) => IrExpression::Str(s.clone()),
+        Value::Bool(b) => IrExpression::Bool(*b),
+        Value::List(items) => {
+            IrExpression::List(items.iter().map(lower_value_to_expr).collect())
+        }
+        Value::Object(entries) => IrExpression::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), lower_value_to_expr(v)))
+                .collect(),
+        ),
+        Value::Ref(parts) => IrExpression::StateRef(parts.join(".")),
+        Value::InterpolatedStr(parts) => {
+            // For interpolated strings in expressions, build concatenation
+            // Simple case: single interpolation → state ref
+            if parts.len() == 1 {
+                match &parts[0] {
+                    naze_parser::ast::StringPart::Literal(s) => IrExpression::Str(s.clone()),
+                    naze_parser::ast::StringPart::Interpolation(segs) => {
+                        IrExpression::StateRef(segs.join("."))
+                    }
+                }
+            } else {
+                IrExpression::Str(String::new())
+            }
+        }
+        _ => IrExpression::Str(String::new()),
     }
 }
 

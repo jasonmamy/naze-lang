@@ -220,7 +220,28 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
                 .unwrap_or(th);
             (explicit_w.unwrap_or(tw), explicit_h.unwrap_or(line_height))
         }
-        "rect" => (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0)),
+        "rect" => {
+            if node.children.is_empty() {
+                (explicit_w.unwrap_or(0.0), explicit_h.unwrap_or(0.0))
+            } else {
+                // Rect with children acts like a container
+                let inner_w = explicit_w.unwrap_or(available_w) - padding * 2.0;
+                let inner_h = explicit_h.map(|h| h - padding * 2.0).unwrap_or(available_h);
+                let mut max_w: f32 = 0.0;
+                let mut total_h: f32 = 0.0;
+                for (i, child) in node.children.iter().enumerate() {
+                    let (cw, ch) = measure_node(child, inner_w, inner_h, viewport_w, text_measure);
+                    max_w = max_w.max(cw);
+                    total_h += ch;
+                    if i > 0 {
+                        total_h += gap;
+                    }
+                }
+                let w = explicit_w.unwrap_or(max_w + padding * 2.0);
+                let h = explicit_h.unwrap_or(total_h + padding * 2.0);
+                (w, h)
+            }
+        }
         "image" => {
             // Images default to 100x100 if no explicit size
             (explicit_w.unwrap_or(100.0), explicit_h.unwrap_or(100.0))
@@ -481,8 +502,31 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
     }
 
     let children = match node.kind.as_str() {
-        "text" | "heading" | "rect" | "spacer" | "image" | "checkbox" | "radio" | "input"
+        "text" | "heading" | "spacer" | "image" | "checkbox" | "radio" | "input"
         | "textarea" | "select" | "option" => Vec::new(),
+        "rect" => {
+            // Rect with children: each child fills the rect's inner area
+            let inner_x = x + padding;
+            let inner_y = y + padding;
+            let inner_w = width - padding * 2.0;
+            let inner_h = height - padding * 2.0;
+            node.children
+                .iter()
+                .map(|child| {
+                    layout_node(
+                        child,
+                        inner_x,
+                        inner_y,
+                        inner_w,
+                        inner_h,
+                        inner_w,
+                        inner_h,
+                        viewport_w,
+                        text_measure,
+                    )
+                })
+                .collect()
+        }
         "row" => {
             let inner_x = x + padding;
             let inner_y = y + padding;
@@ -1806,6 +1850,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 
@@ -1871,6 +1916,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 
@@ -1951,6 +1997,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 
@@ -2064,6 +2111,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
         let layout = compute_layout(&tree, 800.0, 600.0);
 

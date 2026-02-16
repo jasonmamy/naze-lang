@@ -1,0 +1,8 @@
+-- User avatar with fallback initials
+component avatar(label: text = "", size: number = 40px, color: color = #6366f1) {
+  rect width: size, height: size, color: color, radius: 100px {
+    column align: center, justify: center {
+      text "{label}" color: #ffffff, font-size: 16px
+    }
+  }
+}

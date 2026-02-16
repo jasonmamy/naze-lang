@@ -1,0 +1,11 @@
+-- Main content with sidebar
+component sidebar-layout(width: number = 240px) {
+  row responsive: 768px {
+    column width: width, color: #f8fafc, padding: 16px {
+      slot "sidebar"
+    }
+    column grow: 1, padding: 20px {
+      slot
+    }
+  }
+}

@@ -265,6 +265,7 @@ fn empty_tree() -> RenderTree {
         server_calls: vec![],
         prompts: vec![],
         guards: vec![],
+        models: vec![],
     }
 }
 

@@ -1,0 +1,78 @@
+use @naze/ui-kit/button
+use @naze/ui-kit/card
+use @naze/ui-kit/badge
+use @naze/ui-kit/avatar
+use @naze/ui-kit/alert
+use @naze/ui-kit/progress
+use @naze/ui-kit/divider
+use @naze/ui-kit/chip
+use @naze/ui-kit/skeleton
+use @naze/layouts/navbar
+use @naze/layouts/hero
+use @naze/layouts/center-card
+use @naze/forms/form-field
+
+app "Standard Library Demo" {
+  state name = ""
+
+  column gap: 0px {
+    navbar title: "Naze Stdlib"
+
+    hero title: "Standard Library", subtitle: "Reusable components for Naze apps"
+
+    column padding: 24px, gap: 24px {
+      heading "UI Kit"
+
+      row gap: 12px {
+        button label: "Primary"
+        button label: "Success", color: #22c55e
+        button label: "Danger", color: #ef4444
+      }
+
+      row gap: 12px {
+        badge label: "New"
+        badge label: "Beta", color: #f59e0b
+        badge label: "Stable", color: #22c55e
+      }
+
+      row gap: 12px {
+        avatar label: "JA", color: #3b82f6
+        avatar label: "NK", color: #8b5cf6
+        avatar label: "SM", color: #ec4899
+      }
+
+      alert message: "This is an info alert"
+
+      card title: "Example Card" {
+        text "Cards can hold any content."
+        progress value: 75px
+      }
+
+      divider
+
+      row gap: 8px {
+        chip label: "Rust"
+        chip label: "WASM", color: #dbeafe
+        chip label: "Canvas2D", color: #dcfce7
+      }
+
+      heading "Loading State"
+      column gap: 8px {
+        skeleton width: 300px, height: 20px
+        skeleton width: 200px, height: 20px
+        skeleton width: 250px, height: 20px
+      }
+
+      heading "Forms"
+      form-field label: "Your Name" {
+        input bind: name, placeholder: "Enter name"
+      }
+      text "Hello, {name}!"
+
+      heading "Centered Card"
+      center-card title: "Sign In" {
+        text "Enter your credentials below."
+      }
+    }
+  }
+}

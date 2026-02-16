@@ -170,7 +170,7 @@ impl App {
                 if !handlers.is_empty() {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut self.state_store) {
+                        if execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -188,7 +188,7 @@ impl App {
                 if !outside_handlers.is_empty() {
                     let mut changed = false;
                     for handler in &outside_handlers {
-                        if execute_action(&handler.action, &mut self.state_store) {
+                        if execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -203,7 +203,7 @@ impl App {
         }
         let mut changed = false;
         for handler in &handlers {
-            if execute_action(&handler.action, &mut self.state_store) {
+            if execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes) {
                 changed = true;
             }
         }
@@ -231,7 +231,7 @@ impl App {
                 if !outside_handlers.is_empty() {
                     let mut changed = false;
                     for handler in &outside_handlers {
-                        if execute_action(&handler.action, &mut self.state_store) {
+                        if execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -303,7 +303,39 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         server_calls: tree.server_calls.clone(),
         prompts: tree.prompts.clone(),
         guards: tree.guards.clone(),
+        models: tree.models.clone(),
     }
+}
+
+fn generate_stable_id(var_name: &str, item: &RenderValue, index: usize) -> String {
+    match item {
+        RenderValue::Object(entries) => {
+            for key in &["id", "text", "name"] {
+                if let Some((_, val)) = entries.iter().find(|(k, _)| k == key) {
+                    return format!("{}_{}", var_name, render_value_to_id(val));
+                }
+            }
+            format!("{}_idx_{}", var_name, index)
+        }
+        RenderValue::Str(s) => format!("{}_{}", var_name, sanitize_id(s)),
+        RenderValue::Num(n, _) => format!("{}_{}", var_name, *n as i64),
+        _ => format!("{}_idx_{}", var_name, index),
+    }
+}
+
+fn render_value_to_id(val: &RenderValue) -> String {
+    match val {
+        RenderValue::Num(n, _) => {
+            if n.fract() == 0.0 { format!("{}", *n as i64) } else { format!("{}", n) }
+        }
+        RenderValue::Str(s) => sanitize_id(s),
+        RenderValue::Bool(b) => (if *b { "true" } else { "false" }).to_string(),
+        _ => "x".to_string(),
+    }
+}
+
+fn sanitize_id(s: &str) -> String {
+    s.chars().take(40).map(|c| if c.is_alphanumeric() { c } else { '_' }).collect()
 }
 
 fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> Vec<RenderNode> {
@@ -328,10 +360,20 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
             "__each" => {
                 if let Some((var, iterable_expr)) = &node.each_binding {
                     if let RenderValue::List(items) = evaluate_expr(iterable_expr, state) {
-                        for item in &items {
+                        for (i, item) in items.iter().enumerate() {
                             let mut child_state = state.clone();
                             child_state.insert(var.clone(), item.clone());
-                            out.extend(resolve_nodes(&node.children, &child_state));
+                            let mut resolved = resolve_nodes(&node.children, &child_state);
+                            let stable_id = generate_stable_id(var, item, i);
+                            for child in &mut resolved {
+                                if !child.props.contains_key("id") {
+                                    child.props.insert(
+                                        "id".to_string(),
+                                        RenderValue::Str(stable_id.clone()),
+                                    );
+                                }
+                            }
+                            out.extend(resolved);
                         }
                     }
                 }
@@ -360,6 +402,14 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
 fn resolve_value(value: &RenderValue, state: &HashMap<String, RenderValue>) -> RenderValue {
     match value {
         RenderValue::InterpolatedStr(parts) => {
+            // Single state ref → return raw value to preserve Color/Num types
+            if parts.len() == 1 {
+                if let TextPart::StateRef(name) = &parts[0] {
+                    if let Some(val) = state.get(name.as_str()) {
+                        return val.clone();
+                    }
+                }
+            }
             let mut result = String::new();
             for part in parts {
                 match part {
@@ -438,7 +488,7 @@ fn point_in_node(node: &PositionedNode, x: f32, y: f32) -> bool {
 
 // ─── Action execution ────────────────────────────────────────────────────────
 
-fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -> bool {
+fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>, themes: &[naze_ir::ThemeDef]) -> bool {
     match action {
         IrAction::Set { target, expr } => {
             let value = evaluate_expr(expr, state);
@@ -484,10 +534,37 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             false
         }
         IrAction::SetTheme { name } => {
-            eprintln!(
-                "[set-theme] {} - theme switching not yet implemented in native mode",
-                name
-            );
+            if let Some(theme) = themes.iter().find(|t| t.name == *name) {
+                for (token, color) in &theme.colors {
+                    state.insert(format!("theme.colors.{}", token), RenderValue::Color(*color));
+                }
+                for (token, value) in &theme.spacing {
+                    state.insert(format!("theme.spacing.{}", token), RenderValue::Num(*value, Some("px".into())));
+                }
+            }
+            state.insert("active-theme".to_string(), RenderValue::Str(name.clone()));
+            true
+        }
+        IrAction::Append { item, target } => {
+            let item_value = evaluate_expr(item, state);
+            if let Some(RenderValue::List(list)) = state.get_mut(target) {
+                list.push(item_value);
+                true
+            } else {
+                false
+            }
+        }
+        IrAction::Remove { index, target } => {
+            let idx_value = evaluate_expr(index, state);
+            if let RenderValue::Num(idx, _) = idx_value {
+                let idx = idx as usize;
+                if let Some(RenderValue::List(list)) = state.get_mut(target) {
+                    if idx < list.len() {
+                        list.remove(idx);
+                        return true;
+                    }
+                }
+            }
             false
         }
     }
@@ -533,6 +610,15 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
             // Env vars resolved at compile time; should not appear at runtime
             RenderValue::Str(String::new())
         }
+        IrExpression::List(items) => {
+            RenderValue::List(items.iter().map(|e| evaluate_expr(e, state)).collect())
+        }
+        IrExpression::Object(entries) => RenderValue::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), evaluate_expr(v, state)))
+                .collect(),
+        ),
     }
 }
 
@@ -746,6 +832,10 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
         IrBinOp::Add => {
             if let (Some(l), Some(r)) = (left_num, right_num) {
                 RenderValue::Num(l + r, None)
+            } else if let (RenderValue::List(ll), RenderValue::List(rl)) = (left, right) {
+                let mut result = ll.clone();
+                result.extend(rl.iter().cloned());
+                RenderValue::List(result)
             } else {
                 RenderValue::Str(format!(
                     "{}{}",

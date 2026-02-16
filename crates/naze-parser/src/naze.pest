@@ -8,6 +8,7 @@
 
 WHITESPACE = _{ " " | "\t" | "\r" }
 NEWLINE_CHAR = _{ "\n" }
+NL = _{ NEWLINE_CHAR* }
 
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
@@ -113,8 +114,10 @@ on_handler = { "on" ~ event_name ~ event_modifier? ~ ":" ~ action ~ NEWLINE_CHAR
 event_name = { "click-outside" | "click" | "context-menu" | "pointer-move" | "arrow-up" | "arrow-down" | "arrow-left" | "arrow-right" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" | ident }
 event_modifier = { modifier_kind ~ duration_lit }
 modifier_kind = { "debounce" | "throttle" }
-action = _{ set_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action | js_action | notify_action | emit_action | set_theme_action }
+action = _{ set_action | append_action | remove_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action | js_action | notify_action | emit_action | set_theme_action }
 set_action = { "set" ~ ident ~ "=" ~ expression }
+append_action = { "append" ~ expression ~ "to" ~ ident }
+remove_action = { "remove" ~ expression ~ "from" ~ ident }
 navigate_action = { "navigate" ~ string_lit }
 scroll_to_action = { "scroll-to" ~ string_lit }
 trigger_action = { "trigger" ~ ident }
@@ -143,7 +146,8 @@ each_stmt = { "each" ~ ident ~ "in" ~ pipe_expression ~ block }
 // -- Server function definition: server function name(param: type, ...) { body }
 // Body can be a single expression or a sequence of let bindings + result expression
 server_function_def = { "server" ~ "function" ~ ident ~ "(" ~ (func_param ~ ("," ~ func_param)*)? ~ ")" ~ "{" ~ NEWLINE_CHAR* ~ server_body ~ NEWLINE_CHAR* ~ "}" ~ NEWLINE_CHAR }
-server_body = { (server_let ~ NEWLINE_CHAR+)* ~ pipe_expression }
+server_body = { (server_let ~ NEWLINE_CHAR+)* ~ server_result }
+server_result = _{ server_find_expr | server_insert_expr | server_update_expr | server_delete_expr | pipe_expression }
 server_let = { "let" ~ ident ~ "=" ~ server_expr }
 server_expr = _{ server_fetch_expr | server_sql_expr | server_find_expr | server_insert_expr | server_update_expr | server_delete_expr | pipe_expression }
 server_fetch_expr = { "fetch" ~ string_lit }
@@ -187,7 +191,7 @@ pipe_arg = { expression }
 
 // -- Expressions (for event handler actions)
 expression = { expr_atom ~ (bin_op ~ expr_atom)* }
-expr_atom = { number_lit | bool_lit | string_lit | "(" ~ expression ~ ")" | function_call | ref_path | ident }
+expr_atom = { number_lit | bool_lit | string_lit | object_lit | list_lit | "(" ~ expression ~ ")" | function_call | ref_path | ident }
 bin_op = { "==" | "!=" | ">=" | "<=" | ">" | "<" | "&&" | "||" | "+" | "-" | "*" | "/" }
 
 // -- Function call: name(arg1, arg2) or module.func(arg1, arg2)
@@ -212,10 +216,10 @@ block = { "{" ~ (NEWLINE_CHAR | statement)* ~ "}" }
 value = { object_lit | list_lit | string_lit | color_lit | number_lit | bool_lit | ref_path | ident }
 
 // Object literal: { key: value, key: value }
-object_lit = { "{" ~ (object_entry ~ ("," ~ object_entry)*)? ~ "}" }
+object_lit = { "{" ~ NL ~ (object_entry ~ ("," ~ NL ~ object_entry)* ~ ","?)? ~ NL ~ "}" }
 object_entry = { ident ~ ":" ~ value }
 
-list_lit = { "[" ~ (value ~ ("," ~ value)*)? ~ "]" }
+list_lit = { "[" ~ NL ~ (value ~ ("," ~ NL ~ value)* ~ ","?)? ~ NL ~ "]" }
 
 string_lit = ${ "\"" ~ string_part* ~ "\"" }
 string_part = _{ interpolation | string_chars }

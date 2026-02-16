@@ -310,6 +310,36 @@ Examples include:
 - **State**: `counter`, `conditional`
 - **Apps**: `hello`, `boxes`, `app-shell`, `dashboard-static`
 
+## Real-World Example Apps
+
+Five apps in `examples/apps/` that exercise every major language feature:
+
+| App | Features Tested |
+|-----|-----------------|
+| **todo** | append/remove, each, computed, pipelines, storage, validation |
+| **dashboard** | routing (3 pages), themes, grid, select, pipelines, shared state, link/navigate |
+| **tic-tac-toe** | complex state, match/wildcard, grid, conditional rendering |
+| **chat** | append, each, textarea, shared state, scroll, session storage |
+| **form-wizard** | input types, textarea, select, radio, checkbox, validation, match, storage |
+
+### Run an app
+
+```bash
+# From the repo root — pick any app:
+cd examples/apps/todo
+
+# Dev server with hot reload (opens http://localhost:3000)
+nazec dev
+
+# Or build and serve manually
+nazec build
+python3 -m http.server -d dist 8080
+```
+
+Replace `todo` with `dashboard`, `tic-tac-toe`, `chat`, or `form-wizard`.
+
+Each app directory has a `naze.toml` and `app.naze`. Edit `app.naze` and the dev server will hot-reload automatically.
+
 ## Project Structure
 
 ```
@@ -364,6 +394,24 @@ The runtime WASM crate is pre-built and embedded in the `nazec` binary via `incl
 cd crates/naze-runtime
 wasm-pack build --target web --release
 ```
+
+## Playground
+
+Try Naze in the browser without installing anything. The playground runs the full compiler and runtime as WebAssembly — your code compiles and renders live on a Canvas2D preview as you type.
+
+Features: CodeMirror editor with Naze syntax highlighting, 500ms debounced compilation, example selector, shareable URLs, and mobile-responsive layout.
+
+**Online:** Once deployed, available at your GitHub Pages URL.
+
+**Local:**
+
+```bash
+make playground
+cd playground && python3 -m http.server 4000
+# open http://localhost:4000
+```
+
+`make playground` builds the compiler to WASM (`crates/naze-playground/`), copies it alongside the pre-built runtime WASM, and produces a self-contained `playground/` directory you can serve from any static file server.
 
 ## Try the Toolkit
 

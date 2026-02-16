@@ -1,0 +1,7 @@
+-- Clickable button with customizable style
+component button(label: text, color: color = #2563eb) {
+  rect height: 40px, color: color, radius: 8px, padding: 12px {
+    text "{label}" color: #ffffff
+    slot
+  }
+}

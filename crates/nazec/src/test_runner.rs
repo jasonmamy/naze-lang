@@ -100,6 +100,7 @@ impl TestEnv {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
 
         self.layout = Some(naze_layout::compute_layout(&resolved_tree, 1024.0, 768.0));
@@ -148,7 +149,7 @@ impl TestEnv {
         // Find and execute click handlers
         let handlers = exec::find_click_handlers(&layout_nodes, cx, cy, &self.state);
         for handler in &handlers {
-            exec::execute_action(&handler.action, &mut self.state);
+            exec::execute_action(&handler.action, &mut self.state, &[]);
             // Handle navigate actions
             if let IrAction::Navigate { path } = &handler.action {
                 self.current_page = path.clone();

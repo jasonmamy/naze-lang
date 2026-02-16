@@ -1,0 +1,11 @@
+-- Centered card (for login, signup, etc.)
+component center-card(title: text, width: number = 400px) {
+  column align: center, justify: center, padding: 40px {
+    container width: width, color: #ffffff, radius: 12px, shadow: "lg", padding: 32px {
+      column gap: 16px {
+        heading "{title}" font-size: 24px
+        slot
+      }
+    }
+  }
+}

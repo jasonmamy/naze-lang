@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Naze Playground</title>
+  <meta name="description" content="Try Naze in the browser — write declarative UI code and see it render live.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; background: #1e1e2e; }
+
+    /* ── Toolbar ─────────────────────────────────────────────────── */
+    .toolbar {
+      height: 44px; background: #181825; color: #cdd6f4;
+      display: flex; align-items: center; padding: 0 12px; gap: 10px;
+      border-bottom: 1px solid #313244; flex-shrink: 0;
+    }
+    .toolbar .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .toolbar .logo span { color: #89b4fa; }
+    .toolbar select, .toolbar button {
+      background: #313244; color: #cdd6f4; border: 1px solid #45475a;
+      border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .toolbar select:hover, .toolbar button:hover { background: #45475a; }
+    .toolbar .spacer { flex: 1; }
+    .toolbar .status { font-size: 11px; color: #6c7086; }
+    .toolbar .status.ok { color: #a6e3a1; }
+    .toolbar .status.err { color: #f38ba8; }
+    .toolbar .kbd { font-size: 10px; color: #585b70; margin-left: 2px; }
+
+    /* ── Main layout ─────────────────────────────────────────────── */
+    .main { display: flex; height: calc(100% - 44px); }
+
+    .editor-pane {
+      width: 50%; display: flex; flex-direction: column;
+      background: #1e1e2e; min-width: 0;
+    }
+    .preview-pane {
+      width: 50%; position: relative; background: #ffffff; min-width: 0;
+    }
+
+    /* ── Resize handle ───────────────────────────────────────────── */
+    .resize-handle {
+      width: 5px; cursor: col-resize; background: #313244;
+      flex-shrink: 0; transition: background 0.15s;
+    }
+    .resize-handle:hover, .resize-handle.active { background: #89b4fa; }
+
+    /* ── Editor ───────────────────────────────────────────────────── */
+    .editor-wrap { flex: 1; position: relative; overflow: hidden; }
+    .editor-textarea {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: #1e1e2e; color: #cdd6f4;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 13px; line-height: 1.6; padding: 12px;
+      border: none; outline: none; resize: none;
+      tab-size: 2; white-space: pre; overflow: auto;
+    }
+
+    /* ── Error panel ─────────────────────────────────────────────── */
+    .error-panel {
+      background: #181825; border-top: 1px solid #313244;
+      padding: 6px 12px; font-size: 12px; font-family: monospace;
+      max-height: 120px; overflow-y: auto; flex-shrink: 0;
+    }
+    .error-panel.ok { color: #a6e3a1; }
+    .error-panel.err { color: #f38ba8; }
+    .error-item { padding: 2px 0; }
+    .error-item .loc { color: #89b4fa; }
+
+    /* ── Preview ─────────────────────────────────────────────────── */
+    #preview-canvas { width: 100%; height: 100%; display: block; }
+
+    .loading-overlay {
+      position: absolute; inset: 0; background: #1e1e2e;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #cdd6f4; gap: 12px; z-index: 10;
+    }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid #313244;
+      border-top-color: #89b4fa; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Mobile ───────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .main { flex-direction: column; }
+      .editor-pane, .preview-pane { width: 100%; height: 50%; }
+      .resize-handle { display: none; }
+    }
+
+    /* ── Toast ────────────────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: #313244; color: #cdd6f4; padding: 8px 16px;
+      border-radius: 8px; font-size: 13px; z-index: 100;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="logo"><span>naze</span> playground</div>
+    <select id="examples"><option value="">Examples</option></select>
+    <div class="spacer"></div>
+    <span id="status" class="status">Loading...</span>
+    <button id="share-btn" title="Copy shareable URL">Share</button>
+    <button id="run-btn" title="Compile and run">Run <span class="kbd">(Ctrl+Enter)</span></button>
+  </div>
+  <div class="main">
+    <div class="editor-pane">
+      <div class="editor-wrap">
+        <textarea id="editor" class="editor-textarea" spellcheck="false" autocomplete="off">-- Try editing this code!
+app "Hello Naze" {
+  state count = 0
+
+  column padding: 24px, gap: 16px {
+    heading "Hello, Naze!"
+    text "A declarative UI language that compiles to Canvas2D."
+    text "Count: {count}"
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+        text "+1" color: #ffffff
+        on click: set count = count + 1
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set count = 0
+      }
+    }
+  }
+}</textarea>
+      </div>
+      <div id="errors" class="error-panel ok">Loading...</div>
+    </div>
+    <div id="resize-handle" class="resize-handle"></div>
+    <div class="preview-pane">
+      <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <div>Loading Naze compiler & runtime...</div>
+      </div>
+      <canvas id="preview-canvas"></canvas>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    const editor = document.getElementById('editor');
+    const errPanel = document.getElementById('errors');
+    const exSelect = document.getElementById('examples');
+    const shareBtn = document.getElementById('share-btn');
+    const runBtn = document.getElementById('run-btn');
+    const statusEl = document.getElementById('status');
+    const loadingEl = document.getElementById('loading');
+    const toastEl = document.getElementById('toast');
+
+    let compileTimer = null;
+    let runtimeReady = false;
+    let appInitialized = false;
+    let playgroundCompile = null;
+    let runtimeStart = null;
+    let runtimeReload = null;
+
+    // ── Resize handle ────────────────────────────────────────────────
+    const resizeHandle = document.getElementById('resize-handle');
+    const editorPane = document.querySelector('.editor-pane');
+    const previewPane = document.querySelector('.preview-pane');
+    let resizing = false;
+
+    resizeHandle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      resizing = true;
+      resizeHandle.classList.add('active');
+      document.addEventListener('mousemove', onResize);
+      document.addEventListener('mouseup', stopResize);
+    });
+
+    function onResize(e) {
+      if (!resizing) return;
+      const container = document.querySelector('.main');
+      const rect = container.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.max(20, Math.min(80, pct));
+      editorPane.style.width = clamped + '%';
+      previewPane.style.width = (100 - clamped) + '%';
+    }
+
+    function stopResize() {
+      resizing = false;
+      resizeHandle.classList.remove('active');
+      document.removeEventListener('mousemove', onResize);
+      document.removeEventListener('mouseup', stopResize);
+    }
+
+    // ── Toast ────────────────────────────────────────────────────────
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    // ── Share ────────────────────────────────────────────────────────
+    shareBtn.addEventListener('click', () => {
+      const encoded = btoa(unescape(encodeURIComponent(editor.value)));
+      const url = location.origin + location.pathname + '#' + encoded;
+      navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
+    });
+
+    // ── Run button ───────────────────────────────────────────────────
+    runBtn.addEventListener('click', () => {
+      clearTimeout(compileTimer);
+      doCompile();
+    });
+
+    // ── Editor keyboard shortcuts ────────────────────────────────────
+    editor.addEventListener('keydown', e => {
+      // Ctrl+Enter = force compile
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(compileTimer);
+        doCompile();
+      }
+      // Tab inserts two spaces
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 2;
+      }
+    });
+
+    // ── Debounced compile on type ────────────────────────────────────
+    editor.addEventListener('input', () => {
+      clearTimeout(compileTimer);
+      compileTimer = setTimeout(doCompile, 500);
+    });
+
+    // ── WASM loading ─────────────────────────────────────────────────
+    async function loadWasm() {
+      // Load compiler WASM
+      const compiler = await import('./naze_playground.js');
+      await compiler.default();
+      playgroundCompile = compiler.compile;
+      const playgroundGetExamples = compiler.get_examples;
+
+      // Load runtime WASM
+      const runtime = await import('./naze_runtime.js');
+      await runtime.default();
+      runtimeStart = runtime.start;
+      runtimeReload = runtime.reset_and_reload;
+      runtimeReady = true;
+
+      // Populate examples
+      try {
+        const examples = JSON.parse(playgroundGetExamples());
+        const groups = {};
+        for (const ex of examples) {
+          if (!groups[ex.category]) {
+            groups[ex.category] = document.createElement('optgroup');
+            groups[ex.category].label = ex.category;
+            exSelect.appendChild(groups[ex.category]);
+          }
+          const opt = document.createElement('option');
+          opt.value = ex.name;
+          opt.textContent = ex.name;
+          opt.dataset.source = ex.source;
+          groups[ex.category].appendChild(opt);
+        }
+      } catch (e) {
+        console.error('Failed to load examples:', e);
+      }
+
+      loadingEl.style.display = 'none';
+      statusEl.textContent = 'Ready';
+      statusEl.className = 'status ok';
+
+      // Load from URL hash if present
+      if (location.hash.length > 1) {
+        try {
+          editor.value = decodeURIComponent(escape(atob(location.hash.slice(1))));
+        } catch (e) { /* ignore bad hash */ }
+      }
+
+      // Initial compile
+      doCompile();
+    }
+
+    // ── Example selector ─────────────────────────────────────────────
+    exSelect.addEventListener('change', () => {
+      const selected = exSelect.selectedOptions[0];
+      if (selected && selected.dataset.source) {
+        editor.value = selected.dataset.source;
+        doCompile();
+      }
+    });
+
+    // ── Compile ──────────────────────────────────────────────────────
+    function doCompile() {
+      if (!playgroundCompile || !runtimeReady) return;
+
+      const source = editor.value;
+      if (!source.trim()) {
+        errPanel.className = 'error-panel ok';
+        errPanel.textContent = 'Empty';
+        statusEl.textContent = 'Empty';
+        statusEl.className = 'status';
+        return;
+      }
+
+      try {
+        const resultJson = playgroundCompile(source);
+        const result = JSON.parse(resultJson);
+
+        if (result.success) {
+          errPanel.className = 'error-panel ok';
+          errPanel.textContent = '\u2713 No errors';
+          statusEl.textContent = '\u2713 OK';
+          statusEl.className = 'status ok';
+
+          const binaryStr = atob(result.binary);
+          const data = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) data[i] = binaryStr.charCodeAt(i);
+          renderPreview(data);
+        } else {
+          showErrors(result.errors || []);
+        }
+      } catch (e) {
+        errPanel.className = 'error-panel err';
+        errPanel.textContent = 'Compile error: ' + e;
+        statusEl.textContent = '\u2717 Error';
+        statusEl.className = 'status err';
+      }
+    }
+
+    function showErrors(errors) {
+      errPanel.className = 'error-panel err';
+      statusEl.textContent = `\u2717 ${errors.length} error${errors.length !== 1 ? 's' : ''}`;
+      statusEl.className = 'status err';
+
+      if (errors.length === 0) {
+        errPanel.textContent = 'Unknown error';
+        return;
+      }
+      errPanel.innerHTML = errors.map(e =>
+        `<div class="error-item"><span class="loc">line ${e.line || 0}:${e.column || 0}</span> ${escHtml(e.message || '')}</div>`
+      ).join('');
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderPreview(data) {
+      try {
+        if (appInitialized) {
+          runtimeReload(data);
+        } else {
+          runtimeStart(data, 'preview-canvas');
+          appInitialized = true;
+        }
+      } catch (e) {
+        errPanel.className = 'error-panel err';
+        errPanel.textContent = 'Runtime error: ' + e;
+        statusEl.textContent = '\u2717 Runtime error';
+        statusEl.className = 'status err';
+      }
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────
+    loadWasm().catch(e => {
+      console.error('Failed to load WASM:', e);
+      loadingEl.innerHTML = `<div style="color:#f38ba8">Failed to load: ${escHtml(String(e))}</div>`;
+    });
+  </script>
+</body>
+</html>

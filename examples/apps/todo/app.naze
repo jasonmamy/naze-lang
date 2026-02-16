@@ -1,0 +1,190 @@
+-- Todo App: themes, pipelines, match, append, remove, each, storage, validation, animation
+-- Database schema (used when running with DATABASE_URL=sqlite:todo.db)
+model tasks {
+  id number primary
+  text text
+  done bool
+}
+
+server function list-tasks() {
+  find tasks order id desc
+}
+
+server function add-task(label: text) {
+  insert tasks {text: label, done: false}
+}
+
+server function delete-task(task-id: number) {
+  delete tasks where id == task-id
+}
+
+-- Light and dark themes for runtime switching
+theme light {
+  colors {
+    bg: #ffffff
+    surface: #f8fafc
+    header-bg: #1e293b
+    header-text: #ffffff
+    primary: #2563eb
+    text: #1e293b
+    text-muted: #94a3b8
+    text-secondary: #cbd5e1
+    danger: #dc2626
+    danger-light: #fee2e2
+    filter-all-bg: #e0e7ff
+    filter-all-text: #3730a3
+    filter-active-bg: #dcfce7
+    filter-active-text: #166534
+    filter-done-bg: #f1f5f9
+    filter-done-text: #64748b
+    input-bg: #ffffff
+    done-text: #94a3b8
+    check-bg: #dcfce7
+    check-text: #166534
+    uncheck-bg: #f1f5f9
+    uncheck-text: #94a3b8
+  }
+}
+
+theme dark extends light {
+  colors {
+    bg: #0f172a
+    surface: #1e293b
+    header-bg: #020617
+    header-text: #f1f5f9
+    primary: #60a5fa
+    text: #f1f5f9
+    text-muted: #94a3b8
+    text-secondary: #64748b
+    danger: #f87171
+    danger-light: #450a0a
+    filter-all-bg: #1e1b4b
+    filter-all-text: #a5b4fc
+    filter-active-bg: #052e16
+    filter-active-text: #86efac
+    filter-done-bg: #1e293b
+    filter-done-text: #94a3b8
+    input-bg: #1e293b
+    done-text: #64748b
+    check-bg: #052e16
+    check-text: #86efac
+    uncheck-bg: #1e293b
+    uncheck-text: #64748b
+  }
+}
+
+app "Todo App" {
+  state tasks = [
+    {text: "Learn Naze", done: false},
+    {text: "Build an app", done: false},
+    {text: "Ship it", done: false}
+  ]
+  state new-task = ""
+  state filter-mode = "all"
+
+  computed total-count = tasks | count
+
+  storage saved-filter: local "todo-filter" default: "all"
+  storage saved-theme: local "todo-theme" default: "light"
+
+  column gap: 0px, color: theme.colors.bg {
+    -- Header with theme switcher
+    container color: theme.colors.header-bg, padding: 24px {
+      row justify: space-between {
+        column gap: 8px, align: center {
+          heading "Todo App" color: theme.colors.header-text, font-size: 28px
+          text "{total-count} items" color: theme.colors.text-muted
+        }
+        row gap: 8px, align: center {
+          rect height: 36px, padding: 12px, color: #f8fafc, radius: 8px, role: "button", label: "Light theme" {
+            on click: set-theme "light"
+            column align: center, justify: center {
+              text "Light" font-size: 14px, color: #1e293b
+            }
+          }
+          rect height: 36px, padding: 12px, color: #334155, radius: 8px, role: "button", label: "Dark theme" {
+            on click: set-theme "dark"
+            column align: center, justify: center {
+              text "Dark" font-size: 14px, color: #f8fafc
+            }
+          }
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px, color: theme.colors.bg {
+      -- Add task input with validation
+      row gap: 8px {
+        input bind: new-task, placeholder: "What needs to be done?", validate: {required: true, min-length: 2, max-length: 100}
+        rect width: 80px, height: 40px, color: theme.colors.primary, radius: 8px, role: "button", label: "Add task", animate: "scale [0.95, 1] 150ms ease-out" {
+          on click: append {text: new-task, done: false} to tasks
+          on click: set new-task = ""
+          column align: center, justify: center {
+            text "Add" color: #ffffff
+          }
+        }
+      }
+      if new-task_error {
+        text "{new-task_error}" color: theme.colors.danger, font-size: 12px
+      }
+
+      -- Filter tabs
+      row gap: 8px {
+        rect height: 36px, padding: 12px, color: theme.colors.filter-all-bg, radius: 6px, role: "button", label: "Show all tasks" {
+          on click: set filter-mode = "all"
+          column align: center, justify: center {
+            text "All ({total-count})" font-size: 14px, color: theme.colors.filter-all-text
+          }
+        }
+        rect height: 36px, padding: 12px, color: theme.colors.filter-active-bg, radius: 6px, role: "button", label: "Show active tasks" {
+          on click: set filter-mode = "active"
+          column align: center, justify: center {
+            text "Active" font-size: 14px, color: theme.colors.filter-active-text
+          }
+        }
+        rect height: 36px, padding: 12px, color: theme.colors.filter-done-bg, radius: 6px, role: "button", label: "Show done tasks" {
+          on click: set filter-mode = "done"
+          column align: center, justify: center {
+            text "Done" font-size: 14px, color: theme.colors.filter-done-text
+          }
+        }
+      }
+
+      -- Task list with animations
+      column gap: 4px {
+        each task in tasks {
+          row gap: 12px, padding: 12px, color: theme.colors.surface, radius: 8px, animate: "opacity [0, 1] 300ms ease-out" {
+            text "{task.text}" font-size: 16px, color: theme.colors.text
+            spacer
+            rect width: 32px, height: 32px, color: theme.colors.danger-light, radius: 6px, role: "button", label: "Delete task" {
+              on click: remove task_index from tasks
+              column align: center, justify: center {
+                text "x" color: theme.colors.danger, font-size: 14px
+              }
+            }
+          }
+        }
+      }
+
+      -- Empty state
+      if total-count == 0 {
+        column padding: 32px, align: center {
+          text "No tasks yet!" color: theme.colors.text-muted, font-size: 18px
+          text "Add one above to get started." color: theme.colors.text-secondary
+        }
+      }
+
+      -- Clear all
+      if total-count > 0 {
+        row gap: 8px {
+          rect height: 36px, padding: 12px, color: theme.colors.danger, radius: 6px, role: "button", label: "Clear all tasks" {
+            on click: set tasks = []
+            column align: center, justify: center {
+              text "Clear All" color: #ffffff, font-size: 14px
+            }
+          }
+        }
+      }
+    }
+  }
+}

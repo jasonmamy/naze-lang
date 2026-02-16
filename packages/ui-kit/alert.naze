@@ -1,0 +1,9 @@
+-- Status alert banner
+component alert(message: text, color: color = #3b82f6) {
+  rect color: color, radius: 8px, padding: 12px {
+    row gap: 8px {
+      text "{message}" color: #ffffff
+      slot
+    }
+  }
+}

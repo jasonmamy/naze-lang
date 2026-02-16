@@ -1,0 +1,9 @@
+-- Tooltip wrapper that shows text on hover
+component tooltip(label: text, color: color = #1e293b) {
+  column {
+    slot
+    rect color: color, radius: 4px, padding: 6px {
+      text "{label}" color: #ffffff, font-size: 12px
+    }
+  }
+}

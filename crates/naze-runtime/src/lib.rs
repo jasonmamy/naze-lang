@@ -1,13 +1,13 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use js_sys::RegExp;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 use naze_ir::{
-    ComputedDecl, IrAction, IrBinOp, IrExpression, IrPipelineStage, PageDef, ParamDecl, RenderNode,
-    RenderTree, RenderValue, StorageDecl, TextPart, TimerDecl,
+    ComputedDecl, IrAction, IrBinOp, IrEventHandler, IrExpression, IrPipelineStage, PageDef,
+    ParamDecl, RenderNode, RenderTree, RenderValue, StorageDecl, TextPart, TimerDecl,
 };
 use naze_layout::{self, LayoutTree, PositionedNode, ScrollInfo};
 use naze_renderer::{self, canvas::Renderer};
@@ -495,6 +495,7 @@ struct App {
     // Animation state
     animations: Vec<ActiveAnimation>, // Currently running animations
     prev_props: HashMap<String, HashMap<String, RenderValue>>, // Previous prop values by node key
+    completed_keyframes: HashSet<String>, // Keyframe animations that have already played (node_key::property)
     open_select_id: Option<String>,   // Currently open select dropdown
     caret_visible: bool,              // Blinking caret state
     caret_interval_id: Option<i32>,   // setInterval ID for caret blinking
@@ -572,6 +573,42 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
 
     // 3b. Initialize storage-backed state (read from localStorage/sessionStorage)
     init_storage(&render_tree.storage, &mut state_store);
+
+    // 3b2. Initialize theme state from default theme (for runtime theme switching)
+    // First apply built-in "default" tokens, then overlay the first user-defined theme
+    // so all theme.colors.* / theme.spacing.* refs resolve at runtime.
+    {
+        let mut init_theme_name = String::new();
+        for theme in &render_tree.themes {
+            // Apply "default" base, then stop at first user-defined theme
+            let is_builtin = theme.name == "default" || theme.name.is_empty();
+            for (name, color) in &theme.colors {
+                state_store.insert(
+                    format!("theme.colors.{}", name),
+                    RenderValue::Color(*color),
+                );
+            }
+            for (name, value) in &theme.spacing {
+                state_store.insert(
+                    format!("theme.spacing.{}", name),
+                    RenderValue::Num(*value, Some("px".into())),
+                );
+            }
+            if !is_builtin && init_theme_name.is_empty() {
+                init_theme_name = theme.name.clone();
+                break; // Stop after first user-defined theme
+            }
+        }
+        if init_theme_name.is_empty() {
+            if let Some(t) = render_tree.themes.first() {
+                init_theme_name = t.name.clone();
+            }
+        }
+        state_store.insert(
+            "active-theme".to_string(),
+            RenderValue::Str(init_theme_name),
+        );
+    }
 
     // 3c. Initialize URL params (read from query string, fallback to defaults)
     init_params(&render_tree.params, &mut state_store);
@@ -655,6 +692,7 @@ pub fn start(app_data: &[u8], canvas_id: &str) -> Result<(), JsValue> {
             hovered_element_id: None,
             animations: Vec::new(),
             prev_props: HashMap::new(),
+            completed_keyframes: HashSet::new(),
             open_select_id: None,
             caret_visible: true,
             caret_interval_id: None,
@@ -823,7 +861,7 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
 
     // 3. Update global app state
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             app.render_tree = render_tree;
             app.state_store = state_store;
@@ -876,7 +914,7 @@ pub fn reset_and_reload(app_data: &[u8]) -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn inspector_get_tree() -> String {
     APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return "null".into() };
         let app = match borrow.as_ref() {
             Some(a) => a,
             None => return "null".into(),
@@ -910,7 +948,7 @@ pub fn inspector_get_tree() -> String {
 #[wasm_bindgen]
 pub fn inspector_get_state() -> String {
     APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return "{}".into() };
         let app = match borrow.as_ref() {
             Some(a) => a,
             None => return "{}".into(),
@@ -941,7 +979,7 @@ pub fn inspector_get_state() -> String {
 #[wasm_bindgen]
 pub fn inspector_node_at(x: f32, y: f32) -> String {
     APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return "null".into() };
         let app = match borrow.as_ref() {
             Some(a) => a,
             None => return "null".into(),
@@ -993,7 +1031,7 @@ pub fn inspector_node_at(x: f32, y: f32) -> String {
 #[wasm_bindgen]
 pub fn inspector_set_highlight(path: &str) {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             if path.is_empty() {
                 app.highlight_path = None;
@@ -1010,7 +1048,7 @@ pub fn inspector_set_highlight(path: &str) {
 #[wasm_bindgen]
 pub fn inspector_get_event_log() -> String {
     APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return "[]".into() };
         let app = match borrow.as_ref() {
             Some(a) => a,
             None => return "[]".into(),
@@ -1054,7 +1092,7 @@ pub fn inspector_get_event_log() -> String {
 #[wasm_bindgen]
 pub fn inspector_get_network_log() -> String {
     APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return "[]".into() };
         let app = match borrow.as_ref() {
             Some(a) => a,
             None => return "[]".into(),
@@ -1252,7 +1290,7 @@ fn log_event(
     state_changes: Vec<(String, String, String)>,
 ) {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             log_event_direct(app, event_type, target_kind, target_path, state_changes);
         }
@@ -1283,7 +1321,7 @@ fn log_event_direct(
 /// Log a network request to the inspector network log.
 fn log_network(url: &str, method: &str, status: u16, duration_ms: f64, preview: &str) {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             let ts = get_now_ms();
             app.network_log.push(NetworkRecord {
@@ -1309,7 +1347,7 @@ fn log_network(url: &str, method: &str, status: u16, duration_ms: f64, preview: 
 #[allow(dead_code)]
 fn snapshot_state_for_diff(vars: &[&str]) -> HashMap<String, String> {
     APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return HashMap::new() };
         let app = match borrow.as_ref() {
             Some(a) => a,
             None => return HashMap::new(),
@@ -1412,18 +1450,31 @@ fn process_animations(
     root: &[RenderNode],
     animations: &mut Vec<ActiveAnimation>,
     prev_props: &mut HashMap<String, HashMap<String, RenderValue>>,
+    completed_keyframes: &mut HashSet<String>,
     now: f64,
-) -> (HashMap<String, HashMap<String, RenderValue>>, bool, bool) {
-    let mut animated_props: HashMap<String, HashMap<String, RenderValue>> = HashMap::new();
+) -> (HashMap<String, HashMap<String, RenderValue>>, bool, bool, bool) {
+    // 1. Detect new animations FIRST — so newly appearing elements get their
+    //    initial animated value computed on the same frame they appear.
+    let anim_count_before = animations.len();
+    detect_new_animations(root, "", animations, prev_props, completed_keyframes, now);
+    let has_new = animations.len() > anim_count_before;
 
-    // First, remove completed animations
+    // 2. Record completed keyframe animations before removing them
+    for anim in animations.iter() {
+        if let AnimDriver::Keyframe { duration_ms, .. } = &anim.driver {
+            if now - anim.start_time >= *duration_ms {
+                completed_keyframes.insert(format!("{}::{}", anim.node_key, anim.property));
+            }
+        }
+    }
+
+    // 3. Remove completed animations
     animations.retain(|anim| match &anim.driver {
         AnimDriver::Timed { duration_ms, .. } => {
             let elapsed = now - anim.start_time;
             elapsed < *duration_ms
         }
         AnimDriver::Spring { state, .. } => {
-            // Springs settle or hard-timeout at 5 seconds
             let settled = (state.position - 1.0).abs() < 0.001 && state.velocity.abs() < 0.001;
             let timed_out = (now - anim.start_time) > 5000.0;
             !settled && !timed_out
@@ -1434,7 +1485,8 @@ fn process_animations(
         }
     });
 
-    // Compute interpolated values for active animations
+    // 4. Compute interpolated values for all active animations
+    let mut animated_props: HashMap<String, HashMap<String, RenderValue>> = HashMap::new();
     for anim in animations.iter_mut() {
         let (current, target_prop) = match &mut anim.driver {
             AnimDriver::Timed {
@@ -1480,13 +1532,7 @@ fn process_animations(
             .insert(target_prop, current);
     }
 
-    // Walk tree to detect new property changes that need animations
-    detect_new_animations(root, "", animations, prev_props, now);
-
-    // Check if we have any active animations
     let has_active = !animations.is_empty();
-
-    // Check if all animations are layout-invariant (transform/opacity/color only)
     let layout_invariant = !animations.is_empty()
         && animations.iter().all(|a| {
             matches!(
@@ -1495,7 +1541,7 @@ fn process_animations(
             )
         });
 
-    (animated_props, has_active, layout_invariant)
+    (animated_props, has_active, layout_invariant, has_new)
 }
 
 /// Interpolate between keyframe values at a given progress (0.0-1.0).
@@ -1534,6 +1580,7 @@ fn detect_new_animations(
     parent_key: &str,
     animations: &mut Vec<ActiveAnimation>,
     prev_props: &mut HashMap<String, HashMap<String, RenderValue>>,
+    completed_keyframes: &mut HashSet<String>,
     now: f64,
 ) {
     for (i, node) in nodes.iter().enumerate() {
@@ -1603,10 +1650,12 @@ fn detect_new_animations(
             // Split on commas that are OUTSIDE brackets
             for part in split_animate_specs(animate_str) {
                 if let Some(kf) = KeyframeSpec::parse(part.trim()) {
+                    let kf_key = format!("{}::{}", node_key, kf.property);
                     let already_running = animations
                         .iter()
                         .any(|a| a.node_key == node_key && a.property == kf.property);
-                    if !already_running {
+                    let already_completed = completed_keyframes.contains(&kf_key);
+                    if !already_running && !already_completed {
                         let first = kf.values.first().cloned().unwrap_or(AnimValue::Number(0.0));
                         let last = kf.values.last().cloned().unwrap_or(AnimValue::Number(1.0));
                         animations.push(ActiveAnimation {
@@ -1627,7 +1676,7 @@ fn detect_new_animations(
         }
 
         // Recurse into children
-        detect_new_animations(&node.children, &node_key, animations, prev_props, now);
+        detect_new_animations(&node.children, &node_key, animations, prev_props, completed_keyframes, now);
     }
 }
 
@@ -1695,7 +1744,7 @@ fn apply_animated_values_to_layout(
 /// Unlike schedule_render, this always schedules even if one is pending.
 fn schedule_animation_frame() {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             app.raf_pending = true;
         }
@@ -1714,7 +1763,7 @@ fn schedule_animation_frame() {
 /// Perform a full render: resolve state → layout → draw.
 fn do_render() -> Result<(), JsValue> {
     let has_animations: Result<bool, JsValue> = APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Ok(false), };
         let app = borrow
             .as_mut()
             .ok_or_else(|| JsValue::from_str("app not initialized"))?;
@@ -1748,10 +1797,11 @@ fn do_render() -> Result<(), JsValue> {
         };
 
         // 2a. Process animations and detect new ones
-        let (animated_props, has_active, layout_invariant) = process_animations(
+        let (animated_props, has_active, layout_invariant, has_new) = process_animations(
             &combined_root,
             &mut app.animations,
             &mut app.prev_props,
+            &mut app.completed_keyframes,
             now,
         );
 
@@ -1774,6 +1824,7 @@ fn do_render() -> Result<(), JsValue> {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         };
 
         // 3. Get viewport size
@@ -1785,7 +1836,9 @@ fn do_render() -> Result<(), JsValue> {
         app.renderer.set_size(vw as f64, vh as f64);
 
         // 5. Compute layout (or reuse cached layout for layout-invariant animations)
-        let layout = if has_active && layout_invariant && app.layout.is_some() {
+        //    Skip fast path when new animations were detected — the tree structure
+        //    may have changed (new items added) so cached layout would be stale.
+        let layout = if has_active && layout_invariant && !has_new && app.layout.is_some() {
             // Fast path: only transform/opacity/color changed — skip layout, patch props
             let mut cached = app.layout.as_ref().unwrap().clone();
             apply_animated_values_to_layout(&mut cached.root, &animated_props, "");
@@ -1854,7 +1907,7 @@ fn do_render() -> Result<(), JsValue> {
         }
 
         // 9. Update screen reader accessibility DOM
-        update_a11y_dom(&layout);
+        update_a11y_dom(&layout, &mut app.prev_a11y_texts);
 
         // 9a. Draw inspector highlight overlay if active
         if let Some(ref highlight_path) = app.highlight_path {
@@ -1894,7 +1947,7 @@ fn do_render() -> Result<(), JsValue> {
 /// Coalesces multiple calls — only one frame is scheduled at a time.
 fn schedule_render() {
     let already_pending = APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             if app.raf_pending {
                 return true;
@@ -1950,6 +2003,7 @@ fn resolve_tree(tree: &RenderTree, state: &HashMap<String, RenderValue>) -> Rend
         server_calls: tree.server_calls.clone(),
         guards: tree.guards.clone(),
         prompts: tree.prompts.clone(),
+        models: tree.models.clone(),
     }
 }
 
@@ -2039,6 +2093,45 @@ fn get_page_nodes<'a>(
     (&tree.root, vec![])
 }
 
+/// Generate a stable ID for an `each` loop item based on its content.
+fn generate_stable_id(var_name: &str, item: &RenderValue, index: usize) -> String {
+    match item {
+        RenderValue::Object(entries) => {
+            for key in &["id", "text", "name"] {
+                if let Some((_, val)) = entries.iter().find(|(k, _)| k == key) {
+                    return format!("{}_{}", var_name, render_value_to_id(val));
+                }
+            }
+            format!("{}_idx_{}", var_name, index)
+        }
+        RenderValue::Str(s) => format!("{}_{}", var_name, sanitize_id(s)),
+        RenderValue::Num(n, _) => format!("{}_{}", var_name, *n as i64),
+        _ => format!("{}_idx_{}", var_name, index),
+    }
+}
+
+fn render_value_to_id(val: &RenderValue) -> String {
+    match val {
+        RenderValue::Num(n, _) => {
+            if n.fract() == 0.0 {
+                format!("{}", *n as i64)
+            } else {
+                format!("{}", n)
+            }
+        }
+        RenderValue::Str(s) => sanitize_id(s),
+        RenderValue::Bool(b) => (if *b { "true" } else { "false" }).to_string(),
+        _ => "x".to_string(),
+    }
+}
+
+fn sanitize_id(s: &str) -> String {
+    s.chars()
+        .take(40)
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect()
+}
+
 fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> Vec<RenderNode> {
     let mut out = Vec::new();
     for node in nodes {
@@ -2060,10 +2153,23 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
             "__each" => {
                 if let Some((var, iterable_expr)) = &node.each_binding {
                     if let RenderValue::List(items) = evaluate_expr(iterable_expr, state) {
-                        for item in &items {
+                        let index_key = format!("{}_index", var);
+                        for (i, item) in items.iter().enumerate() {
                             let mut child_state = state.clone();
                             child_state.insert(var.clone(), item.clone());
-                            out.extend(resolve_nodes(&node.children, &child_state));
+                            child_state.insert(index_key.clone(), RenderValue::Num(i as f64, None));
+                            let mut resolved = resolve_nodes(&node.children, &child_state);
+                            // Inject stable id for animation identity
+                            let stable_id = generate_stable_id(var, item, i);
+                            for child in &mut resolved {
+                                if !child.props.contains_key("id") {
+                                    child.props.insert(
+                                        "id".to_string(),
+                                        RenderValue::Str(stable_id.clone()),
+                                    );
+                                }
+                            }
+                            out.extend(resolved);
                         }
                     }
                 }
@@ -2077,7 +2183,7 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
                         .map(|(k, v)| (k.clone(), resolve_value(v, state)))
                         .collect(),
                     children: resolve_nodes(&node.children, state),
-                    handlers: node.handlers.clone(),
+                    handlers: resolve_handlers(&node.handlers, state),
                     span: node.span.clone(),
                     condition: None,
                     else_children: None,
@@ -2089,37 +2195,127 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
     out
 }
 
+/// Resolve state refs in an IrExpression, substituting known values from state.
+fn resolve_expr_state(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> IrExpression {
+    match expr {
+        IrExpression::StateRef(name) => {
+            if let Some(val) = state.get(name.as_str()) {
+                match val {
+                    RenderValue::Num(n, _) => IrExpression::Num(*n),
+                    RenderValue::Str(s) => IrExpression::Str(s.clone()),
+                    RenderValue::Bool(b) => IrExpression::Bool(*b),
+                    _ => expr.clone(),
+                }
+            } else {
+                expr.clone()
+            }
+        }
+        IrExpression::BinOp { left, op, right } => IrExpression::BinOp {
+            left: Box::new(resolve_expr_state(left, state)),
+            op: *op,
+            right: Box::new(resolve_expr_state(right, state)),
+        },
+        IrExpression::Object(entries) => IrExpression::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), resolve_expr_state(v, state)))
+                .collect(),
+        ),
+        IrExpression::List(items) => {
+            IrExpression::List(items.iter().map(|v| resolve_expr_state(v, state)).collect())
+        }
+        _ => expr.clone(),
+    }
+}
+
+/// Resolve state refs in event handlers, substituting loop-scoped variables.
+fn resolve_handlers(
+    handlers: &[IrEventHandler],
+    state: &HashMap<String, RenderValue>,
+) -> Vec<IrEventHandler> {
+    handlers
+        .iter()
+        .map(|h| IrEventHandler {
+            event: h.event.clone(),
+            action: resolve_action_state(&h.action, state),
+            modifier_kind: h.modifier_kind,
+            modifier_ms: h.modifier_ms,
+        })
+        .collect()
+}
+
+/// Resolve state refs in an IrAction.
+fn resolve_action_state(action: &IrAction, state: &HashMap<String, RenderValue>) -> IrAction {
+    match action {
+        IrAction::Set { target, expr } => IrAction::Set {
+            target: target.clone(),
+            expr: resolve_expr_state(expr, state),
+        },
+        IrAction::Append { item, target } => IrAction::Append {
+            item: resolve_expr_state(item, state),
+            target: target.clone(),
+        },
+        IrAction::Remove { index, target } => IrAction::Remove {
+            index: resolve_expr_state(index, state),
+            target: target.clone(),
+        },
+        _ => action.clone(),
+    }
+}
+
 /// Resolve a single value. InterpolatedStr parts are concatenated into a plain Str.
 fn resolve_value(value: &RenderValue, state: &HashMap<String, RenderValue>) -> RenderValue {
     match value {
         RenderValue::InterpolatedStr(parts) => {
+            // Single state ref → return raw value to preserve Color/Num types
+            if parts.len() == 1 {
+                if let TextPart::StateRef(name) = &parts[0] {
+                    if let Some(val) = state.get(name.as_str()) {
+                        return val.clone();
+                    }
+                }
+            }
             let mut result = String::new();
             for part in parts {
                 match part {
                     TextPart::Literal(s) => result.push_str(s),
-                    TextPart::StateRef(name) => match state.get(name.as_str()) {
-                        Some(RenderValue::Str(s)) => result.push_str(s),
-                        Some(RenderValue::Num(n, _)) => {
-                            // Format integers without trailing .0
-                            if n.fract() == 0.0 {
-                                result.push_str(&format!("{}", *n as i64));
-                            } else {
-                                result.push_str(&format!("{}", n));
+                    TextPart::StateRef(name) => {
+                        // Resolve value: direct lookup, then dotted path into objects
+                        let resolved = state.get(name.as_str()).cloned().or_else(|| {
+                            let dot = name.find('.')?;
+                            let root = &name[..dot];
+                            let field = &name[dot + 1..];
+                            if let Some(RenderValue::Object(entries)) = state.get(root) {
+                                for (k, v) in entries {
+                                    if k == field {
+                                        return Some(v.clone());
+                                    }
+                                }
+                            }
+                            None
+                        });
+                        match resolved.as_ref() {
+                            Some(RenderValue::Str(s)) => result.push_str(s),
+                            Some(RenderValue::Num(n, _)) => {
+                                if n.fract() == 0.0 {
+                                    result.push_str(&format!("{}", *n as i64));
+                                } else {
+                                    result.push_str(&format!("{}", n));
+                                }
+                            }
+                            Some(RenderValue::Bool(b)) => {
+                                result.push_str(if *b { "true" } else { "false" });
+                            }
+                            Some(RenderValue::Color(c)) => {
+                                result.push_str(&format!("#{:06x}", c));
+                            }
+                            _ => {
+                                result.push('{');
+                                result.push_str(name);
+                                result.push('}');
                             }
                         }
-                        Some(RenderValue::Bool(b)) => {
-                            result.push_str(if *b { "true" } else { "false" });
-                        }
-                        Some(RenderValue::Color(c)) => {
-                            result.push_str(&format!("#{:06x}", c));
-                        }
-                        _ => {
-                            // Unresolved ref — show placeholder
-                            result.push('{');
-                            result.push_str(name);
-                            result.push('}');
-                        }
-                    },
+                    }
                 }
             }
             RenderValue::Str(result)
@@ -2228,6 +2424,18 @@ fn draw_node(
             if has_shadow {
                 renderer.clear_shadow();
                 renderer.restore();
+            }
+            for child in &node.children {
+                draw_node(
+                    renderer,
+                    child,
+                    state,
+                    focused_input_id,
+                    focused_element_id,
+                    open_select_id,
+                    caret_visible,
+                    scroll_states,
+                );
             }
         }
         "container" => {
@@ -2684,7 +2892,7 @@ fn setup_event_listeners() -> Result<(), JsValue> {
     // Get canvas element from the app
     let canvas = APP
         .with(|cell| {
-            let borrow = cell.borrow();
+            let borrow = cell.try_borrow().map_err(|_| "app busy")?;
             let app = borrow.as_ref().ok_or("app not initialized")?;
             Ok::<_, &str>(app.renderer.canvas_element().clone())
         })
@@ -2841,7 +3049,7 @@ fn setup_event_listeners() -> Result<(), JsValue> {
 /// the state was changed (needs re-render).
 fn handle_click(x: f32, y: f32) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -2894,7 +3102,7 @@ fn handle_click(x: f32, y: f32) -> bool {
                 if !handlers.is_empty() {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store) {
+                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -2913,7 +3121,7 @@ fn handle_click(x: f32, y: f32) -> bool {
                 if !outside_handlers.is_empty() {
                     let mut changed = false;
                     for handler in &outside_handlers {
-                        if execute_action(&handler.action, &mut app.state_store) {
+                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -2970,7 +3178,7 @@ fn handle_click(x: f32, y: f32) -> bool {
                 app.open_select_id = None;
                 // Execute change handlers
                 for handler in &change_handlers {
-                    execute_action(&handler.action, &mut app.state_store);
+                    execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
                 }
                 return true;
             }
@@ -3008,10 +3216,16 @@ fn handle_click(x: f32, y: f32) -> bool {
 
         let mut changed = false;
         for handler in &handlers {
-            if execute_action(&handler.action, &mut app.state_store) {
+            if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                 changed = true;
             }
         }
+
+        // Reset animation on clicked node so it replays
+        reset_click_animation(
+            &layout.root, x, y, "",
+            &mut app.animations, &mut app.completed_keyframes,
+        );
 
         // Log the click event with state changes
         let mut state_changes = Vec::new();
@@ -3027,6 +3241,47 @@ fn handle_click(x: f32, y: f32) -> bool {
 
         changed
     })
+}
+
+/// Reset the animation on a clicked node so it replays.
+/// Walks the tree to find the deepest node with click handlers at (x,y),
+/// computes its animation key, and removes it from completed_keyframes.
+fn reset_click_animation(
+    nodes: &[PositionedNode],
+    x: f32,
+    y: f32,
+    parent_key: &str,
+    animations: &mut Vec<ActiveAnimation>,
+    completed_keyframes: &mut HashSet<String>,
+) {
+    for (i, node) in nodes.iter().enumerate() {
+        if !point_in_node(node, x, y) {
+            continue;
+        }
+        let node_key = if let Some(RenderValue::Str(id)) = node.props.get("id") {
+            format!("{}_{}", parent_key, id)
+        } else {
+            format!("{}_{}_{}", parent_key, node.kind, i)
+        };
+        // Recurse into children first (deepest wins)
+        reset_click_animation(
+            &node.children, x, y, &node_key,
+            animations, completed_keyframes,
+        );
+        // If this node has click handlers AND an animate prop, reset its animation
+        let has_click = node.handlers.iter().any(|h| h.event == "click");
+        if has_click {
+            if let Some(RenderValue::Str(animate_str)) = node.props.get("animate") {
+                for part in split_animate_specs(animate_str) {
+                    if let Some(kf) = KeyframeSpec::parse(part.trim()) {
+                        let kf_key = format!("{}::{}", node_key, kf.property);
+                        completed_keyframes.remove(&kf_key);
+                        animations.retain(|a| !(a.node_key == node_key && a.property == kf.property));
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Check if any node at (x, y) has a handler for the given event.
@@ -3169,7 +3424,7 @@ fn find_event_handlers_at_point(
 /// Handle right-click / context menu. Returns true if a handler was found.
 fn handle_contextmenu(x: f32, y: f32) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -3187,7 +3442,7 @@ fn handle_contextmenu(x: f32, y: f32) -> bool {
                 if !handlers.is_empty() {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store) {
+                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -3204,7 +3459,7 @@ fn handle_contextmenu(x: f32, y: f32) -> bool {
         }
         let mut changed = false;
         for handler in &handlers {
-            if execute_action(&handler.action, &mut app.state_store) {
+            if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                 changed = true;
             }
         }
@@ -3240,7 +3495,7 @@ fn find_handlers_in_layout(
 // ─── Action execution ────────────────────────────────────────────────────────
 
 /// Execute an action, mutating the state store. Returns true if state was changed.
-fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -> bool {
+fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>, themes: &[naze_ir::ThemeDef]) -> bool {
     match action {
         IrAction::Set { target, expr } => {
             let value = evaluate_expr(expr, state);
@@ -3261,9 +3516,40 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             false // no re-render needed
         }
         IrAction::Trigger { data_name } => {
-            // Re-fetch the named data source
-            web_sys::console::log_1(&format!("trigger: re-fetching {}", data_name).into());
-            // Trigger will be handled by the main event loop after re-render
+            // Re-fetch the named data source (server call or fetch)
+            APP.with(|cell| {
+                if let Ok(borrow) = cell.try_borrow() {
+                    if let Some(app) = borrow.as_ref() {
+                        // Check server calls first
+                        for call in &app.render_tree.server_calls {
+                            if call.name == *data_name {
+                                let args: Vec<RenderValue> = call
+                                    .args
+                                    .iter()
+                                    .map(|a| evaluate_expr(a, state))
+                                    .collect();
+                                call_server_function(
+                                    &call.name,
+                                    &call.func_name,
+                                    args,
+                                );
+                                return;
+                            }
+                        }
+                        // Check data fetch declarations
+                        for decl in &app.render_tree.data {
+                            if decl.name == *data_name && decl.source_type == 0 {
+                                fetch_data(
+                                    &decl.name,
+                                    &decl.url,
+                                    &decl.method,
+                                );
+                                return;
+                            }
+                        }
+                    }
+                }
+            });
             true
         }
         IrAction::Copy { expr } => {
@@ -3412,10 +3698,45 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -
             false
         }
         IrAction::SetTheme { name } => {
-            // TODO: full theme switching — for now log and update state
-            web_sys::console::log_1(&format!("set-theme: {}", name).into());
+            // Find the requested theme and update all theme.* state entries
+            if let Some(theme) = themes.iter().find(|t| t.name == *name) {
+                for (token, color) in &theme.colors {
+                    state.insert(
+                        format!("theme.colors.{}", token),
+                        RenderValue::Color(*color),
+                    );
+                }
+                for (token, value) in &theme.spacing {
+                    state.insert(
+                        format!("theme.spacing.{}", token),
+                        RenderValue::Num(*value, Some("px".into())),
+                    );
+                }
+            }
             state.insert("active-theme".to_string(), RenderValue::Str(name.clone()));
             true
+        }
+        IrAction::Append { item, target } => {
+            let item_value = evaluate_expr(item, state);
+            if let Some(RenderValue::List(list)) = state.get_mut(target) {
+                list.push(item_value);
+                true
+            } else {
+                false
+            }
+        }
+        IrAction::Remove { index, target } => {
+            let idx_value = evaluate_expr(index, state);
+            if let RenderValue::Num(idx, _) = idx_value {
+                let idx = idx as usize;
+                if let Some(RenderValue::List(list)) = state.get_mut(target) {
+                    if idx < list.len() {
+                        list.remove(idx);
+                        return true;
+                    }
+                }
+            }
+            false
         }
     }
 }
@@ -3455,7 +3776,7 @@ fn navigate_to(path: &str) {
 
         // Update current path in app state
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.current_path = path.to_string();
             }
@@ -3470,7 +3791,7 @@ fn setup_popstate_handler() -> Result<(), JsValue> {
     let popstate_cb = Closure::<dyn Fn()>::new(|| {
         let new_path = get_current_path();
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.current_path = new_path;
             }
@@ -3619,7 +3940,7 @@ fn init_device_data(name: &str, api: &str, watch: bool) {
             let err_key = state_key(&name, "error");
             let loading_key = state_key(&name, "loading");
             APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
                     app.state_store.insert(
                         err_key,
@@ -3648,7 +3969,7 @@ fn init_geolocation(name: &str, watch: bool) {
             let err_key = state_key(&name, "error");
             let loading_key = state_key(&name, "loading");
             APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
                     app.state_store.insert(
                         err_key,
@@ -3684,7 +4005,7 @@ fn init_geolocation(name: &str, watch: bool) {
         let loading_key = state_key(&name_ok, "loading");
         let err_key = state_key(&name_ok, "error");
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.state_store.insert(data_key, data);
                 app.state_store
@@ -3708,7 +4029,7 @@ fn init_geolocation(name: &str, watch: bool) {
             let err_key = state_key(&name_err, "error");
             let loading_key = state_key(&name_err, "loading");
             APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
                     app.state_store.insert(err_key, RenderValue::Str(msg));
                     app.state_store
@@ -3778,7 +4099,7 @@ fn init_accelerometer(name: &str, watch: bool) {
             let loading_key = state_key(&name_cb, "loading");
             let err_key = state_key(&name_cb, "error");
             APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
                     app.state_store.insert(data_key, data);
                     app.state_store
@@ -3844,7 +4165,7 @@ fn init_js_call_data(name: &str, func_name: &str) {
                             RenderValue::Str("null".to_string())
                         };
                         APP.with(|cell| {
-                            let mut borrow = cell.borrow_mut();
+                            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                             if let Some(app) = borrow.as_mut() {
                                 app.state_store.insert(data_key, naze_val);
                                 app.state_store
@@ -3859,7 +4180,7 @@ fn init_js_call_data(name: &str, func_name: &str) {
                     Err(e) => {
                         let msg = format!("JS call error: {:?}", e);
                         APP.with(|cell| {
-                            let mut borrow = cell.borrow_mut();
+                            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                             if let Some(app) = borrow.as_mut() {
                                 app.state_store.insert(err_key, RenderValue::Str(msg));
                                 app.state_store
@@ -3876,7 +4197,7 @@ fn init_js_call_data(name: &str, func_name: &str) {
 
     // Function not found
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             app.state_store.insert(
                 err_key,
@@ -3892,7 +4213,7 @@ fn init_js_call_data(name: &str, func_name: &str) {
 /// Set up all timer declarations (setTimeout / setInterval).
 fn setup_timers() {
     let timer_decls: Vec<TimerDecl> = APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return vec![] };
         borrow
             .as_ref()
             .map(|app| app.render_tree.timers.clone())
@@ -3908,9 +4229,9 @@ fn setup_timers() {
         let action = decl.action.clone();
         let cb = Closure::<dyn Fn()>::new(move || {
             let needs_render = APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
-                    execute_action(&action, &mut app.state_store)
+                    execute_action(&action, &mut app.state_store, &app.render_tree.themes)
                 } else {
                     false
                 }
@@ -3997,6 +4318,15 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
             // this branch should not be reached in the WASM runtime.
             RenderValue::Str(String::new())
         }
+        IrExpression::List(items) => {
+            RenderValue::List(items.iter().map(|e| evaluate_expr(e, state)).collect())
+        }
+        IrExpression::Object(entries) => RenderValue::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), evaluate_expr(v, state)))
+                .collect(),
+        ),
     }
 }
 
@@ -4270,6 +4600,10 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
         IrBinOp::Add => {
             if let (Some(l), Some(r)) = (left_num, right_num) {
                 RenderValue::Num(l + r, None)
+            } else if let (RenderValue::List(ll), RenderValue::List(rl)) = (left, right) {
+                let mut result = ll.clone();
+                result.extend(rl.iter().cloned());
+                RenderValue::List(result)
             } else {
                 // String concatenation fallback
                 let ls = render_value_to_string(left);
@@ -4537,7 +4871,7 @@ fn create_hidden_input(_canvas_id: &str) -> Result<(), JsValue> {
                         let value = input.value();
                         // Update state with new value and execute change handlers
                         let changed = APP.with(|cell| {
-                            let mut borrow = cell.borrow_mut();
+                            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                             if let Some(app) = borrow.as_mut() {
                                 if let Some(ref focused) = app.focused_input.clone() {
                                     // Update the bound state variable
@@ -4555,7 +4889,7 @@ fn create_hidden_input(_canvas_id: &str) -> Result<(), JsValue> {
                                     );
                                     // Execute change handlers
                                     for handler in &focused.change_handlers {
-                                        execute_action(&handler.action, &mut app.state_store);
+                                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
                                     }
                                     return true;
                                 }
@@ -4577,7 +4911,7 @@ fn create_hidden_input(_canvas_id: &str) -> Result<(), JsValue> {
     // Set up blur event listener to clear focus state and stop caret timer
     let blur_cb = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.focused_input = None;
                 // Stop caret blink timer
@@ -4631,7 +4965,7 @@ fn create_hidden_textarea(_canvas_id: &str) -> Result<(), JsValue> {
                     if let Ok(ta) = el.dyn_into::<web_sys::HtmlTextAreaElement>() {
                         let value = ta.value();
                         let changed = APP.with(|cell| {
-                            let mut borrow = cell.borrow_mut();
+                            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                             if let Some(app) = borrow.as_mut() {
                                 if let Some(ref focused) = app.focused_input.clone() {
                                     app.state_store.insert(
@@ -4646,7 +4980,7 @@ fn create_hidden_textarea(_canvas_id: &str) -> Result<(), JsValue> {
                                         &focused.input_type,
                                     );
                                     for handler in &focused.change_handlers {
-                                        execute_action(&handler.action, &mut app.state_store);
+                                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
                                     }
                                     return true;
                                 }
@@ -4667,7 +5001,7 @@ fn create_hidden_textarea(_canvas_id: &str) -> Result<(), JsValue> {
     // Blur event listener
     let blur_cb = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.focused_input = None;
                 if let Some(id) = app.caret_interval_id.take() {
@@ -4718,7 +5052,7 @@ fn focus_input(
 ) {
     // Update focus state and start caret blink timer
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             // Stop existing timer if any
             if let Some(id) = app.caret_interval_id.take() {
@@ -4742,7 +5076,7 @@ fn focus_input(
     if let Some(window) = web_sys::window() {
         let toggle_caret = Closure::<dyn Fn()>::new(|| {
             APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
                     app.caret_visible = !app.caret_visible;
                 }
@@ -4755,7 +5089,7 @@ fn focus_input(
             500, // 500ms interval
         ) {
             APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
                     app.caret_interval_id = Some(id);
                 }
@@ -4848,7 +5182,7 @@ fn open_file_picker(
         let bind = bind_var.clone();
         let change_h = change_handlers.clone();
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 // Store as object with name, size, type
                 let obj = vec![
@@ -4860,7 +5194,7 @@ fn open_file_picker(
                     .insert(bind.clone(), RenderValue::Object(obj));
                 // Execute change handlers
                 for handler in &change_h {
-                    execute_action(&handler.action, &mut app.state_store);
+                    execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
                 }
             }
         });
@@ -5089,7 +5423,7 @@ struct DropTargetInfo {
 /// Handle mousedown event. Starts drag if on draggable element, otherwise does nothing.
 fn handle_mousedown(x: f32, y: f32) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -5116,7 +5450,7 @@ fn handle_mousedown(x: f32, y: f32) -> bool {
 
             // Execute drag-start handlers
             for handler in &info.drag_start_handlers {
-                execute_action(&handler.action, &mut app.state_store);
+                execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
             }
 
             return true; // Needs render for visual feedback
@@ -5129,7 +5463,7 @@ fn handle_mousedown(x: f32, y: f32) -> bool {
 /// Handle mousemove event. Updates drag position, hover state, or cursor.
 fn handle_mousemove(x: f32, y: f32) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -5153,7 +5487,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
             if new_target_id != drag.over_target_id {
                 if let Some(info) = target {
                     for handler in &info.drag_over_handlers {
-                        execute_action(&handler.action, &mut app.state_store);
+                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
                     }
                 }
                 drag.over_target_id = new_target_id;
@@ -5188,7 +5522,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
                 let pm_handlers =
                     find_event_handlers_at_point(&overlay.children, x, y, "pointer-move");
                 for handler in &pm_handlers {
-                    if execute_action(&handler.action, &mut app.state_store) {
+                    if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                         needs_render = true;
                     }
                 }
@@ -5199,7 +5533,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
         if !pointer_move_nodes.is_empty() {
             let pm_handlers = find_event_handlers_at_point(&layout.root, x, y, "pointer-move");
             for handler in &pm_handlers {
-                if execute_action(&handler.action, &mut app.state_store) {
+                if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                     needs_render = true;
                 }
             }
@@ -5226,7 +5560,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
             // Fire hover handlers when entering a new element
             if let Some((_, handlers)) = hover_info {
                 for handler in &handlers {
-                    if execute_action(&handler.action, &mut app.state_store) {
+                    if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                         needs_render = true;
                     }
                 }
@@ -5261,7 +5595,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
 /// Handle mouseup event. Completes drop or triggers click.
 fn handle_mouseup(x: f32, y: f32) -> bool {
     let was_dragging = APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return false };
         if let Some(app) = borrow.as_ref() {
             return app.drag_state.is_some();
         }
@@ -5271,7 +5605,7 @@ fn handle_mouseup(x: f32, y: f32) -> bool {
     if was_dragging {
         // Complete drag operation
         return APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             let app = match borrow.as_mut() {
                 Some(a) => a,
                 None => return false,
@@ -5288,7 +5622,7 @@ fn handle_mouseup(x: f32, y: f32) -> bool {
                 if let Some(info) = find_drop_target_at_point(&layout.root, x, y) {
                     // Execute drop handlers
                     for handler in &info.drop_handlers {
-                        execute_action(&handler.action, &mut app.state_store);
+                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
                     }
                 }
             }
@@ -5406,7 +5740,7 @@ fn find_cursor_prop_at_point(nodes: &[PositionedNode], x: f32, y: f32) -> Option
 /// Set the cursor style on the canvas.
 fn set_cursor(cursor: &str) {
     APP.with(|cell| {
-        let borrow = cell.borrow();
+        let borrow = match cell.try_borrow() { Ok(b) => b, Err(_) => return };
         if let Some(app) = borrow.as_ref() {
             let _ = app
                 .renderer
@@ -5465,7 +5799,7 @@ fn apply_scroll_delta(
     if changed {
         if let Some(handlers) = find_scroll_handlers(&layout.root, scroll_id) {
             for handler in &handlers {
-                execute_action(&handler.action, &mut app.state_store);
+                execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
             }
         }
     }
@@ -5497,7 +5831,7 @@ fn find_scroll_by_id(
 /// Handle wheel event for scrolling.
 fn handle_wheel(x: f32, y: f32, delta_x: f32, delta_y: f32) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -5525,7 +5859,7 @@ fn handle_wheel(x: f32, y: f32, delta_x: f32, delta_y: f32) -> bool {
 /// Handle touchstart: find scroll container at touch point, store state.
 fn handle_touchstart(x: f32, y: f32, identifier: i32) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -5560,7 +5894,7 @@ fn handle_touchstart(x: f32, y: f32, identifier: i32) -> bool {
 /// Handle touchmove: compute delta, apply scroll.
 fn handle_touchmove(x: f32, y: f32, identifier: i32) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -5592,7 +5926,7 @@ fn handle_touchmove(x: f32, y: f32, identifier: i32) -> bool {
 /// Handle touchend/touchcancel: clear touch state.
 fn handle_touchend(identifier: i32) {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         if let Some(app) = borrow.as_mut() {
             if app.touch_identifier == Some(identifier) {
                 app.touch_scroll_id = None;
@@ -5667,7 +6001,7 @@ fn find_scroll_at_point(
 /// The element_id should match an element's `id` prop.
 fn scroll_to_element(element_id: &str) {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return,
@@ -5738,7 +6072,7 @@ fn find_element_and_scroll_container(
 /// Handle keydown event. Returns true if state changed (needs re-render).
 fn handle_keydown(key: &str, shift: bool) -> bool {
     APP.with(|cell| {
-        let mut borrow = cell.borrow_mut();
+        let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
         let app = match borrow.as_mut() {
             Some(a) => a,
             None => return false,
@@ -5820,7 +6154,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
                 {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store) {
+                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -5849,7 +6183,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
                     if !outside_handlers.is_empty() {
                         let mut changed = false;
                         for handler in &outside_handlers {
-                            if execute_action(&handler.action, &mut app.state_store) {
+                            if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                                 changed = true;
                             }
                         }
@@ -5881,7 +6215,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
                 if let Some(handlers) = handlers {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store) {
+                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -5897,7 +6231,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
             {
                 let mut changed = false;
                 for handler in &handlers {
-                    if execute_action(&handler.action, &mut app.state_store) {
+                    if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
                         changed = true;
                     }
                 }
@@ -6108,7 +6442,7 @@ fn create_a11y_container() -> Result<(), JsValue> {
 }
 
 /// Update the screen reader DOM to mirror the current layout.
-fn update_a11y_dom(layout: &LayoutTree) {
+fn update_a11y_dom(layout: &LayoutTree, prev_a11y_texts: &mut Vec<String>) {
     let result = (|| -> Result<(), JsValue> {
         let window = web_sys::window().ok_or("no window")?;
         let document = window.document().ok_or("no document")?;
@@ -6128,24 +6462,19 @@ fn update_a11y_dom(layout: &LayoutTree) {
         collect_visible_texts(&layout.root, &mut current_texts);
 
         // Diff against previous texts and announce new ones
-        APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
-            if let Some(app) = borrow.as_mut() {
-                let new_texts: Vec<&String> = current_texts
-                    .iter()
-                    .filter(|t| !app.prev_a11y_texts.contains(t))
-                    .collect();
+        let new_texts: Vec<&String> = current_texts
+            .iter()
+            .filter(|t| !prev_a11y_texts.contains(t))
+            .collect();
 
-                if !new_texts.is_empty() {
-                    // Announce the first new text via the live region
-                    if let Some(live_el) = document.get_element_by_id(A11Y_LIVE_REGION_ID) {
-                        live_el.set_text_content(Some(new_texts[0]));
-                    }
-                }
-
-                app.prev_a11y_texts = current_texts;
+        if !new_texts.is_empty() {
+            // Announce the first new text via the live region
+            if let Some(live_el) = document.get_element_by_id(A11Y_LIVE_REGION_ID) {
+                live_el.set_text_content(Some(new_texts[0]));
             }
-        });
+        }
+
+        *prev_a11y_texts = current_texts;
 
         Ok(())
     })();
@@ -6387,7 +6716,7 @@ fn fetch_data(name: &str, url: &str, method: &str) {
         let result = do_fetch(&url, &method).await;
 
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 // Set loading to false
                 app.state_store
@@ -6425,7 +6754,7 @@ fn call_server_function(name: &str, func_name: &str, args: Vec<RenderValue>) {
         let result = do_server_call(&func_name, &args).await;
 
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 // Set loading to false
                 app.state_store
@@ -6570,7 +6899,7 @@ fn call_prompt(name: &str, vars: HashMap<String, String>) {
         let result = do_prompt_call(&name, &vars).await;
 
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.state_store
                     .insert(state_key(&name, "loading"), RenderValue::Bool(false));
@@ -6723,7 +7052,7 @@ fn connect_stream(name: &str, url: &str) {
     let name_open = name_clone.clone();
     let onopen = Closure::wrap(Box::new(move |_: web_sys::Event| {
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.state_store
                     .insert(state_key(&name_open, "loading"), RenderValue::Bool(false));
@@ -6739,7 +7068,7 @@ fn connect_stream(name: &str, url: &str) {
     let onmessage = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
         if let Some(text) = e.data().as_string() {
             APP.with(|cell| {
-                let mut borrow = cell.borrow_mut();
+                let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
                 if let Some(app) = borrow.as_mut() {
                     let key = state_key(&name_msg, "data");
                     let current = app
@@ -6765,7 +7094,7 @@ fn connect_stream(name: &str, url: &str) {
     let name_err = name_clone.clone();
     let onerror = Closure::wrap(Box::new(move |_: web_sys::Event| {
         APP.with(|cell| {
-            let mut borrow = cell.borrow_mut();
+            let mut borrow = match cell.try_borrow_mut() { Ok(b) => b, Err(_) => return Default::default(), };
             if let Some(app) = borrow.as_mut() {
                 app.state_store.insert(
                     state_key(&name_err, "error"),

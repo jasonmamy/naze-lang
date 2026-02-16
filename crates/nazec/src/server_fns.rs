@@ -143,8 +143,114 @@ pub fn render_value_to_json(v: &RenderValue) -> serde_json::Value {
     }
 }
 
+/// Returns true if DATABASE_URL points to a SQLite database.
+#[cfg(feature = "database")]
+pub fn is_sqlite(db_url: &str) -> bool {
+    db_url.starts_with("sqlite:") || db_url.ends_with(".db") || db_url.ends_with(".sqlite")
+}
+
+/// Extract the file path from a SQLite DATABASE_URL.
+#[cfg(feature = "database")]
+pub fn sqlite_path(db_url: &str) -> String {
+    if let Some(path) = db_url.strip_prefix("sqlite:") {
+        path.to_string()
+    } else {
+        db_url.to_string()
+    }
+}
+
+/// Convert PostgreSQL-style $N placeholders to SQLite-style ?N placeholders.
+#[cfg(feature = "database")]
+fn pg_to_sqlite_placeholders(query: &str) -> String {
+    let mut result = String::with_capacity(query.len());
+    let mut chars = query.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '$' {
+            let mut num = String::new();
+            while let Some(&d) = chars.peek() {
+                if d.is_ascii_digit() {
+                    num.push(d);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if num.is_empty() {
+                result.push(c);
+            } else {
+                result.push('?');
+                result.push_str(&num);
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+/// Auto-create tables from model definitions (for SQLite).
+#[cfg(feature = "database")]
+pub fn create_tables_sqlite(db_path: &str, models: &[naze_ir::ModelDecl]) {
+    use rusqlite::Connection;
+
+    let conn = match Connection::open(db_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[naze] SQLite connection failed: {}", e);
+            return;
+        }
+    };
+
+    for model in models {
+        let mut col_defs = Vec::new();
+        for field in &model.fields {
+            let sql_type = match field.field_type.as_str() {
+                "number" => {
+                    if field.constraints.iter().any(|c| c == "primary") {
+                        "INTEGER"
+                    } else {
+                        "REAL"
+                    }
+                }
+                "text" => "TEXT",
+                "bool" => "INTEGER",
+                "timestamp" => "TEXT",
+                _ => "TEXT",
+            };
+            let mut def = format!("{} {}", field.name, sql_type);
+            for constraint in &field.constraints {
+                match constraint.as_str() {
+                    "primary" => def.push_str(" PRIMARY KEY AUTOINCREMENT"),
+                    "unique" => def.push_str(" UNIQUE"),
+                    c if c.starts_with("default:") => {
+                        let default_val = &c["default:".len()..];
+                        if default_val == "now" {
+                            def.push_str(" DEFAULT CURRENT_TIMESTAMP");
+                        } else {
+                            def.push_str(&format!(" DEFAULT {}", default_val));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            col_defs.push(def);
+        }
+        let create_sql = format!(
+            "CREATE TABLE IF NOT EXISTS {} ({})",
+            model.name,
+            col_defs.join(", ")
+        );
+        if let Err(e) = conn.execute(&create_sql, []) {
+            eprintln!("[naze] failed to create table '{}': {}", model.name, e);
+        } else {
+            eprintln!("[naze] ensured table '{}' exists", model.name);
+        }
+    }
+}
+
 /// Execute a SQL query using the DATABASE_URL environment variable.
 /// Returns rows as a RenderValue::List of RenderValue::Object entries.
+/// Supports both PostgreSQL and SQLite (detected from DATABASE_URL).
 fn execute_sql(
     query: &str,
     param_exprs: &[IrExpression],
@@ -152,21 +258,10 @@ fn execute_sql(
 ) -> RenderValue {
     #[cfg(feature = "database")]
     {
-        use postgres::types::ToSql;
-        use postgres::{Client, NoTls};
-
         let db_url = match std::env::var("DATABASE_URL") {
             Ok(url) => url,
             Err(_) => {
                 eprintln!("[naze] DATABASE_URL not set — cannot execute SQL");
-                return RenderValue::List(vec![]);
-            }
-        };
-
-        let mut client = match Client::connect(&db_url, NoTls) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("[naze] database connection failed: {}", e);
                 return RenderValue::List(vec![]);
             }
         };
@@ -177,61 +272,10 @@ fn execute_sql(
             .map(|e| crate::exec::evaluate_expr(e, eval_state))
             .collect();
 
-        // Convert RenderValues to postgres-compatible params
-        let boxed_params: Vec<Box<dyn ToSql + Sync>> = param_values
-            .iter()
-            .map(|v| -> Box<dyn ToSql + Sync> {
-                match v {
-                    RenderValue::Str(s) => Box::new(s.clone()),
-                    RenderValue::Num(n, _) => {
-                        if n.fract() == 0.0 {
-                            Box::new(*n as i64)
-                        } else {
-                            Box::new(*n)
-                        }
-                    }
-                    RenderValue::Bool(b) => Box::new(*b),
-                    _ => Box::new(String::new()),
-                }
-            })
-            .collect();
-        let params_ref: Vec<&(dyn ToSql + Sync)> = boxed_params.iter().map(|b| &**b).collect();
-
-        match client.query(query, &params_ref) {
-            Ok(rows) => {
-                let results: Vec<RenderValue> = rows
-                    .iter()
-                    .map(|row| {
-                        let cols = row.columns();
-                        let entries: Vec<(String, RenderValue)> = cols
-                            .iter()
-                            .enumerate()
-                            .map(|(i, col)| {
-                                let val = if let Ok(s) = row.try_get::<_, String>(i) {
-                                    RenderValue::Str(s)
-                                } else if let Ok(n) = row.try_get::<_, i64>(i) {
-                                    RenderValue::Num(n as f64, None)
-                                } else if let Ok(n) = row.try_get::<_, i32>(i) {
-                                    RenderValue::Num(n as f64, None)
-                                } else if let Ok(n) = row.try_get::<_, f64>(i) {
-                                    RenderValue::Num(n, None)
-                                } else if let Ok(b) = row.try_get::<_, bool>(i) {
-                                    RenderValue::Bool(b)
-                                } else {
-                                    RenderValue::Str(String::new())
-                                };
-                                (col.name().to_string(), val)
-                            })
-                            .collect();
-                        RenderValue::Object(entries)
-                    })
-                    .collect();
-                RenderValue::List(results)
-            }
-            Err(e) => {
-                eprintln!("[naze] SQL error: {}", e);
-                RenderValue::List(vec![])
-            }
+        if is_sqlite(&db_url) {
+            execute_sql_sqlite(query, &param_values, &sqlite_path(&db_url))
+        } else {
+            execute_sql_postgres(query, &param_values, &db_url)
         }
     }
     #[cfg(not(feature = "database"))]
@@ -239,6 +283,157 @@ fn execute_sql(
         let _ = (query, param_exprs, eval_state);
         eprintln!("[naze] SQL support requires the 'database' feature: cargo build -p nazec --features database");
         RenderValue::List(vec![])
+    }
+}
+
+/// Execute SQL against a SQLite database.
+#[cfg(feature = "database")]
+fn execute_sql_sqlite(query: &str, params: &[RenderValue], db_path: &str) -> RenderValue {
+    use rusqlite::{params_from_iter, types::Value as SqliteValue, Connection};
+
+    let conn = match Connection::open(db_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[naze] SQLite connection failed: {}", e);
+            return RenderValue::List(vec![]);
+        }
+    };
+
+    // Convert $N placeholders to ?N for SQLite
+    let sqlite_query = pg_to_sqlite_placeholders(query);
+
+    // Convert RenderValues to SQLite-compatible params
+    let sqlite_params: Vec<SqliteValue> = params
+        .iter()
+        .map(|v| match v {
+            RenderValue::Str(s) => SqliteValue::Text(s.clone()),
+            RenderValue::Num(n, _) => {
+                if n.fract() == 0.0 {
+                    SqliteValue::Integer(*n as i64)
+                } else {
+                    SqliteValue::Real(*n)
+                }
+            }
+            RenderValue::Bool(b) => SqliteValue::Integer(if *b { 1 } else { 0 }),
+            _ => SqliteValue::Text(String::new()),
+        })
+        .collect();
+
+    let mut stmt = match conn.prepare(&sqlite_query) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("[naze] SQLite prepare error: {} (query: {})", e, sqlite_query);
+            return RenderValue::List(vec![]);
+        }
+    };
+
+    let col_names: Vec<String> = stmt
+        .column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    let result = stmt.query_map(params_from_iter(sqlite_params.iter()), |row| {
+        let entries: Vec<(String, RenderValue)> = col_names
+            .iter()
+            .enumerate()
+            .map(|(i, name)| {
+                let val = if let Ok(s) = row.get::<_, String>(i) {
+                    RenderValue::Str(s)
+                } else if let Ok(n) = row.get::<_, i64>(i) {
+                    RenderValue::Num(n as f64, None)
+                } else if let Ok(n) = row.get::<_, f64>(i) {
+                    RenderValue::Num(n, None)
+                } else {
+                    RenderValue::Str(String::new())
+                };
+                (name.clone(), val)
+            })
+            .collect();
+        Ok(RenderValue::Object(entries))
+    });
+
+    match result {
+        Ok(rows) => {
+            let results: Vec<RenderValue> = rows.filter_map(|r| r.ok()).collect();
+            RenderValue::List(results)
+        }
+        Err(e) => {
+            eprintln!("[naze] SQLite query error: {} (query: {})", e, sqlite_query);
+            RenderValue::List(vec![])
+        }
+    }
+}
+
+/// Execute SQL against a PostgreSQL database.
+#[cfg(feature = "database")]
+fn execute_sql_postgres(query: &str, params: &[RenderValue], db_url: &str) -> RenderValue {
+    use postgres::types::ToSql;
+    use postgres::{Client, NoTls};
+
+    let mut client = match Client::connect(db_url, NoTls) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[naze] database connection failed: {}", e);
+            return RenderValue::List(vec![]);
+        }
+    };
+
+    // Convert RenderValues to postgres-compatible params
+    let boxed_params: Vec<Box<dyn ToSql + Sync>> = params
+        .iter()
+        .map(|v| -> Box<dyn ToSql + Sync> {
+            match v {
+                RenderValue::Str(s) => Box::new(s.clone()),
+                RenderValue::Num(n, _) => {
+                    if n.fract() == 0.0 {
+                        Box::new(*n as i64)
+                    } else {
+                        Box::new(*n)
+                    }
+                }
+                RenderValue::Bool(b) => Box::new(*b),
+                _ => Box::new(String::new()),
+            }
+        })
+        .collect();
+    let params_ref: Vec<&(dyn ToSql + Sync)> = boxed_params.iter().map(|b| &**b).collect();
+
+    match client.query(query, &params_ref) {
+        Ok(rows) => {
+            let results: Vec<RenderValue> = rows
+                .iter()
+                .map(|row| {
+                    let cols = row.columns();
+                    let entries: Vec<(String, RenderValue)> = cols
+                        .iter()
+                        .enumerate()
+                        .map(|(i, col)| {
+                            let val = if let Ok(s) = row.try_get::<_, String>(i) {
+                                RenderValue::Str(s)
+                            } else if let Ok(n) = row.try_get::<_, i64>(i) {
+                                RenderValue::Num(n as f64, None)
+                            } else if let Ok(n) = row.try_get::<_, i32>(i) {
+                                RenderValue::Num(n as f64, None)
+                            } else if let Ok(n) = row.try_get::<_, f64>(i) {
+                                RenderValue::Num(n, None)
+                            } else if let Ok(b) = row.try_get::<_, bool>(i) {
+                                RenderValue::Bool(b)
+                            } else {
+                                RenderValue::Str(String::new())
+                            };
+                            (col.name().to_string(), val)
+                        })
+                        .collect();
+                    RenderValue::Object(entries)
+                })
+                .collect();
+            RenderValue::List(results)
+        }
+        Err(e) => {
+            eprintln!("[naze] SQL error: {}", e);
+            RenderValue::List(vec![])
+        }
     }
 }
 

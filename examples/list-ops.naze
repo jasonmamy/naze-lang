@@ -1,0 +1,38 @@
+-- List operations: append, remove, and list concatenation
+app "List Operations Demo" {
+  state items = ["Alpha", "Beta", "Gamma"]
+  state new-item = ""
+
+  computed count = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "List Operations"
+
+    text "Items ({count}):"
+    each item in items {
+      row gap: 8px {
+        text "{item}"
+      }
+    }
+
+    -- Append a new item
+    row gap: 8px {
+      input bind: new-item, placeholder: "New item"
+      rect width: 80px, height: 36px, color: #2563eb, radius: 6px {
+        on click: append new-item to items
+        on click: set new-item = ""
+        column align: center, justify: center {
+          text "Add" color: #ffffff
+        }
+      }
+    }
+
+    -- Remove first item
+    rect width: 140px, height: 36px, color: #dc2626, radius: 6px {
+      on click: remove 0 from items
+      column align: center, justify: center {
+        text "Remove First" color: #ffffff
+      }
+    }
+  }
+}

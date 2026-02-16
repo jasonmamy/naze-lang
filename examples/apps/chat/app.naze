@@ -1,0 +1,73 @@
+-- Chat App: validates append, each, textarea, shared state, conditional rendering
+app "Chat" {
+  shared state username = "User"
+  state messages = ["Welcome to the chat!", "Type a message below to get started."]
+  state draft = ""
+
+  computed message-count = messages | count
+
+  storage saved-name: session "chat-username" default: "User"
+
+  column gap: 0px {
+    -- Header
+    container color: #1e293b, padding: 20px {
+      column gap: 4px, align: center {
+        heading "Chat" color: #ffffff, font-size: 28px
+        text "{message-count} messages" color: #94a3b8
+      }
+    }
+
+    column padding: 20px, gap: 16px {
+      -- Username section
+      row gap: 8px {
+        text "Username:" color: #475569, font-size: 14px
+        input bind: username, placeholder: "Enter your name"
+      }
+
+      -- Message area with scroll
+      scroll height: 300px, color: #f8fafc, radius: 8px {
+        column padding: 12px, gap: 8px {
+          each msg in messages {
+            rect color: #ffffff, padding: 12px, radius: 8px, border: 1px, border-color: #e2e8f0 {
+              column gap: 4px {
+                text "{username}" color: #2563eb, font-size: 12px, font-weight: bold
+                text "{msg}" color: #1e293b, font-size: 15px
+              }
+            }
+          }
+        }
+      }
+
+      -- Empty state
+      if message-count == 0 {
+        column padding: 24px, align: center {
+          text "No messages yet" color: #94a3b8, font-size: 16px
+          text "Send your first message!" color: #cbd5e1
+        }
+      }
+
+      -- Compose area
+      textarea bind: draft, placeholder: "Type a message...", rows: 3
+
+      -- Action buttons
+      row gap: 8px {
+        rect height: 40px, padding: 16px, color: #2563eb, radius: 8px {
+          on click: append draft to messages
+          on click: set draft = ""
+          column align: center, justify: center {
+            text "Send" color: #ffffff, font-size: 14px
+          }
+        }
+        spacer
+        if message-count > 0 {
+          rect height: 40px, padding: 16px, color: #dc2626, radius: 8px {
+            on click: set messages = []
+            column align: center, justify: center {
+              text "Clear All" color: #ffffff, font-size: 14px
+            }
+          }
+        }
+      }
+    }
+  }
+}

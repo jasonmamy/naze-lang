@@ -1,0 +1,4 @@
+-- Loading placeholder
+component skeleton(width: number = 200px, height: number = 20px) {
+  rect width: width, height: height, color: #e2e8f0, radius: 4px
+}

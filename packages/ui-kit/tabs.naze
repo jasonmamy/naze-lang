@@ -1,0 +1,11 @@
+-- Tab container with tab bar and content area
+component tabs(color: color = #f8fafc) {
+  column {
+    row gap: 0px, color: color {
+      slot "tabs"
+    }
+    container padding: 16px {
+      slot
+    }
+  }
+}

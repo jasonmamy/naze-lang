@@ -21,3 +21,11 @@ Thumbs.db
 
 # Build artifacts
 *.wasm.map
+
+# Naze app build output (nazec build → dist/)
+**/dist/
+
+# Playground WASM assets (copied by `make playground`)
+playground/*.wasm
+playground/naze_playground.js
+playground/naze_runtime.js

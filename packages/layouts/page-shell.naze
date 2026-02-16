@@ -1,0 +1,11 @@
+-- Full page shell: header + content + footer
+component page-shell(title: text) {
+  column gap: 0px {
+    slot "header"
+    column grow: 1, padding: 20px {
+      heading "{title}"
+      slot
+    }
+    slot "footer"
+  }
+}

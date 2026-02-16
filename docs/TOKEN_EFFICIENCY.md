@@ -132,7 +132,7 @@ Factors that decrease r:
 
 **Constrained decoding: the mechanism for r → 0.** The factors above describe *what* drives r up or down. Constrained decoding is the *mechanism* — the engineering technique that exploits language properties to suppress incorrect generation at decode time, before the model finishes producing output.
 
-**Syntactic constrained decoding** (grammar-constrained decoding, or GCD) masks illegal tokens at each generation step, forcing the model to produce only syntactically valid programs. This requires a formal grammar. Naze's PEG grammar (~56 rules, LL(1)-compatible) makes syntactic GCD straightforward — the grammar is small enough that token masking is fast and the valid token set at any point is unambiguous. Naze already plans GBNF and CFG grammar export for this purpose (Phase 4 M28).
+**Syntactic constrained decoding** (grammar-constrained decoding, or GCD) masks illegal tokens at each generation step, forcing the model to produce only syntactically valid programs. This requires a formal grammar. Naze's PEG grammar (~150 rules, LL(1)-compatible) makes syntactic GCD straightforward — the grammar is small enough that token masking is fast and the valid token set at any point is unambiguous. Naze already plans GBNF and CFG grammar export for this purpose (Phase 4 M28).
 
 **Semantic constrained decoding** goes further, enforcing type safety, scope validity, and program invariants during generation. This is the frontier addressed by ChopChop and related work. For complex languages (Python, TypeScript), the gap between "syntactically valid" and "semantically correct" is large — many syntactically valid programs have type errors, undefined variables, or violated invariants. For Naze, this gap is small by design:
 
@@ -147,10 +147,10 @@ The practical result is that **language design determines GCD tractability:**
 
 | Factor | Python / TypeScript | React + TypeScript | Naze |
 |---|---|---|---|
-| Grammar size (rules) | ~300–2,000+ | TypeScript + JSX | ~56 rules |
+| Grammar size (rules) | ~300–2,000+ | TypeScript + JSX | ~150 rules |
 | Syntactic → semantic gap | Large (dynamic typing, runtime errors, many valid forms) | Medium-large (type system helps, but hooks/closures/async add complexity) | Small (4 types, flat scope, no closures, one form per concept) |
 | Semantic GCD complexity | Requires ChopChop-class machinery (coinductive realizability) | Requires type-aware decoding + framework-specific rules | Lightweight extension of syntactic GCD |
-| Projected r with full GCD | 0.08–0.15 | 0.05–0.12 | 0.01–0.05 |
+| Projected r with full GCD | 0.08–0.15 | 0.05–0.12 | 0.02–0.08 |
 
 *Note: Projected r values are estimates. The unconstrained r values in the Language Evaluation Matrix (0.05–0.45) reflect current AI generation without constrained decoding. Full GCD would lower all values, but the relative ordering is preserved — simpler languages benefit more.*
 
@@ -181,7 +181,7 @@ Estimated Token Complexity parameters for common languages and frameworks. Value
 
 | Language / Framework | λ (tokens/unit) | σ (scatter) | r (retry) | Λ(50) | Λ(200) | μ (model cost) | Class |
 |---|---|---|---|---|---|---|---|
-| **Naze** | 200–400 | 1 | 0.05–0.15 | 12K–28K | 45K–90K | 1x (3–7B local) | **Λ-Linear** |
+| **Naze** | 250–460 | 1 | 0.08–0.20 | 27K–55K | 55K–110K | 1–1.5x (7–13B local) | **Λ-Linear** |
 | **Svelte + SvelteKit** | 500–800 | ~1.5 | 0.15–0.25 | 40K–80K | 150K–280K | 20–100x | **Λ-Linear** (nearly) |
 | **Vue 3 + Composition API** | 600–1,000 | ~log(n) | 0.20–0.30 | 80K–180K | 450K–1.1M | 20–300x | **Λ-LogLinear** |
 | **React + Tailwind + TS** | 800–1,500 | log(n) | 0.25–0.35 | 125K–300K | 700K–1.8M | 20–300x (70B+ cloud) | **Λ-LogLinear** |
@@ -191,7 +191,7 @@ Estimated Token Complexity parameters for common languages and frameworks. Value
 
 **Notes on specific languages:**
 
-- **Naze** achieves Λ-Linear through single-file components with inline styling, co-located state, one canonical form per concept, and compile-time validation. σ = 1 because understanding any component requires reading only that component's file.
+- **Naze** achieves Λ-Linear through single-file components with inline styling, co-located state, one canonical form per concept, and compile-time validation. σ = 1 because understanding any component requires reading only that component's file. The grammar has grown from ~56 to ~150 rules since initial design (due to visual properties, overlays, pipelines, pattern matching, and server functions), increasing λ and μ modestly, but σ = 1 and Λ-Linear class are preserved.
 
 - **Svelte** is close to Λ-Linear thanks to single-file components (`.svelte` files contain markup, styling, and logic). However, scoped CSS within `<style>` blocks, external Svelte stores, and SvelteKit's file-system routing conventions add slight scatter (σ ≈ 1.5). Retry rate is lower than React due to less API surface and fewer hook-like gotchas.
 
@@ -248,7 +248,7 @@ Token Complexity Λ measures how many tokens an AI consumes per interaction. But
 
 The chain is: **grammar complexity → minimum viable model size → cost per token.**
 
-A 56-rule PEG grammar (Naze) has a small enough search space that a 3–7B parameter model, fine-tuned with QLoRA ($25–60, 1–2 hours on a consumer GPU), can master the language and generate correct code reliably. A 2,000+ rule grammar (TypeScript + JSX + framework conventions) presents a combinatorial space so large that 70B+ parameter models are needed to handle the variety of valid patterns, edge cases, and implicit conventions. Apple's UICoder research validates this principle: fine-tuning on SwiftUI (a deliberately constrained language) took compilation rate from 3% → 82% over 5 rounds, matching GPT-4 — demonstrating that small models can match large models when the target language is constrained.
+A 150-rule PEG grammar (Naze) has a small enough search space that a 7–13B parameter model, fine-tuned with QLoRA ($25–60, 1–2 hours on a consumer GPU), can master the language and generate correct code reliably. A 2,000+ rule grammar (TypeScript + JSX + framework conventions) presents a combinatorial space so large that 70B+ parameter models are needed to handle the variety of valid patterns, edge cases, and implicit conventions. Apple's UICoder research validates this principle: fine-tuning on SwiftUI (a deliberately constrained language) took compilation rate from 3% → 82% over 5 rounds, matching GPT-4 — demonstrating that small models can match large models when the target language is constrained.
 
 We capture this with **μ(L) — the model efficiency factor** — and extend Token Complexity to **Cost Complexity**:
 
@@ -266,20 +266,20 @@ This parallels the relationship between Big O and wall-clock time: Big O counts 
 
 | Factor | Naze | React + TypeScript | Python / TypeScript (general) |
 |---|---|---|---|
-| Grammar rules | ~56 | TS (~2,000) + JSX + framework | ~300–2,000+ |
-| Minimum viable model | 3–7B fine-tuned | 70B+ general-purpose | 70B+ general-purpose |
+| Grammar rules | ~150 | TS (~2,000) + JSX + framework | ~300–2,000+ |
+| Minimum viable model | 7–13B fine-tuned | 70B+ general-purpose | 70B+ general-purpose |
 | Deployment | Local (Ollama, llama.cpp) | Cloud API required | Cloud API required |
-| Cost per 1M tokens | ~$0.01–0.05 (local inference) | ~$1–15 (cloud API) | ~$1–15 (cloud API) |
-| μ (normalized to Naze) | 1x | 20–300x | 20–300x |
+| Cost per 1M tokens | ~$0.02–0.08 (local inference) | ~$1–15 (cloud API) | ~$1–15 (cloud API) |
+| μ (normalized to Naze) | 1–1.5x | 20–300x | 20–300x |
 | Inference latency | 10–50 ms/token | 20–80 ms/token | 20–80 ms/token |
 | Offline capable | Yes | No | No |
 | Edge/mobile viable | Yes (quantized 3B) | No | No |
 
 **The compound effect.** For a 200-component application:
 
-- **Token advantage (Λ):** Naze consumes ~45K–90K tokens per interaction vs React's ~700K–1.8M — an **8–20x** reduction.
-- **Cost-per-token advantage (μ):** A local 7B model costs ~$0.03/1K tokens vs a cloud 70B+ at ~$3–15/1K tokens — a **100–500x** reduction.
-- **Combined cost advantage (Ψ):** The ratio is **800–10,000x** — not 8–20x. The model efficiency multiplier dominates.
+- **Token advantage (Λ):** Naze consumes ~55K–110K tokens per interaction vs React's ~700K–1.8M — a **6–16x** reduction.
+- **Cost-per-token advantage (μ):** A local 7–13B model costs ~$0.05/1K tokens vs a cloud 70B+ at ~$3–15/1K tokens — a **60–300x** reduction.
+- **Combined cost advantage (Ψ):** The ratio is **360–4,800x** — not 6–16x. The model efficiency multiplier dominates.
 
 This is the hidden dimension of language design for the AI era. The same grammatical simplicity that makes Naze token-efficient (low λ, low σ, low r) also makes it model-efficient (low μ). These four parameters reinforce each other because they share a common cause: a constrained, unambiguous, self-contained language design.
 
@@ -318,29 +318,29 @@ Using midpoint values for each parameter (from the ranges in the Language Evalua
 
 | Language | λ | σ(100) | 1 + r | μ | Ψ(100) | AEI |
 |---|---|---|---|---|---|---|
-| **Naze** | 300 | 1.0 | 1.10 | 1 | 33K | **1x** |
-| **Svelte + SvelteKit** | 650 | 1.5 | 1.20 | 50 | 5.9M | **~180x** |
-| **Vue 3 + Composition API** | 800 | 4.6 | 1.25 | 100 | 46M | **~1,400x** |
-| **React + Tailwind + TS** | 1,150 | 4.6 | 1.30 | 100 | 69M | **~2,100x** |
-| **HTML + vanilla JS** | 1,500 | 4.6 | 1.35 | 100 | 93M | **~2,800x** |
-| **Angular + TypeScript** | 1,850 | 4.0 | 1.35 | 100 | 100M | **~3,000x** |
-| **Java Spring MVC** | 3,000 | 10.0 | 1.40 | 200 | 840M | **~25,000x** |
+| **Naze** | 350 | 1.0 | 1.14 | 1.3 | 52K | **1x** |
+| **Svelte + SvelteKit** | 650 | 1.5 | 1.20 | 50 | 5.9M | **~113x** |
+| **Vue 3 + Composition API** | 800 | 4.6 | 1.25 | 100 | 46M | **~885x** |
+| **React + Tailwind + TS** | 1,150 | 4.6 | 1.30 | 100 | 69M | **~1,330x** |
+| **HTML + vanilla JS** | 1,500 | 4.6 | 1.35 | 100 | 93M | **~1,790x** |
+| **Angular + TypeScript** | 1,850 | 4.0 | 1.35 | 100 | 100M | **~1,920x** |
+| **Java Spring MVC** | 3,000 | 10.0 | 1.40 | 200 | 840M | **~16,150x** |
 
-*σ values at n=100: 1.0 for Naze (constant), 1.5 for Svelte, log(100) ≈ 4.6 for LogLinear languages, 100^0.3 ≈ 4.0 for Angular, √100 = 10 for Java Spring. μ uses representative midpoints.*
+*σ values at n=100: 1.0 for Naze (constant), 1.5 for Svelte, log(100) ≈ 4.6 for LogLinear languages, 100^0.3 ≈ 4.0 for Angular, √100 = 10 for Java Spring. μ uses representative midpoints. Naze's μ has increased from 1.0 to 1.3 since baseline due to grammar growth from ~56 to ~150 rules (see "Current State" section below).*
 
 ### What Drives the Score
 
-For React + TypeScript (AEI ≈ 2,100x) at n=100, the contribution of each parameter relative to Naze:
+For React + TypeScript (AEI ≈ 1,330x) at n=100, the contribution of each parameter relative to Naze:
 
 | Parameter | React Value | Naze Value | Contribution to AEI |
 |---|---|---|---|
-| **μ** (model cost) | 100 | 1 | **100x** — the dominant factor |
+| **μ** (model cost) | 100 | 1.3 | **77x** — the dominant factor |
 | **σ** (coupling) | 4.6 | 1.0 | **4.6x** — cross-file dependencies |
-| **λ** (verbosity) | 1,150 | 300 | **3.8x** — JSX/hook/type boilerplate |
-| **r** (accuracy) | 1.30 | 1.10 | **1.2x** — retry overhead |
-| | | **Combined:** | **~2,100x** |
+| **λ** (verbosity) | 1,150 | 350 | **3.3x** — JSX/hook/type boilerplate |
+| **r** (accuracy) | 1.30 | 1.14 | **1.1x** — retry overhead |
+| | | **Combined:** | **~1,330x** |
 
-Model efficiency (μ) contributes the largest single factor. But σ and λ are also substantial — even without the model cost advantage, Naze would be ~21x more token-efficient than React at n=100. The four parameters reinforce each other because they share a root cause: language design.
+Model efficiency (μ) contributes the largest single factor. But σ and λ are also substantial — even without the model cost advantage, Naze would be ~17x more token-efficient than React at n=100. The four parameters reinforce each other because they share a root cause: language design.
 
 ### How AEI Scales with Application Size
 
@@ -348,13 +348,13 @@ AEI is not constant — it changes with n because σ depends on application size
 
 | App Size | Naze Ψ(n) | React Ψ(n) | AEI (React vs Naze) |
 |---|---|---|---|
-| n = 50 (small) | 16.5K | 29M | **~1,800x** |
-| n = 100 (medium) | 33K | 69M | **~2,100x** |
-| n = 500 (enterprise) | 165K | 465M | **~2,800x** |
+| n = 50 (small) | 26K | 29M | **~1,130x** |
+| n = 100 (medium) | 52K | 69M | **~1,330x** |
+| n = 500 (enterprise) | 259K | 464M | **~1,790x** |
 
 *React's σ = log(n) means its per-unit cost increases at every scale. Naze's σ = 1 means its per-unit cost stays flat. The AEI gap widens with every component added.*
 
-At enterprise scale (n=500), the gap is wide enough that FAAD on React becomes economically questionable — not because any single interaction is prohibitively expensive, but because thousands of interactions per week at 3,200x the cost compound into a dominant line item.
+At enterprise scale (n=500), the gap is wide enough that FAAD on React becomes economically questionable — not because any single interaction is prohibitively expensive, but because thousands of interactions per week at 1,790x the cost compound into a dominant line item.
 
 ---
 
@@ -390,22 +390,22 @@ Every proposed Naze feature should be evaluated against the unified equation bef
 - **Does it increase σ?** Adding cross-file imports, shared state stores, or external configuration files would break Λ-Linear. Any feature that requires reading a second file to understand the first pushes σ above 1.
 - **Does it increase λ?** Verbose syntax, boilerplate requirements, or redundant declarations raise the token weight per functional unit.
 - **Does it increase r?** Multiple valid forms for the same concept, implicit behavior, or context-dependent semantics raise the retry rate.
-- **Does it increase μ?** Grammar complexity that pushes the rule count significantly above ~56 may require larger models, raising the cost per token.
+- **Does it increase μ?** Grammar complexity that pushes the rule count toward the 200-rule hard limit may require larger models, raising the cost per token. The grammar has grown from ~56 rules at initial design to ~150 rules after Phase 3 and Phase 4 additions (see "Current State" section below).
 
-Phase 3 features — pipeline operators, pattern matching, list comprehensions — must be designed to maintain σ = 1 and keep the grammar small. The Ψ framework provides a quantitative check: if a proposed feature would move σ > 1 or significantly increase grammar rule count, the feature needs redesign or deferral.
+Phase 3 and Phase 4 features — pipeline operators, pattern matching, overlays, visual properties, server functions — have been implemented while maintaining σ = 1. However, the grammar grew from ~56 to ~150 rules, increasing μ from 1.0x to ~1.3x. Future features must stay within the 200-rule hard limit. The Ψ framework provides a quantitative check: if a proposed feature would move σ > 1 or push grammar rules past 200, the feature needs redesign or deferral.
 
 ### 2. Competitive Positioning — The Only Λ-Linear Language
 
-Naze is the only language in the evaluation matrix that achieves **Λ-Linear with μ = 1x**. Svelte is close to Λ-Linear in token complexity, but it still requires cloud models for generation (μ = 20–100x). This is not an incremental advantage — it is a class difference, like comparing an O(n) algorithm to an O(n log n) algorithm. The AEI framework makes this quantifiable: at n=100, Naze's AEI = 1x while the next closest competitor (Svelte) is ~180x. The mainstream alternative (React) is ~2,100x.
+Naze is the only language in the evaluation matrix that achieves **Λ-Linear with μ ≈ 1x**. Svelte is close to Λ-Linear in token complexity, but it still requires cloud models for generation (μ = 20–100x). This is not an incremental advantage — it is a class difference, like comparing an O(n) algorithm to an O(n log n) algorithm. The AEI framework makes this quantifiable: at n=100, Naze's AEI = 1x while the next closest competitor (Svelte) is ~113x. The mainstream alternative (React) is ~1,330x.
 
 ### 3. Development Priority — M28 as Highest-Leverage Milestone
 
 The analysis validates Phase 4 M28 (AI Integration Layer: GBNF/CFG grammar export, validation feedback loop, fine-tuning dataset) as the single highest-leverage milestone in the roadmap. M28 unlocks two compound effects simultaneously:
 
-- **μ → 1x** — A local 3–7B model fine-tuned on Naze via GBNF-constrained generation, deployable offline via Ollama or llama.cpp.
-- **r → 0.01–0.05** — Constrained decoding plus compile-time validation driving retry rates toward zero.
+- **μ → 1–1.5x** — A local 7–13B model fine-tuned on Naze via GBNF-constrained generation, deployable offline via Ollama or llama.cpp.
+- **r → 0.02–0.08** — Constrained decoding plus compile-time validation driving retry rates toward zero.
 
-These two effects are responsible for over 95% of the AEI advantage over React. Without M28, Naze's advantage is ~21x (from λ and σ alone). With M28, it is ~2,100x. M28 is the milestone that converts the theoretical framework into a measured reality.
+These two effects are responsible for over 95% of the AEI advantage over React. Without M28, Naze's advantage is ~17x (from λ and σ alone). With M28, it is ~1,330x. M28 is the milestone that converts the theoretical framework into a measured reality.
 
 ### 4. Market Strategy — Language Choice as Infrastructure Decision
 
@@ -415,11 +415,63 @@ In a FAAD world, language choice becomes an infrastructure cost decision, not a 
 
 As Naze adds features through Phase 3 and Phase 4, there is a quantifiable risk of AEI degradation. Each feature can be pre-tested against the Ψ formula:
 
-- **Pipeline operators** `|` — adds grammar rules but maintains σ = 1 (expressions remain within single files). Acceptable: λ may increase slightly, grammar stays LL(1).
-- **`shared state`** — if implemented as cross-component state that requires reading another component's file, σ > 1. Must be designed so that the AI agent needs only the current file to understand and generate correct code.
-- **`js` interop** — if it requires understanding external JavaScript files, σ increases. Must be designed as a boundary call with type-checked signatures, keeping the semantic context bounded to the Naze file.
+- **Pipeline operators** `|` — adds grammar rules but maintains σ = 1 (expressions remain within single files). Acceptable: λ may increase slightly, grammar stays LL(1). *(Implemented in M15; added ~8 grammar rules.)*
+- **`shared state`** — if implemented as cross-component state that requires reading another component's file, σ > 1. Must be designed so that the AI agent needs only the current file to understand and generate correct code. *(Implemented: `shared state` is declared inline in the same file as pages that use it. σ = 1 maintained.)*
+- **`js` interop** — if it requires understanding external JavaScript files, σ increases. Must be designed as a boundary call with type-checked signatures, keeping the semantic context bounded to the Naze file. *(Implemented: `js` action is a single-line call with inline arguments. σ = 1 maintained.)*
 
 The Ψ framework transforms language design from intuition-driven ("this feels clean") to metric-driven ("this keeps AEI = 1x").
+
+---
+
+## Current State — Post-Phase 3/4 Assessment
+
+This section documents how Naze's Token Complexity metrics have evolved since the initial design baseline, following the implementation of Phase 3 (M15–M22) and Phase 4 (M23–M30) features.
+
+### Grammar Growth
+
+The PEG grammar (`crates/naze-parser/src/naze.pest`) has grown from ~56 rules to **~150 rules**. The LL(1) property is preserved. Major contributors:
+
+| Feature | Rules Added | Milestone |
+|---|---|---|
+| Visual properties (shadow, gradient, transform, text-decoration, text-align, text-overflow, cursor) | ~20 | M19c |
+| Overlays (overlay, focus-trap, scroll-lock, click-outside, positioning) | ~15 | M19b |
+| Events & themes (emit, theme sections, event modifiers) | ~12 | M19 |
+| Pipeline operators (pipe_expression, pipe_stage, pipe_fn) | ~8 | M15 |
+| Pattern matching (match_stmt, match_arm, match_pattern) | ~5 | M16 |
+| Templates & responsive (template_def, responsive props) | ~6 | M17 |
+| Server functions & data enhancements | ~10 | M24/M19d/M19e |
+
+**Guardrail:** Hard limit of **200 grammar rules**. Beyond this, the minimum viable model shifts from 7–13B to 13B+, significantly increasing μ.
+
+### Parameter Changes
+
+| Parameter | Initial Baseline | Current | Cause |
+|---|---|---|---|
+| **λ** | 200–400 (midpoint 300) | 250–460 (midpoint 350) | Visual properties add 4–12 tokens per styled element |
+| **σ** | 1.0 | **1.0** | All features (shared state, pipelines, match, storage, timers, overlays) remain single-file |
+| **r** | 0.05–0.15 (midpoint 0.10) | 0.08–0.20 (midpoint 0.14) | Three conditional forms (if/else, inline if, match); two animation forms (transition, animate) |
+| **μ** | 1.0x (3–7B) | 1.0–1.5x (7–13B) | Grammar grew 3x; larger model needed for reliable generation |
+
+### AEI Impact
+
+At n=100: Ψ increased from 33K to 52K tokens — a **~1.6x** increase from baseline. Naze remains the AEI baseline (1x by definition). The advantage over competitors has narrowed proportionally but remains enormous:
+
+- vs React: was ~2,100x, now **~1,330x**
+- vs Svelte: was ~180x, now **~113x**
+
+The narrowing is entirely due to Naze's own metric degradation (grammar growth, λ/r creep), not improvements in competitors. The structural advantage (σ = 1, Λ-Linear class) is unchanged.
+
+### What Worked
+
+- **σ = 1 preserved across all additions.** `shared state`, `storage`, `timer`, `overlay`, `match`, pipelines — every feature was designed to keep all information in the current file. This is the most important invariant.
+- **No new canonical forms for existing concepts.** State management is still `state`, data fetching is still `data`, computed values are still `computed`.
+- **Compile-time validation catches errors before retry cycles.** The type checker, while generating warnings for accessibility, prevents most incorrect code from reaching the runtime.
+
+### What to Watch
+
+- **Visual property creep (M19c).** This was the single largest contributor to λ and μ increases. Future property additions should be deferred or combined into existing syntax.
+- **Conditional form proliferation.** Three valid conditional patterns (if/else, inline if, match) increase r. Consider deprecating inline if in property values.
+- **Phase 4 features must maintain σ = 1.** WASM module imports (M23) and server functions (M24) are the highest-risk features for breaking the single-file invariant. Both must use inline type signatures.
 
 ---
 
@@ -448,6 +500,36 @@ Token Complexity is a proposed framework with several limitations:
 
 ---
 
+## Addendum: Why Svelte Is the Closest Competitor (and Still 113x Away)
+
+Svelte + SvelteKit is the only mainstream framework in the same **Λ-Linear** complexity class as Naze. This isn't a coincidence — both languages share the same core architectural insight: **single-file components** that co-locate markup, styling, and logic.
+
+### What Svelte gets right
+
+A `.svelte` file contains `<script>`, HTML template markup, and `<style>` all in one file. The AI can read one file and understand the full component. This gives Svelte the best scatter score (σ ≈ 1.5) of any mainstream framework — far better than React (σ ≈ log n), Angular (σ ≈ n^0.3), or Java Spring (σ ≈ √n).
+
+### Where the 113x gap comes from
+
+Despite the architectural similarity, four parameter differences compound to a 113x cost multiplier:
+
+| Parameter | Naze | Svelte | Gap driver |
+|-----------|------|--------|------------|
+| σ (scatter) | 1.0 | 1.5 | Svelte stores (`writable()`, `readable()`) live in separate `.ts`/`.js` files. SvelteKit file-system routing (`+page.svelte`, `+layout.svelte`, `+server.ts`) forces the AI to understand directory conventions. TypeScript imports pull in external type definitions and utilities. |
+| λ (verbosity) | 350 | 650 | A `.svelte` file is still HTML + CSS + JS — three languages with three syntaxes. Naze's declarative DSL expresses the same intent in ~54% of the tokens. |
+| r (retry rate) | 0.14 | 0.20 | Multiple valid patterns increase generation errors: CSS classes vs inline styles, Svelte stores vs context, `$:` reactive declarations vs `$derived` runes, and Svelte 4 vs Svelte 5 syntax differences that coexist in training data. |
+| **μ (model cost)** | **1.3x** | **50x** | **The dominant factor.** Svelte requires cloud-tier models (GPT-4, Claude) for reliable generation. Its grammar surface area (HTML + CSS + JS + Svelte-specific template syntax) is too large for grammar-constrained decoding on 7-13B local models. Naze's ~150-rule PEG grammar enables GBNF-constrained decoding on small local models, keeping μ near 1x. |
+
+### The takeaway
+
+"Same Λ class" means cost scales the same way with app size — both are O(n), which is the best possible. But Λ class describes the **scaling shape**, not the **constant factor**. At n=100 components:
+
+- **Naze:** Ψ = 100 × 350 × 1.0 × 1.14 × 1.3 = **52K**
+- **Svelte:** Ψ = 100 × 650 × 1.5 × 1.20 × 50 = **5.9M**
+
+The 113x gap is almost entirely μ (model cost). If grammar-constrained decoding were feasible for Svelte — if someone could build a GBNF grammar covering HTML + CSS + JS + Svelte templates and run it on a 7B model — the gap would shrink to ~3x. But Svelte's grammar is too large and context-dependent for that to work, which is precisely the language design problem Naze was built to solve.
+
+---
+
 ## Summary
 
 This document introduces a unified equation for evaluating any programming language's AI efficiency:
@@ -458,9 +540,9 @@ Five parameters — verbosity (λ), coupling (σ), accuracy (r), and model cost 
 
 | Class | Scaling | AEI at n=100 (vs Naze) | Practical Impact |
 |---|---|---|---|
-| **Λ-Linear** | O(n) | 1x (Naze), ~180x (Svelte) | AI cost scales predictably; large apps remain practical for FAAD |
-| **Λ-LogLinear** | O(n log n) | ~1,400–2,800x (Vue, React, vanilla JS) | AI cost grows faster than app size; large apps become expensive |
-| **Λ-Quadratic** | O(n²) | ~3,000–25,000x (Angular, Java Spring) | AI cost explodes at scale; impractical for FAAD |
+| **Λ-Linear** | O(n) | 1x (Naze), ~113x (Svelte) | AI cost scales predictably; large apps remain practical for FAAD |
+| **Λ-LogLinear** | O(n log n) | ~885–1,790x (Vue, React, vanilla JS) | AI cost grows faster than app size; large apps become expensive |
+| **Λ-Quadratic** | O(n²) | ~1,920–16,150x (Angular, Java Spring) | AI cost explodes at scale; impractical for FAAD |
 
 The key insight is that all five parameters are determined by **language design** — grammar complexity, component architecture, type system, and canonical form count. Languages designed for AI efficiency achieve low values across all parameters simultaneously, because the same design principles (self-contained components, inline styling, simple grammar, one canonical form) reduce λ, σ, r, and μ together.
 

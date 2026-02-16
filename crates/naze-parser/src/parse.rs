@@ -829,6 +829,23 @@ fn parse_server_body(pair: pest::iterators::Pair<Rule>) -> ServerBody {
                 };
                 lets.push((name, server_expr));
             }
+            Rule::server_find_expr => {
+                // find as final result: wrap in a let + use that as result
+                lets.push(("__result".to_string(), parse_server_find(p)));
+                result = Expression::StateRef("__result".to_string());
+            }
+            Rule::server_insert_expr => {
+                lets.push(("__result".to_string(), parse_server_insert(p)));
+                result = Expression::StateRef("__result".to_string());
+            }
+            Rule::server_update_expr => {
+                lets.push(("__result".to_string(), parse_server_update(p)));
+                result = Expression::StateRef("__result".to_string());
+            }
+            Rule::server_delete_expr => {
+                lets.push(("__result".to_string(), parse_server_delete(p)));
+                result = Expression::StateRef("__result".to_string());
+            }
             Rule::pipe_expression | Rule::expression => {
                 result = parse_pipe_expression(p);
             }
@@ -1484,6 +1501,18 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
             };
             Action::SetTheme { theme_name, span }
         }
+        Rule::append_action => {
+            let mut inner = pair.into_inner();
+            let item = parse_expression(inner.next().unwrap());
+            let target = inner.next().unwrap().as_str().to_string();
+            Action::Append { item, target, span }
+        }
+        Rule::remove_action => {
+            let mut inner = pair.into_inner();
+            let index = parse_expression(inner.next().unwrap());
+            let target = inner.next().unwrap().as_str().to_string();
+            Action::Remove { index, target, span }
+        }
         _ => panic!("unexpected action rule: {:?}", pair.as_rule()),
     }
 }
@@ -1590,6 +1619,22 @@ fn parse_expr_atom(pair: pest::iterators::Pair<Rule>) -> Expression {
         Rule::ref_path => {
             let segments: Vec<String> = inner.as_str().split('.').map(String::from).collect();
             Expression::StateRef(segments.join("."))
+        }
+        Rule::object_lit => {
+            let entries: Vec<(String, Value)> = inner
+                .into_inner()
+                .map(|entry| {
+                    let mut entry_inner = entry.into_inner();
+                    let key = entry_inner.next().unwrap().as_str().to_string();
+                    let val = parse_value(entry_inner.next().unwrap());
+                    (key, val)
+                })
+                .collect();
+            Expression::Literal(Value::Object(entries))
+        }
+        Rule::list_lit => {
+            let items: Vec<Value> = inner.into_inner().map(parse_value).collect();
+            Expression::Literal(Value::List(items))
         }
         Rule::ident => Expression::StateRef(inner.as_str().to_string()),
         Rule::expression => parse_expression(inner), // parenthesized

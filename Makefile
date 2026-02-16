@@ -1,4 +1,4 @@
-.PHONY: build test check clean setup ci fmt-check package try
+.PHONY: build test check clean setup ci fmt-check package try playground
 
 # Build the nazec CLI (native)
 build:
@@ -63,6 +63,18 @@ try: package
 	@echo "  cd my-app && ../bin/nazec dev"
 	@echo ""
 	@echo "Point an AI agent at: $(TOOLKIT_DIR)/README.md"
+
+# Build playground (compiler WASM + copy assets)
+playground:
+	cd crates/naze-playground && wasm-pack build --target web --release
+	cp crates/naze-playground/pkg/naze_playground.js playground/
+	cp crates/naze-playground/pkg/naze_playground_bg.wasm playground/
+	cp crates/naze-runtime/pkg/naze_runtime.js playground/
+	cp crates/naze-runtime/pkg/naze_runtime_bg.wasm playground/
+	@echo ""
+	@echo "Playground ready! Serve with:"
+	@echo "  cd playground && python3 -m http.server 4000"
+	@echo "  open http://localhost:4000"
 
 # First-time setup
 setup:

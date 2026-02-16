@@ -498,17 +498,21 @@ fn check_nodes(
                 );
             }
             Node::Each {
+                variable,
                 iterable,
                 children,
                 span,
-                ..
             } => {
                 check_expression(iterable, state_names, span, errors);
+                // Add loop variable and index to scope for children
+                let mut child_state = state_names.clone();
+                child_state.insert(variable.clone());
+                child_state.insert(format!("{}_index", variable));
                 check_nodes(
                     children,
                     components,
                     in_scope_params,
-                    state_names,
+                    &child_state,
                     computed_names,
                     data_names,
                     errors,
@@ -719,6 +723,12 @@ fn check_handler(
         Action::Notify { .. } => {}
         Action::Emit { .. } => {}
         Action::SetTheme { .. } => {}
+        Action::Append { item, .. } => {
+            check_expression(item, state_names, &handler.span, errors);
+        }
+        Action::Remove { index, .. } => {
+            check_expression(index, state_names, &handler.span, errors);
+        }
     }
 }
 

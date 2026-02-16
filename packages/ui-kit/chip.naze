@@ -1,0 +1,6 @@
+-- Tag/chip label
+component chip(label: text, color: color = #e2e8f0) {
+  rect color: color, radius: 16px, padding: 8px {
+    text "{label}" font-size: 13px
+  }
+}

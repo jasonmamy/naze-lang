@@ -1,0 +1,11 @@
+[app]
+name = "stdlib-test"
+version = "0.1.0"
+
+[build]
+entry = "app.naze"
+
+[dependencies]
+"@naze/ui-kit" = { path = "../ui-kit" }
+"@naze/forms" = { path = "../forms" }
+"@naze/layouts" = { path = "../layouts" }

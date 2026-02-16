@@ -529,11 +529,23 @@ async fn run_async(
         .replace("{{WASM_IMPORTS_LOAD}}", "");
     std::fs::write(output_dir.join("index.html"), dev_html)?;
 
-    // Load server functions and prompts from initial build
+    // Load server functions, prompts, and models from initial build
     let (initial_server_fns, initial_prompts) = {
         let bin_path = output_dir.join("app_data.bin");
         let bytes = std::fs::read(&bin_path)?;
         let tree = naze_ir::deserialize(&bytes)?;
+
+        // Auto-create SQLite tables from model definitions
+        #[cfg(feature = "database")]
+        if !tree.models.is_empty() {
+            if let Ok(db_url) = std::env::var("DATABASE_URL") {
+                if crate::server_fns::is_sqlite(&db_url) {
+                    let db_path = crate::server_fns::sqlite_path(&db_url);
+                    crate::server_fns::create_tables_sqlite(&db_path, &tree.models);
+                }
+            }
+        }
+
         (tree.server_functions, tree.prompts)
     };
 

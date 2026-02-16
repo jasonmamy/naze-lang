@@ -122,6 +122,14 @@ pub(crate) fn resolve_value(
 ) -> RenderValue {
     match value {
         RenderValue::InterpolatedStr(parts) => {
+            // Single state ref → return raw value to preserve Color/Num types
+            if parts.len() == 1 {
+                if let TextPart::StateRef(name) = &parts[0] {
+                    if let Some(val) = state.get(name.as_str()) {
+                        return val.clone();
+                    }
+                }
+            }
             let mut result = String::new();
             for part in parts {
                 match part {
@@ -202,6 +210,15 @@ pub(crate) fn evaluate_expr(
                 Err(_) => RenderValue::Str(String::new()),
             }
         }
+        IrExpression::List(items) => {
+            RenderValue::List(items.iter().map(|e| evaluate_expr(e, state)).collect())
+        }
+        IrExpression::Object(entries) => RenderValue::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), evaluate_expr(v, state)))
+                .collect(),
+        ),
     }
 }
 
@@ -440,6 +457,10 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
         IrBinOp::Add => {
             if let (Some(l), Some(r)) = (left_num, right_num) {
                 RenderValue::Num(l + r, None)
+            } else if let (RenderValue::List(ll), RenderValue::List(rl)) = (left, right) {
+                let mut result = ll.clone();
+                result.extend(rl.iter().cloned());
+                RenderValue::List(result)
             } else {
                 RenderValue::Str(format!(
                     "{}{}",
@@ -488,7 +509,7 @@ fn eval_binop(left: &RenderValue, op: &IrBinOp, right: &RenderValue) -> RenderVa
 
 // ─── Action execution ───────────────────────────────────────────────────────
 
-pub(crate) fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>) -> bool {
+pub(crate) fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>, themes: &[naze_ir::ThemeDef]) -> bool {
     match action {
         IrAction::Set { target, expr } => {
             let value = evaluate_expr(expr, state);
@@ -514,6 +535,40 @@ pub(crate) fn execute_action(action: &IrAction, state: &mut HashMap<String, Rend
             };
             eprintln!("[log] {}", msg);
             false
+        }
+        IrAction::Append { item, target } => {
+            let item_value = evaluate_expr(item, state);
+            if let Some(RenderValue::List(list)) = state.get_mut(target) {
+                list.push(item_value);
+                true
+            } else {
+                false
+            }
+        }
+        IrAction::Remove { index, target } => {
+            let idx_value = evaluate_expr(index, state);
+            if let RenderValue::Num(idx, _) = idx_value {
+                let idx = idx as usize;
+                if let Some(RenderValue::List(list)) = state.get_mut(target) {
+                    if idx < list.len() {
+                        list.remove(idx);
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        IrAction::SetTheme { name } => {
+            if let Some(theme) = themes.iter().find(|t| t.name == *name) {
+                for (token, color) in &theme.colors {
+                    state.insert(format!("theme.colors.{}", token), RenderValue::Color(*color));
+                }
+                for (token, value) in &theme.spacing {
+                    state.insert(format!("theme.spacing.{}", token), RenderValue::Num(*value, Some("px".into())));
+                }
+            }
+            state.insert("active-theme".to_string(), RenderValue::Str(name.clone()));
+            true
         }
         _ => false,
     }

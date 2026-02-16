@@ -67,14 +67,14 @@ A public documentation website — the primary entry point for new developers. U
 
 An interactive web page where anyone can write Naze code and see it render live — no installation required. The compiler WASM module already exists (`crates/naze-playground/`); this milestone builds the frontend.
 
-- [ ] Web frontend: split-pane editor (left: code, right: Canvas2D preview)
-- [ ] Code editor with syntax highlighting (CodeMirror or Monaco with Naze TextMate grammar)
-- [ ] Live compilation on keystroke (debounced): compile → serialize → load into runtime → render
-- [ ] Error display: parse/type errors shown inline below editor
-- [ ] Example selector: load curated examples (6 already embedded in playground WASM)
-- [ ] Share via URL: encode source in URL hash or generate short link
-- [ ] Deploy to GitHub Pages (static — no server needed, all runs in browser)
-- [ ] Mobile-responsive layout (stack editor/preview vertically on small screens)
+- [x] Web frontend: split-pane editor (left: code, right: Canvas2D preview)
+- [x] Code editor with syntax highlighting (CodeMirror 6 with custom Naze language mode)
+- [x] Live compilation on keystroke (debounced): compile → serialize → load into runtime → render
+- [x] Error display: parse/type errors shown inline below editor
+- [x] Example selector: load curated examples (6 already embedded in playground WASM)
+- [x] Share via URL: encode source in URL hash
+- [x] Deploy to GitHub Pages (static — GitHub Actions workflow)
+- [x] Mobile-responsive layout (stack editor/preview vertically on small screens)
 
 ---
 
@@ -129,10 +129,10 @@ Seed the package ecosystem with official packages that demonstrate best practice
 
 - [ ] Deploy registry to a hosted environment (Fly.io, Railway, or VPS — SQLite is fine for low traffic)
 - [ ] Add auth to registry: API key-based publish authentication
-- [ ] `@naze/ui-kit`: button, card, badge, avatar, separator, alert, progress bar, skeleton loader (~15 components)
-- [ ] `@naze/forms`: form-group, labeled-input, validated-form, form-section (~8 components)
+- [x] `@naze/ui-kit`: button, card, badge, avatar, alert, progress, divider, tooltip, chip, accordion, tabs, skeleton (12 components)
+- [x] `@naze/forms`: form-field, text-field, select-field, checkbox-field, radio-group, search-input (6 components)
 - [ ] `@naze/icons`: icon system — either embedded SVG-to-image pipeline or glyph font approach
-- [ ] `@naze/layouts`: page-layout, sidebar, navbar, footer, hero-section (~10 templates)
+- [x] `@naze/layouts`: navbar, sidebar-layout, hero, footer, page-shell, center-card (6 templates)
 - [ ] Publish all packages to deployed registry
 - [ ] Update docs site with package catalog and usage examples
 

@@ -1,0 +1,6 @@
+-- Progress bar
+component progress(value: number = 50, color: color = #2563eb) {
+  rect width: 200px, height: 8px, color: #e2e8f0, radius: 4px {
+    rect width: value, height: 8px, color: color, radius: 4px
+  }
+}

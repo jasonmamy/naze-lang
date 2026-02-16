@@ -1,0 +1,182 @@
+-- Form Wizard App: validates input types, textarea, select, radio, checkbox,
+-- validation, match for step routing, storage, computed
+
+app "Form Wizard" {
+  -- Current step (use string for match compatibility)
+  state step = "1"
+
+  -- Step 1: Personal info
+  storage name: local "wizard-name" default: ""
+  storage email: local "wizard-email" default: ""
+  storage phone: local "wizard-phone" default: ""
+
+  -- Step 2: Preferences
+  storage country: local "wizard-country" default: "us"
+  storage bio: local "wizard-bio" default: ""
+  storage newsletter: local "wizard-newsletter" default: false
+  storage contact-pref: local "wizard-contact" default: "email"
+
+  -- Computed: track completion
+  computed step1-ready = name != "" && email != ""
+
+  column padding: 24px, gap: 20px, color: #f8fafc {
+
+    -- Header
+    heading "Form Wizard" color: #1e293b, font-size: 24px
+
+    -- Step indicator
+    row gap: 12px {
+      rect padding: 10px, color: #2563eb, radius: 20px {
+        text "1" color: #ffffff, font-size: 14px
+      }
+      rect width: 40px, height: 2px, color: #cbd5e1
+      if step == "2" || step == "3" {
+        rect padding: 10px, color: #2563eb, radius: 20px {
+          text "2" color: #ffffff, font-size: 14px
+        }
+      }
+      if step == "1" {
+        rect padding: 10px, color: #cbd5e1, radius: 20px {
+          text "2" color: #64748b, font-size: 14px
+        }
+      }
+      rect width: 40px, height: 2px, color: #cbd5e1
+      if step == "3" {
+        rect padding: 10px, color: #2563eb, radius: 20px {
+          text "3" color: #ffffff, font-size: 14px
+        }
+      }
+      if step != "3" {
+        rect padding: 10px, color: #cbd5e1, radius: 20px {
+          text "3" color: #64748b, font-size: 14px
+        }
+      }
+    }
+
+    -- Step content via match
+    match step {
+      "1": {
+        rect padding: 20px, color: #ffffff, radius: 12px {
+          column gap: 16px {
+            text "Step 1: Personal Information" color: #1e293b, font-size: 18px
+
+            text "Name *" color: #374151
+            input bind: name, placeholder: "Enter your name", validate: { required: true, min-length: 2 }
+            if name_error {
+              text "{name_error}" color: #dc2626, font-size: 13px
+            }
+
+            text "Email *" color: #374151
+            input bind: email, type: "email", placeholder: "Enter your email", validate: { required: true }
+            if email_error {
+              text "{email_error}" color: #dc2626, font-size: 13px
+            }
+
+            text "Phone" color: #374151
+            input bind: phone, type: "text", placeholder: "Enter your phone number"
+
+            -- Next button
+            row gap: 12px {
+              spacer
+              rect padding: 12px, color: #2563eb, radius: 8px {
+                on click: set step = "2"
+                text "Next" color: #ffffff, font-size: 14px
+              }
+            }
+          }
+        }
+      }
+
+      "2": {
+        rect padding: 20px, color: #ffffff, radius: 12px {
+          column gap: 16px {
+            text "Step 2: Preferences" color: #1e293b, font-size: 18px
+
+            text "Country" color: #374151
+            select bind: country {
+              option "United States" value: "us"
+              option "Canada" value: "ca"
+              option "United Kingdom" value: "uk"
+              option "Australia" value: "au"
+              option "Germany" value: "de"
+            }
+
+            text "Bio" color: #374151
+            textarea bind: bio, placeholder: "Tell us about yourself...", rows: 4
+
+            checkbox "Subscribe to newsletter" bind: newsletter
+
+            text "Preferred contact method:" color: #374151
+            column gap: 8px {
+              radio "Email" bind: contact-pref, value: "email"
+              radio "Phone" bind: contact-pref, value: "phone"
+              radio "Mail" bind: contact-pref, value: "mail"
+            }
+
+            -- Navigation buttons
+            row gap: 12px {
+              rect padding: 12px, color: #64748b, radius: 8px {
+                on click: set step = "1"
+                text "Back" color: #ffffff, font-size: 14px
+              }
+              spacer
+              rect padding: 12px, color: #2563eb, radius: 8px {
+                on click: set step = "3"
+                text "Next" color: #ffffff, font-size: 14px
+              }
+            }
+          }
+        }
+      }
+
+      "3": {
+        rect padding: 20px, color: #ffffff, radius: 12px {
+          column gap: 16px {
+            text "Step 3: Review & Submit" color: #1e293b, font-size: 18px
+
+            -- Personal info summary
+            rect padding: 16px, color: #f1f5f9, radius: 8px {
+              column gap: 8px {
+                text "Personal Information" color: #1e293b, font-size: 15px
+                text "Name: {name}" color: #374151
+                text "Email: {email}" color: #374151
+                text "Phone: {phone}" color: #374151
+              }
+            }
+
+            -- Preferences summary
+            rect padding: 16px, color: #f1f5f9, radius: 8px {
+              column gap: 8px {
+                text "Preferences" color: #1e293b, font-size: 15px
+                text "Country: {country}" color: #374151
+                text "Bio: {bio}" color: #374151
+                if newsletter {
+                  text "Newsletter: Yes" color: #16a34a
+                }
+                if newsletter == false {
+                  text "Newsletter: No" color: #64748b
+                }
+                text "Contact preference: {contact-pref}" color: #374151
+              }
+            }
+
+            -- Navigation buttons
+            row gap: 12px {
+              rect padding: 12px, color: #64748b, radius: 8px {
+                on click: set step = "2"
+                text "Back" color: #ffffff, font-size: 14px
+              }
+              spacer
+              rect padding: 12px, color: #16a34a, radius: 8px {
+                on click: set step = "1"
+                text "Submit" color: #ffffff, font-size: 14px
+              }
+            }
+          }
+        }
+      }
+
+      _: text "Unknown step"
+    }
+  }
+}

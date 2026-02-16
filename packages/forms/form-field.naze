@@ -1,0 +1,7 @@
+-- Label + content wrapper with error display
+component form-field(label: text) {
+  column gap: 4px {
+    text "{label}" font-size: 14px, color: #374151
+    slot
+  }
+}

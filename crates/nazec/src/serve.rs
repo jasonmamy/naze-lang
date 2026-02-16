@@ -538,6 +538,7 @@ mod tests {
             server_calls: vec![],
             prompts: vec![],
             guards: vec![],
+            models: vec![],
         }
     }
 

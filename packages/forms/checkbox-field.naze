@@ -1,0 +1,7 @@
+-- Labeled checkbox wrapper
+component checkbox-field(label: text) {
+  row gap: 8px {
+    slot
+    text "{label}" font-size: 14px, color: #374151
+  }
+}

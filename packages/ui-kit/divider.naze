@@ -1,0 +1,4 @@
+-- Horizontal divider
+component divider(color: color = #e2e8f0) {
+  rect width: 100%, height: 1px, color: color
+}

@@ -1,0 +1,9 @@
+-- Content card with title
+component card(title: text = "Card", color: color = #ffffff, width: number = 300px) {
+  container padding: 16px, color: color, radius: 12px, width: width, shadow: "md" {
+    column gap: 8px {
+      heading "{title}" font-size: 18px
+      slot
+    }
+  }
+}

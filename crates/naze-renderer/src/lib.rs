@@ -632,9 +632,10 @@ pub mod canvas {
                 value.to_string()
             };
 
-            // Text content or placeholder
+            // Text content or placeholder — vertically centered
+            let font_size = 16.0;
             let text_x = x + 8.0;
-            let text_y = y + 4.0;
+            let text_y = y + (h - font_size) / 2.0;
             if !display_value.is_empty() {
                 self.draw_text(&display_value, text_x, text_y, 16.0, false, "#111827");
             } else if !placeholder.is_empty() {
