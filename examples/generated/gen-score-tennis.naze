@@ -1,0 +1,30 @@
+-- Tennis match point tracker
+app "Tennis Score" {
+  state player-a = 0
+  state player-b = 0
+  state period = "Set 1"
+
+  column padding: 20px, gap: 16px {
+    heading "Tennis Score"
+    text "{period}" color: #64748b
+
+    grid columns: 2, gap: 16px {
+      rect padding: 20px, color: #0d9488, radius: 8px {
+        text "Player A" color: #ffffff, font-weight: bold
+        text "{player-a}" color: #ffffff, font-size: 48px
+        rect width: 80px, height: 32px, color: #ffffff, radius: 4px {
+          text "+15"
+          on click: set player-a = player-a + 15
+        }
+      }
+      rect padding: 20px, color: #dc2626, radius: 8px {
+        text "Player B" color: #ffffff, font-weight: bold
+        text "{player-b}" color: #ffffff, font-size: 48px
+        rect width: 80px, height: 32px, color: #ffffff, radius: 4px {
+          text "+15"
+          on click: set player-b = player-b + 15
+        }
+      }
+    }
+  }
+}

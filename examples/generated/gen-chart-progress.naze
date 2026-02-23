@@ -1,0 +1,45 @@
+-- Project completion progress bars
+app "Project Progress" {
+  state alpha = 90
+  state beta = 65
+  state gamma = 30
+
+  column padding: 24px, gap: 16px {
+    heading "Project Status" color: #1e40af
+
+    column gap: 12px {
+      column gap: 4px {
+        row gap: 8px {
+          text "Alpha" font-weight: bold
+          spacer
+          text "{alpha}%" color: #16a34a
+        }
+        rect width: 300px, height: 8px, color: #e2e8f0, radius: 4px {
+          rect width: 270px, height: 8px, color: #22c55e, radius: 4px
+        }
+      }
+
+      column gap: 4px {
+        row gap: 8px {
+          text "Beta" font-weight: bold
+          spacer
+          text "{beta}%" color: #2563eb
+        }
+        rect width: 300px, height: 8px, color: #e2e8f0, radius: 4px {
+          rect width: 195px, height: 8px, color: #3b82f6, radius: 4px
+        }
+      }
+
+      column gap: 4px {
+        row gap: 8px {
+          text "Gamma" font-weight: bold
+          spacer
+          text "{gamma}%" color: #f59e0b
+        }
+        rect width: 300px, height: 8px, color: #e2e8f0, radius: 4px {
+          rect width: 90px, height: 8px, color: #f59e0b, radius: 4px
+        }
+      }
+    }
+  }
+}

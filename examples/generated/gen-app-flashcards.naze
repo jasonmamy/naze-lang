@@ -1,0 +1,30 @@
+-- Flashcards
+app "Flashcards" {
+  state showing = "front"
+  state card-index = 0
+  state front = "What is the capital of France?"
+  state back = "Paris"
+
+  column padding: 20px, gap: 16px {
+    heading "Study Cards"
+
+    rect width: 300px, height: 200px, color: #eff6ff, radius: 12px, padding: 20px {
+      match showing {
+        "front": text "{front}" font-size: 18px
+        "back": text "{back}" font-size: 24px, color: #2563eb
+        _: text "Error"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #6366f1, radius: 8px {
+        text "Flip" color: #ffffff
+        on click: set showing = "back"
+      }
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Next" color: #ffffff
+        on click: set showing = "front"
+      }
+    }
+  }
+}

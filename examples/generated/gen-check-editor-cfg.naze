@@ -1,0 +1,31 @@
+-- Code editor preferences
+app "Editor Settings" {
+  state line-numbers = true
+  state word-wrap = false
+  state auto-save = true
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Editor Settings"
+    text "Configure your editor" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: line-numbers, label: "Show line numbers"
+        checkbox bind: word-wrap, label: "Word wrap"
+        checkbox bind: auto-save, label: "Auto-save changes"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #06b6d4, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

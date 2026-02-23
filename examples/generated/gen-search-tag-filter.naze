@@ -1,0 +1,39 @@
+-- Tag-based filter
+app "Tag Filter" {
+  state active-tag = "all"
+  state items = [{name: "React Guide", tag: "frontend"}, {name: "SQL Basics", tag: "backend"}, {name: "Docker 101", tag: "devops"}, {name: "CSS Grid", tag: "frontend"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Resources"
+    text "{total} total resources" color: #64748b
+
+    row gap: 8px {
+      rect width: 70px, height: 32px, color: #64748b, radius: 16px {
+        text "All" color: #ffffff, font-size: 13px
+        on click: set active-tag = "all"
+      }
+      rect width: 80px, height: 32px, color: #3b82f6, radius: 16px {
+        text "Frontend" color: #ffffff, font-size: 13px
+        on click: set active-tag = "frontend"
+      }
+      rect width: 80px, height: 32px, color: #16a34a, radius: 16px {
+        text "Backend" color: #ffffff, font-size: 13px
+        on click: set active-tag = "backend"
+      }
+      rect width: 80px, height: 32px, color: #f59e0b, radius: 16px {
+        text "DevOps" color: #ffffff, font-size: 13px
+        on click: set active-tag = "devops"
+      }
+    }
+
+    text "Filter: {active-tag}" color: #64748b, font-size: 13px
+
+    each item in items | sort-by name {
+      row padding: 10px, color: #f8fafc, radius: 6px, gap: 8px {
+        text "{item.name}" font-weight: bold
+        text "{item.tag}" color: #3b82f6, font-size: 12px
+      }
+    }
+  }
+}

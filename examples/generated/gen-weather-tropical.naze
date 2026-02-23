@@ -1,0 +1,41 @@
+-- Hot tropical weather display
+app "Tropical Heat" {
+  state temp = 92
+  state feels-like = 98
+  state humidity = 88
+  state wind = 5
+  state condition = "Hot and Humid"
+
+  column padding: 24px, gap: 16px, color: #fff1f2 {
+    heading "Miami Weather" color: #dc2626
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #fecaca, radius: 12px {
+        text "HOT" font-size: 36px
+      }
+      column gap: 4px {
+        text "{temp}F" font-size: 48px, font-weight: bold, color: #dc2626
+        text "{condition}" color: #64748b, font-size: 16px
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Feels Like" color: #64748b, font-size: 11px
+        text "{feels-like}F" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Humidity" color: #64748b, font-size: 11px
+        text "{humidity}%" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Wind" color: #64748b, font-size: 11px
+        text "{wind} mph" font-size: 18px
+      }
+    }
+
+    separator
+
+    text "Forecast: Heat advisory through Friday" color: #94a3b8, font-size: 13px
+  }
+}

@@ -1,0 +1,29 @@
+-- Event countdown banner
+app "Sale Countdown" {
+  state hours-left = 47
+  state minutes-left = 59
+
+  timer sale-tick: every 1s {
+    set minutes-left = minutes-left - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    rect padding: 16px, color: #7c3aed, radius: 8px {
+      column gap: 4px {
+        text "Flash Sale Ending Soon!" color: #ffffff, font-weight: bold, font-size: 20px
+        row gap: 16px {
+          column gap: 2px {
+            text "{hours-left}" color: #ffffff, font-size: 32px, font-weight: bold
+            text "Hours" color: #c4b5fd, font-size: 12px
+          }
+          column gap: 2px {
+            text "{minutes-left}" color: #ffffff, font-size: 32px, font-weight: bold
+            text "Minutes" color: #c4b5fd, font-size: 12px
+          }
+        }
+      }
+    }
+
+    text "Shop now for up to 60% off" color: #64748b
+  }
+}

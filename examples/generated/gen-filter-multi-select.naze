@@ -1,0 +1,39 @@
+-- Multi-criteria filter
+app "Advanced Filters" {
+  state show-active = true
+  state show-archived = false
+  state sort-field = "name"
+  state total = 150
+  state filtered = 150
+
+  column padding: 20px, gap: 16px {
+    heading "Advanced Filters"
+    text "{filtered} of {total} items" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "Status" font-weight: bold
+      checkbox bind: show-active, label: "Active"
+      checkbox bind: show-archived, label: "Archived"
+
+      spacer
+
+      text "Sort By" font-weight: bold
+      select bind: sort-field {
+        option "Name" value: "name"
+        option "Date" value: "date"
+        option "Status" value: "status"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #2563eb, radius: 4px {
+        text "Apply" color: #ffffff
+        on click: set filtered = 45
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set filtered = 150
+      }
+    }
+  }
+}

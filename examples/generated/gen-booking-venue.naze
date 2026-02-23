@@ -1,0 +1,36 @@
+-- Venue reservation with event details
+app "Venue Booking" {
+  state venue-name = ""
+  state event-date = ""
+  state attendees = ""
+  state event-type = "conference"
+  state booked = false
+
+  column padding: 24px, gap: 16px {
+    heading "Reserve a Venue" color: #1e40af
+    text "Find the perfect space for your event" color: #64748b
+
+    input bind: venue-name, placeholder: "Venue or hall name"
+    input bind: event-date, placeholder: "Event date"
+    input bind: attendees, placeholder: "Expected attendees"
+
+    select bind: event-type {
+      option "Conference" value: "conference"
+      option "Wedding" value: "wedding"
+      option "Workshop" value: "workshop"
+      option "Party" value: "party"
+    }
+
+    rect width: 160px, height: 44px, color: #1e40af, radius: 8px {
+      text "Reserve Venue" color: #ffffff
+      on click: set booked = true
+    }
+
+    if booked {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Venue reserved!" color: #1e40af, font-weight: bold
+        text "Type: {event-type}" color: #64748b
+      }
+    }
+  }
+}

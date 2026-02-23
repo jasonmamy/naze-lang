@@ -1,0 +1,22 @@
+-- Bug report form with title and description
+app "Report" {
+  state title = ""
+  state description = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Report"
+
+    input bind: title, placeholder: "Issue Title"
+    input bind: description, placeholder: "Description"
+
+    rect width: 120px, height: 40px, color: #ef4444, radius: 8px {
+      text "Report" color: #ffffff
+      on click: set submitted = true
+    }
+
+    if submitted {
+      text "Report filed!" color: #16a34a
+    }
+  }
+}

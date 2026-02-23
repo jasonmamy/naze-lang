@@ -1,0 +1,34 @@
+-- Blog with posts, archive, and about pages
+app "Blog" {
+  column padding: 20px, gap: 16px {
+    heading "Blog"
+    text "Welcome to my blog"
+    link "Posts", to: "/posts"
+    link "Archive", to: "/archive"
+    link "About", to: "/about"
+  }
+}
+
+page "/posts" {
+  column padding: 20px {
+    heading "Blog Posts"
+    text "Latest articles"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/archive" {
+  column padding: 20px {
+    heading "Archive"
+    text "Past posts"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/about" {
+  column padding: 20px {
+    heading "About"
+    text "About the author"
+    link "Back to Home", to: "/"
+  }
+}

@@ -1,0 +1,33 @@
+-- Developer tools footer with documentation links
+app "Dev Footer" {
+  column {
+    spacer height: 40px
+
+    rect width: 800px, color: #0f172a {
+      column padding: 32px, gap: 16px {
+        row gap: 40px {
+          column gap: 6px {
+            text "Docs" font-weight: bold, color: #e2e8f0
+            text "Quick Start" color: #60a5fa, font-size: 14px
+            text "API Reference" color: #60a5fa, font-size: 14px
+            text "Examples" color: #60a5fa, font-size: 14px
+          }
+          column gap: 6px {
+            text "Community" font-weight: bold, color: #e2e8f0
+            text "Discord" color: #60a5fa, font-size: 14px
+            text "Forum" color: #60a5fa, font-size: 14px
+            text "Stack Overflow" color: #60a5fa, font-size: 14px
+          }
+          column gap: 6px {
+            text "Open Source" font-weight: bold, color: #e2e8f0
+            text "GitHub" color: #60a5fa, font-size: 14px
+            text "Contributing" color: #60a5fa, font-size: 14px
+            text "License" color: #60a5fa, font-size: 14px
+          }
+        }
+        separator
+        text "Open source under MIT License." color: #60a5fa, font-size: 12px
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+-- Poll
+app "Poll" {
+  state option-a = 0
+  state option-b = 0
+  state option-c = 0
+  computed total-votes = option-a + option-b + option-c
+
+  column padding: 20px, gap: 16px {
+    heading "What is your favorite?"
+    text "{total-votes} total votes" color: #64748b
+
+    column gap: 8px {
+      row gap: 8px {
+        rect width: 120px, height: 40px, color: #2563eb, radius: 8px {
+          text "Pizza ({option-a})" color: #ffffff
+          on click: set option-a = option-a + 1
+        }
+      }
+      row gap: 8px {
+        rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+          text "Sushi ({option-b})" color: #ffffff
+          on click: set option-b = option-b + 1
+        }
+      }
+      row gap: 8px {
+        rect width: 120px, height: 40px, color: #f59e0b, radius: 8px {
+          text "Tacos ({option-c})" color: #ffffff
+          on click: set option-c = option-c + 1
+        }
+      }
+    }
+  }
+}

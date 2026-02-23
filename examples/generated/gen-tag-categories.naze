@@ -1,0 +1,36 @@
+-- Blog post category tags
+app "Blog Categories" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Blog Categories"
+    text "Browse by category" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #eff6ff, radius: 12px {
+        text "Tutorial" color: #1d4ed8, font-size: 13px
+        on click: set selected-tag = "Tutorial"
+      }
+      rect padding: 8px, color: #fdf2f8, radius: 12px {
+        text "News" color: #be185d, font-size: 13px
+        on click: set selected-tag = "News"
+      }
+      rect padding: 8px, color: #f0fdf4, radius: 12px {
+        text "Opinion" color: #15803d, font-size: 13px
+        on click: set selected-tag = "Opinion"
+      }
+      rect padding: 8px, color: #fff7ed, radius: 12px {
+        text "Review" color: #c2410c, font-size: 13px
+        on click: set selected-tag = "Review"
+      }
+      rect padding: 8px, color: #f5f3ff, radius: 12px {
+        text "Guide" color: #6d28d9, font-size: 13px
+        on click: set selected-tag = "Guide"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

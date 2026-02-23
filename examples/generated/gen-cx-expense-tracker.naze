@@ -1,0 +1,35 @@
+-- Expense tracker
+app "Expenses" {
+  state desc = ""
+  state amount = 0
+  state expenses = [{desc: "Groceries", amount: "85", category: "food"}, {desc: "Gas", amount: "45", category: "transport"}, {desc: "Netflix", amount: "15", category: "entertainment"}]
+  computed total = expenses | count
+  computed food-items = expenses | filter category == "food"
+
+  column padding: 20px, gap: 16px {
+    heading "Expense Tracker"
+    text "{total} expenses recorded" color: #64748b
+
+    row gap: 8px {
+      input bind: desc, placeholder: "Description"
+      input bind: amount, placeholder: "Amount"
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Add" color: #ffffff
+        on click: set desc = ""
+      }
+    }
+
+    separator
+
+    heading "All Expenses" font-size: 18px
+    each exp in expenses | sort-by category {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 12px {
+        column gap: 2px {
+          text "{exp.desc}" font-weight: bold
+          text "{exp.category}" color: #94a3b8, font-size: 12px
+        }
+        text "${exp.amount}" color: #2563eb, font-size: 18px
+      }
+    }
+  }
+}

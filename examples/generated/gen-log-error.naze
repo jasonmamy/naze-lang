@@ -1,0 +1,18 @@
+-- Application error log viewer
+app "Error Log" {
+  state entries = [{time: "14:22", action: "500 Internal Server Error", user: "/api/users"}, {time: "14:18", action: "404 Not Found", user: "/old-page"}, {time: "13:55", action: "429 Rate Limited", user: "/api/search"}, {time: "13:40", action: "503 Service Unavailable", user: "/api/data"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Error Log" color: #ef4444
+    text "{total-entries} errors recorded" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #fef2f2, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #ef4444, font-size: 12px
+      }
+    }
+  }
+}

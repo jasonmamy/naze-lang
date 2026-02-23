@@ -1,0 +1,6 @@
+-- App with only a heading and nothing else
+app "Title Only" {
+  column padding: 24px {
+    heading "Welcome" font-size: 32px, color: #1e293b
+  }
+}

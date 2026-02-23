@@ -1,0 +1,39 @@
+-- Hip hop playlist with popular tracks
+app "Hip Hop Hits" {
+  state tracks = [{title: "Lose Yourself", artist: "Eminem", duration: "5:26"}, {title: "Alright", artist: "Kendrick Lamar", duration: "3:39"}, {title: "Juicy", artist: "Notorious B.I.G.", duration: "5:02"}]
+  state current-track = 0
+  state playing = false
+  computed track-count = tracks | count
+
+  column padding: 20px, gap: 16px {
+    heading "Hip Hop Hits"
+    text "{track-count} tracks" color: #64748b
+
+    if playing {
+      text "Now Playing" color: #ca8a04, font-weight: bold
+    }
+
+    each track in tracks {
+      row padding: 10px, color: #fefce8, radius: 8px, gap: 8px {
+        text "{track.title}" font-weight: bold
+        text "{track.artist}" color: #64748b
+        text "{track.duration}" color: #ca8a04, font-size: 12px
+      }
+    }
+
+    row gap: 8px {
+      rect width: 60px, height: 36px, color: #ca8a04, radius: 4px {
+        text "Prev" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track - 1
+      }
+      rect width: 60px, height: 36px, color: #ca8a04, radius: 4px {
+        text "Play" color: #ffffff, font-size: 12px
+        on click: set playing = true
+      }
+      rect width: 60px, height: 36px, color: #ca8a04, radius: 4px {
+        text "Next" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track + 1
+      }
+    }
+  }
+}

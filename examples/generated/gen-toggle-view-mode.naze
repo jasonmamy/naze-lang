@@ -1,0 +1,30 @@
+-- Switch between list, grid, and card views
+app "View Mode" {
+  state view = "list"
+
+  column padding: 20px, gap: 16px {
+    heading "View Mode"
+
+    match view {
+      "list": text "List view active" font-size: 18px
+      "grid": text "Grid view active" font-size: 18px
+      "card": text "Card view active" font-size: 18px
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #6366f1, radius: 4px {
+        text "list" color: #ffffff
+        on click: set view = "list"
+      }
+      rect width: 100px, height: 36px, color: #ec4899, radius: 4px {
+        text "grid" color: #ffffff
+        on click: set view = "grid"
+      }
+      rect width: 100px, height: 36px, color: #14b8a6, radius: 4px {
+        text "card" color: #ffffff
+        on click: set view = "card"
+      }
+    }
+  }
+}

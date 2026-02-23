@@ -1,0 +1,31 @@
+-- CI/CD pipeline dashboard with build and deploy metrics
+app "DevOps Dashboard" {
+  state builds = 324
+  state deploys = 18
+  state failures = 5
+  computed success-rate = (builds - failures) * 100 / builds
+
+  column padding: 24px, gap: 20px {
+    heading "DevOps Dashboard"
+    text "Pipeline health" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Builds Today" color: #64748b, font-size: 12px
+        text "{builds}" font-size: 28px, color: #2563eb
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Deployments" color: #64748b, font-size: 12px
+        text "{deploys}" font-size: 28px, color: #16a34a
+      }
+      rect padding: 16px, color: #fef2f2, radius: 8px {
+        text "Failures" color: #64748b, font-size: 12px
+        text "{failures}" font-size: 28px, color: #dc2626
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Success Rate %: {success-rate}" font-size: 18px, color: #2563eb
+    }
+  }
+}

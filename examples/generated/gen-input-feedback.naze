@@ -1,0 +1,30 @@
+-- Feedback submission form
+app "Feedback" {
+  state message = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Feedback"
+    text "Share your feedback" color: #64748b
+
+    input bind: message, placeholder: "Type your feedback..."
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Send" color: #ffffff
+        on click: set submitted = true
+      }
+      rect width: 80px, height: 36px, color: #94a3b8, radius: 4px {
+        text "Clear" color: #ffffff
+        on click: set message = ""
+        on click: set submitted = false
+      }
+    }
+
+    if submitted {
+      rect padding: 12px, color: #fef3c7, radius: 8px {
+        text "Thanks for: {message}" font-weight: bold, color: #f59e0b
+      }
+    }
+  }
+}

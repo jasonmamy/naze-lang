@@ -1,0 +1,30 @@
+-- Product category browser with item counts
+app "Categories" {
+  state items = [{name: "Electronics", price: "124 items"}, {name: "Clothing", price: "89 items"}, {name: "Home", price: "56 items"}, {name: "Sports", price: "42 items"}]
+  state selected = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Categories"
+    text "{total} categories" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each cat in items | sort-by name {
+        rect padding: 16px, color: #fef3c7, radius: 8px {
+          column gap: 4px {
+            text "{cat.name}" font-weight: bold
+            text "{cat.price}" color: #92400e
+          }
+          rect width: 80px, height: 32px, color: #f59e0b, radius: 4px {
+            text "Browse" color: #ffffff
+            on click: set selected = "{cat.name}"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a
+    }
+  }
+}

@@ -1,0 +1,27 @@
+-- Task priority selector
+app "Priority" {
+  state choice = "medium"
+
+  column padding: 20px, gap: 16px {
+    heading "Priority"
+
+    select bind: choice {
+      option "Low" value: "low"
+      option "Medium" value: "medium"
+      option "High" value: "high"
+    }
+
+    match choice {
+      "low": rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Low priority: handle when free" color: #16a34a
+      }
+      "medium": rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Medium: address this week" color: #d97706
+      }
+      "high": rect padding: 16px, color: #fef2f2, radius: 8px {
+        text "High priority: handle immediately" color: #dc2626
+      }
+      _: text "Select an option" color: #94a3b8
+    }
+  }
+}

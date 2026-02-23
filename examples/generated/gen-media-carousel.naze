@@ -1,0 +1,23 @@
+-- Image carousel
+app "Carousel" {
+  state slide = 0
+
+  column padding: 20px, gap: 16px {
+    heading "Photo Carousel"
+
+    rect width: 400px, height: 250px, color: #1e293b, radius: 12px, padding: 20px {
+      text "Slide {slide}" color: #ffffff, font-size: 24px
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Previous" color: #ffffff
+        on click: set slide = slide - 1
+      }
+      rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+        text "Next" color: #ffffff
+        on click: set slide = slide + 1
+      }
+    }
+  }
+}

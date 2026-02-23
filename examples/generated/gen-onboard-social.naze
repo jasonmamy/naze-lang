@@ -1,0 +1,54 @@
+-- Social media app onboarding
+app "Social Setup" {
+  state step = 1
+  state name = ""
+  state agreed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Social Setup" color: #8b5cf6
+
+    row gap: 8px {
+      rect width: 32px, height: 32px, color: #8b5cf6, radius: 16px {
+        text "1" color: #ffffff, font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "2" font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "3" font-size: 14px
+      }
+    }
+
+    match step {
+      1: column gap: 12px {
+        text "Join the Community" font-size: 20px, font-weight: bold
+        text "Connect with people who share your interests." color: #64748b
+        rect width: 140px, height: 40px, color: #8b5cf6, radius: 8px {
+          text "Get Started" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Pick a Username" font-size: 20px, font-weight: bold
+        text "Choose a unique handle for your profile." color: #64748b
+        input bind: name, placeholder: "Username"
+        rect width: 100px, height: 40px, color: #8b5cf6, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 3
+        }
+      }
+      3: column gap: 12px {
+        text "Community Guidelines" font-size: 20px, font-weight: bold
+        text "We believe in respectful conversations." color: #64748b
+        checkbox bind: agreed, label: "I agree to the community guidelines"
+        rect width: 120px, height: 40px, color: #8b5cf6, radius: 8px {
+          text "Complete" color: #ffffff
+          on click: set step = 1
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

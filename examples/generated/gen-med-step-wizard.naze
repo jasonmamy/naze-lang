@@ -1,0 +1,27 @@
+-- Step wizard
+app "Wizard" {
+  state step = 1
+
+  column padding: 20px, gap: 16px {
+    heading "Setup Wizard"
+    text "Step {step} of 2" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "Welcome! Let's get started." font-weight: bold
+        rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "All done! You're ready." font-weight: bold
+        rect width: 80px, height: 36px, color: #64748b, radius: 4px {
+          text "Back" color: #ffffff
+          on click: set step = 1
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

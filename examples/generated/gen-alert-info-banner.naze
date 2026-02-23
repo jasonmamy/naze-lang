@@ -1,0 +1,28 @@
+-- Informational banner about maintenance window
+app "Info Alert" {
+  state dismissed = false
+
+  column padding: 20px, gap: 16px {
+    heading "Info Alert"
+
+    if dismissed == false {
+      rect padding: 14px, color: #eff6ff, radius: 8px {
+        row gap: 12px {
+          text "[i]" font-size: 20px
+          column gap: 4px {
+            text "Scheduled maintenance" font-weight: bold, color: #1e40af
+            text "System update planned for Saturday 2-4 AM." color: #3b82f6, font-size: 13px
+          }
+        }
+        rect width: 70px, height: 28px, color: #2563eb, radius: 4px {
+          text "Got it" color: #ffffff, font-size: 12px
+          on click: set dismissed = true
+        }
+      }
+    }
+
+    if dismissed {
+      text "Alert dismissed" color: #94a3b8
+    }
+  }
+}

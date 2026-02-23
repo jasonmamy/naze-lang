@@ -1,0 +1,50 @@
+-- Theme preview with live switching
+theme light {
+  colors {
+    bg: #ffffff
+    text-color: #0f172a
+    primary: #2563eb
+    card: #f8fafc
+  }
+}
+
+theme dark extends light {
+  colors {
+    bg: #0f172a
+    text-color: #f8fafc
+    primary: #60a5fa
+    card: #1e293b
+  }
+}
+
+app "Theme Preview" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Theme Preview" color: theme.colors.text-color
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: theme.colors.primary, radius: 8px {
+        text "Light" color: #ffffff
+        on click: set-theme "light"
+      }
+      rect width: 100px, height: 40px, color: theme.colors.primary, radius: 8px {
+        text "Dark" color: #ffffff
+        on click: set-theme "dark"
+      }
+    }
+
+    grid columns: 2, gap: 12px {
+      container padding: 16px, color: theme.colors.card, radius: 8px {
+        column gap: 4px {
+          heading "Card 1" font-size: 16px, color: theme.colors.text-color
+          text "Sample content" color: theme.colors.text-color
+        }
+      }
+      container padding: 16px, color: theme.colors.card, radius: 8px {
+        column gap: 4px {
+          heading "Card 2" font-size: 16px, color: theme.colors.text-color
+          text "Sample content" color: theme.colors.text-color
+        }
+      }
+    }
+  }
+}

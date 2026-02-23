@@ -86,13 +86,13 @@ fn parse_source(source: &str) -> Result<Vec<naze_parser::ast::Node>, String> {
     match naze_parser::parse(source, "playground.naze") {
         Ok(nodes) => Ok(nodes),
         Err(e) => {
-            let err = CompileError {
-                message: e.to_string(),
-                file: "playground.naze".into(),
-                line: 0,
-                column: 0,
-                severity: Severity::Error,
-            };
+            let err = CompileError::new(
+                e.to_string(),
+                "playground.naze".into(),
+                0,
+                0,
+                Severity::Error,
+            );
             Err(error_json(&[err]))
         }
     }

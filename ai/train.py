@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""QLoRA fine-tuning of Qwen 2.5 Coder 7B on Naze training data using unsloth.
+
+Inputs:  ai/data/train.jsonl, ai/data/eval.jsonl  (ChatML messages format)
+Outputs: ai/data/naze-coder-lora/  (LoRA adapters)
+         ai/data/naze-coder-gguf/  (Q4_K_M GGUF for Ollama)
+
+Hardware: ~10-12 GB VRAM (fits RTX 4070 Ti Super 16GB).
+Time:     ~30-60 min for 5 epochs on ~250 pairs.
+"""
+
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+from unsloth import FastLanguageModel  # must be first (before transformers/trl)
+
+import shutil
+import sys
+from pathlib import Path
+
+import torch
+
+# Clear torchinductor cache so recompilation picks up new settings
+_inductor_cache = Path("/tmp") / f"torchinductor_{os.environ.get('USER', 'user')}"
+if _inductor_cache.exists():
+    shutil.rmtree(_inductor_cache, ignore_errors=True)
+    print(f"Cleared torchinductor cache: {_inductor_cache}")
+from datasets import load_dataset
+from transformers import TrainingArguments
+from trl import SFTTrainer
+
+# ─── VRAM check ──────────────────────────────────────────────────────────────
+
+if torch.cuda.is_available():
+    free, total = torch.cuda.mem_get_info()
+    free_gb = free / (1024**3)
+    if free_gb < 10:
+        print(f"ERROR: Only {free_gb:.1f} GiB VRAM free (need ~10 GiB).")
+        print("  Stop other GPU processes (e.g., ollama stop <model>) and retry.")
+        sys.exit(1)
+
+# ─── Config ───────────────────────────────────────────────────────────────────
+
+BASE_MODEL = "unsloth/Qwen2.5-Coder-7B-Instruct-bnb-4bit"
+MAX_SEQ_LENGTH = 4096
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_DIR = SCRIPT_DIR / "data"
+OUTPUT_DIR = str(DATA_DIR / "naze-coder-lora")
+GGUF_DIR = str(DATA_DIR / "naze-coder-gguf")
+
+# ─── Load model (4-bit quantized) ────────────────────────────────────────────
+
+print("Loading base model...")
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name=BASE_MODEL,
+    max_seq_length=MAX_SEQ_LENGTH,
+    load_in_4bit=True,
+)
+
+# ─── Add LoRA adapters ───────────────────────────────────────────────────────
+
+print("Adding LoRA adapters...")
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,
+    lora_alpha=32,
+    target_modules=[
+        "q_proj", "k_proj", "v_proj", "o_proj",
+        "gate_proj", "up_proj", "down_proj",
+    ],
+    lora_dropout=0.05,
+    use_gradient_checkpointing="unsloth",  # ~30% less VRAM via unsloth's optimized checkpointing
+)
+
+# ─── Load dataset ────────────────────────────────────────────────────────────
+
+print("Loading dataset...")
+dataset = load_dataset("json", data_files={
+    "train": str(DATA_DIR / "train.jsonl"),
+    "eval": str(DATA_DIR / "eval.jsonl"),
+})
+
+
+def format_chat(example):
+    """Apply the chat template to convert messages into a single text string."""
+    text = tokenizer.apply_chat_template(
+        example["messages"], tokenize=False, add_generation_prompt=False
+    )
+    return {"text": text}
+
+
+dataset = dataset.map(format_chat)
+
+print(f"Train samples: {len(dataset['train'])}")
+print(f"Eval samples:  {len(dataset['eval'])}")
+
+# ─── Training args ───────────────────────────────────────────────────────────
+
+training_args = TrainingArguments(
+    output_dir=OUTPUT_DIR,
+    num_train_epochs=20,
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=4,  # effective batch size = 4
+    learning_rate=5e-5,
+    lr_scheduler_type="cosine",
+    warmup_ratio=0.1,
+    logging_steps=5,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    bf16=True,
+    optim="adamw_8bit",
+    seed=42,
+    report_to="none",
+)
+
+# ─── Train ───────────────────────────────────────────────────────────────────
+
+print("Starting training...")
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset["train"],
+    eval_dataset=dataset["eval"],
+    args=training_args,
+    dataset_text_field="text",
+    max_seq_length=MAX_SEQ_LENGTH,
+)
+trainer.train()
+
+# ─── Save ────────────────────────────────────────────────────────────────────
+
+print(f"Saving LoRA adapters to {OUTPUT_DIR}/")
+model.save_pretrained(OUTPUT_DIR)
+tokenizer.save_pretrained(OUTPUT_DIR)
+
+print(f"Exporting GGUF (Q4_K_M) to {GGUF_DIR}/")
+model.save_pretrained_gguf(GGUF_DIR, tokenizer, quantization_method="q4_k_m")
+
+# ─── Generate Modelfile with correct GGUF path ─────────────────────────────
+# unsloth appends _gguf to the directory and names the file after the base model,
+# so we discover the actual path rather than hardcoding it.
+
+import glob as _glob
+
+gguf_pattern = str(DATA_DIR / "naze-coder*" / "*.gguf")
+gguf_files = _glob.glob(gguf_pattern)
+if not gguf_files:
+    print(f"WARNING: No .gguf file found matching {gguf_pattern}")
+    print("  You will need to update ai/Modelfile manually.")
+else:
+    gguf_path = Path(gguf_files[0])
+    # Make path relative to ai/ (where ollama create runs from)
+    gguf_relative = gguf_path.relative_to(SCRIPT_DIR)
+    modelfile = SCRIPT_DIR / "Modelfile"
+    modelfile.write_text(f'''# Generated by train.py — do not edit manually
+FROM ./{gguf_relative}
+
+TEMPLATE """<|im_start|>system
+{{{{ .System }}}}<|im_end|>
+<|im_start|>user
+{{{{ .Prompt }}}}<|im_end|>
+<|im_start|>assistant
+"""
+
+SYSTEM """You are a Naze code generator. Naze is a declarative UI language that compiles to WASM and renders via Canvas2D. Generate valid .naze code wrapped in ```naze fences. Use one canonical form per concept. Include all required props. Never generate HTML, CSS, or JavaScript."""
+
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER num_ctx 16384
+PARAMETER stop "<|im_end|>"
+''')
+    print(f"Wrote Modelfile: FROM ./{gguf_relative}")
+
+print("Done! Next: ollama create naze-coder -f ai/Modelfile")

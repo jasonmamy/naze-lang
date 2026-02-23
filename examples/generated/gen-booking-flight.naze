@@ -1,0 +1,28 @@
+-- Flight reservation form
+app "Flight Booking" {
+  state guest-name = ""
+  state destination = ""
+  state passengers = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Flight Booking" color: #0ea5e9
+    text "Book your flight" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: destination, placeholder: "Destination city"
+    input bind: passengers, placeholder: "Number of passengers"
+
+    rect width: 140px, height: 44px, color: #0ea5e9, radius: 8px {
+      text "Book Flight" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Flight booked!" color: #64748b
+      }
+    }
+  }
+}

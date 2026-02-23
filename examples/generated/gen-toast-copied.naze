@@ -1,0 +1,32 @@
+-- Toast confirmation after copying text
+app "Copy Feedback" {
+  state show-toast = false
+  state action-done = false
+
+  column padding: 24px, gap: 16px {
+    heading "Copy Feedback"
+    text "Click the button to copy the link." color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #0891b2, radius: 8px {
+        text "Copy Link" color: #ffffff
+        on click: set show-toast = true
+        on click: set action-done = true
+      }
+    }
+
+    if show-toast {
+      rect width: 340px, height: 48px, color: #ecfeff, radius: 8px {
+        row padding: 12px, gap: 12px {
+          text "[+]" font-size: 16px
+          text "Link copied to clipboard!" color: #155e75, font-size: 14px
+          spacer
+          rect width: 24px, height: 24px, radius: 4px {
+            text "x" color: #155e75, font-size: 12px
+            on click: set show-toast = false
+          }
+        }
+      }
+    }
+  }
+}

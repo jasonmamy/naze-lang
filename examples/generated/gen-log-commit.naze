@@ -1,0 +1,18 @@
+-- Git commit history viewer
+app "Commit Log" {
+  state entries = [{time: "2h ago", action: "Fix login bug", user: "alice"}, {time: "5h ago", action: "Add tests", user: "bob"}, {time: "1d ago", action: "Refactor auth", user: "carol"}, {time: "2d ago", action: "Update deps", user: "alice"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Commit Log" color: #6366f1
+    text "{total-entries} commits" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #eef2ff, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #6366f1, font-size: 12px
+      }
+    }
+  }
+}

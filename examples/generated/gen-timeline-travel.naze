@@ -1,0 +1,24 @@
+-- Travel itinerary timeline
+app "Trip Itinerary" {
+  state events = [{time: "Day 1", title: "Arrive Tokyo", detail: "Check into hotel, explore Shibuya"}, {time: "Day 2", title: "Temples", detail: "Visit Senso-ji and Meiji Shrine"}, {time: "Day 3", title: "Hakone", detail: "Day trip, hot springs, Mt Fuji"}, {time: "Day 4", title: "Depart", detail: "Narita airport, evening flight"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Trip Itinerary" color: #0284c7
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #0ea5e9, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

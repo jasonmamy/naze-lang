@@ -1,0 +1,31 @@
+-- Developer tool landing page hero
+app "Dev Tool Hero" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #1e293b {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Build Better, Faster" font-size: 36px, color: #38bdf8
+        text "The developer toolkit trusted by top engineering teams." font-size: 18px, color: #94a3b8
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #0ea5e9, radius: 8px {
+            text "Install Now" color: #ffffff, font-size: 16px
+            on click: navigate "/install"
+          }
+          rect width: 140px, height: 48px, color: #334155, radius: 8px {
+            text "Read Docs" color: #e2e8f0, font-size: 16px
+            on click: navigate "/docs"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #0f172a {
+      row padding: 12px, gap: 24px {
+        text "Open source" color: #64748b, font-size: 14px
+        text "15K stars" color: #64748b, font-size: 14px
+        text "MIT license" color: #64748b, font-size: 14px
+      }
+    }
+  }
+}

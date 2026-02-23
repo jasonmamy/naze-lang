@@ -1,0 +1,44 @@
+-- Project manager
+app "Projects" {
+  state filter = "all"
+  state tasks = [{title: "Design mockups", status: "done", priority: "high"}, {title: "Build API", status: "progress", priority: "high"}, {title: "Write tests", status: "todo", priority: "medium"}, {title: "Deploy staging", status: "todo", priority: "low"}, {title: "Code review", status: "progress", priority: "medium"}]
+  computed task-count = tasks | count
+
+  column padding: 20px, gap: 16px {
+    heading "Project Alpha"
+    text "{task-count} tasks total" color: #64748b
+
+    row gap: 8px {
+      rect width: 60px, height: 32px, color: #334155, radius: 4px {
+        text "All" color: #ffffff
+        on click: set filter = "all"
+      }
+      rect width: 80px, height: 32px, color: #16a34a, radius: 4px {
+        text "Done" color: #ffffff
+        on click: set filter = "done"
+      }
+      rect width: 100px, height: 32px, color: #f59e0b, radius: 4px {
+        text "In Progress" color: #ffffff
+        on click: set filter = "progress"
+      }
+      rect width: 60px, height: 32px, color: #dc2626, radius: 4px {
+        text "Todo" color: #ffffff
+        on click: set filter = "todo"
+      }
+    }
+
+    separator
+
+    each task in tasks | sort-by priority {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 8px {
+        column gap: 2px {
+          text "{task.title}" font-weight: bold
+          row gap: 8px {
+            text "{task.status}" color: #2563eb, font-size: 12px
+            text "{task.priority}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

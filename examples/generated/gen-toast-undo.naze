@@ -1,0 +1,32 @@
+-- Toast with undo action after deletion
+app "Undo Action" {
+  state show-toast = false
+  state action-done = false
+
+  column padding: 24px, gap: 16px {
+    heading "Undo Action"
+    text "Manage your items in the list." color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #64748b, radius: 8px {
+        text "Delete" color: #ffffff
+        on click: set show-toast = true
+        on click: set action-done = true
+      }
+    }
+
+    if show-toast {
+      rect width: 340px, height: 48px, color: #1e293b, radius: 8px {
+        row padding: 12px, gap: 12px {
+          text "[-]" font-size: 16px
+          text "Item deleted. Undo?" color: #e2e8f0, font-size: 14px
+          spacer
+          rect width: 24px, height: 24px, radius: 4px {
+            text "x" color: #e2e8f0, font-size: 12px
+            on click: set show-toast = false
+          }
+        }
+      }
+    }
+  }
+}

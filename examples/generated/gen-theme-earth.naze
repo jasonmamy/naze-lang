@@ -1,0 +1,26 @@
+-- Earthy warm tone color scheme
+theme earth {
+  colors {
+    primary: #bc6c25
+    secondary: #dda15e
+    bg: #fefae0
+    text-color: #283618
+    accent: #606c38
+  }
+}
+
+app "Earth Theme" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Earth Theme" color: theme.colors.text-color
+
+    rect padding: 16px, color: theme.colors.primary, radius: 8px {
+      text "Primary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.secondary, radius: 8px {
+      text "Secondary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.accent, radius: 8px {
+      text "Accent" color: #ffffff
+    }
+  }
+}

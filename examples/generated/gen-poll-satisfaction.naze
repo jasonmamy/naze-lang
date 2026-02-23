@@ -1,0 +1,37 @@
+-- Customer satisfaction poll
+app "Satisfaction Survey" {
+  state great = 0
+  state okay = 0
+  state poor = 0
+  state submitted = false
+  computed responses = great + okay + poor
+
+  column padding: 24px, gap: 16px {
+    heading "How was your experience?" color: #1e293b
+    text "{responses} responses so far" color: #64748b
+
+    row gap: 16px {
+      column gap: 4px {
+        rect width: 80px, height: 80px, color: #dcfce7, radius: 12px {
+          text "Great" color: #16a34a, font-size: 16px
+          on click: set great = great + 1
+        }
+        text "{great}" color: #16a34a
+      }
+      column gap: 4px {
+        rect width: 80px, height: 80px, color: #fef9c3, radius: 12px {
+          text "Okay" color: #a16207, font-size: 16px
+          on click: set okay = okay + 1
+        }
+        text "{okay}" color: #a16207
+      }
+      column gap: 4px {
+        rect width: 80px, height: 80px, color: #fee2e2, radius: 12px {
+          text "Poor" color: #dc2626, font-size: 16px
+          on click: set poor = poor + 1
+        }
+        text "{poor}" color: #dc2626
+      }
+    }
+  }
+}

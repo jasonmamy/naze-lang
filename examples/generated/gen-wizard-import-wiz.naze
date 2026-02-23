@@ -1,0 +1,55 @@
+-- Data import wizard with source and mapping
+app "Data Import" {
+  state step = 1
+  state source-url = ""
+  state mapping-field = ""
+  state import-name = ""
+
+  column padding: 24px, gap: 16px {
+    heading "Data Import"
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "Data Source" font-weight: bold, font-size: 18px
+        text "Where is your data?" color: #64748b
+        input bind: source-url, placeholder: "URL or file path"
+        rect width: 100px, height: 40px, color: #475569, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Field Mapping" font-weight: bold, font-size: 18px
+        text "Map columns to fields" color: #64748b
+        input bind: mapping-field, placeholder: "field:column format"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 1
+          }
+          rect width: 100px, height: 40px, color: #475569, radius: 8px {
+            text "Next" color: #ffffff
+            on click: set step = 3
+          }
+        }
+      }
+      3: column gap: 12px {
+        text "Name Import" font-weight: bold, font-size: 18px
+        text "Give this import a name" color: #64748b
+        input bind: import-name, placeholder: "Import name"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 2
+          }
+          rect width: 120px, height: 40px, color: #0ea5e9, radius: 8px {
+            text "Start Import" color: #ffffff
+            on click: set step = 1
+          }
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

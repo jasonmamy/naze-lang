@@ -1,0 +1,22 @@
+-- Character counter
+app "Character Counter" {
+  state text-input = ""
+  state char-count = 0
+
+  column padding: 20px, gap: 16px {
+    heading "Character Counter"
+    textarea bind: text-input, placeholder: "Type something..."
+    text "{char-count} / 280 characters" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "Count" color: #ffffff
+        on click: set char-count = char-count + 1
+      }
+      rect width: 80px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Clear"
+        on click: set text-input = ""
+      }
+    }
+  }
+}

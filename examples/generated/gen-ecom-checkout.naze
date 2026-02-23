@@ -1,0 +1,33 @@
+-- Checkout flow
+app "Checkout" {
+  state name = ""
+  state address = ""
+  state card = ""
+  state step = "shipping"
+
+  column padding: 20px, gap: 16px {
+    heading "Checkout"
+
+    match step {
+      "shipping": column gap: 12px {
+        text "Shipping Info" font-weight: bold
+        input bind: name, placeholder: "Full Name"
+        input bind: address, placeholder: "Address"
+        rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = "payment"
+        }
+      }
+      "payment": column gap: 12px {
+        text "Payment Info" font-weight: bold
+        input bind: card, placeholder: "Card Number"
+        rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+          text "Pay Now" color: #ffffff
+          on click: set step = "done"
+        }
+      }
+      "done": text "Order placed!" color: #16a34a, font-size: 24px
+      _: text "Unknown step"
+    }
+  }
+}

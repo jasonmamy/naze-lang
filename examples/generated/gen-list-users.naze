@@ -1,0 +1,17 @@
+-- User directory sorted by name
+app "Users" {
+  state items = [{name: "Alice", role: "admin"}, {name: "Bob", role: "editor"}, {name: "Carol", role: "viewer"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Users"
+    text "{total} users" color: #64748b
+
+    each user in items | sort-by name {
+      row padding: 8px, color: #f3f4f6, radius: 4px, gap: 8px {
+        text "{user.name}" font-weight: bold
+        text "{user.role}" color: #64748b
+      }
+    }
+  }
+}

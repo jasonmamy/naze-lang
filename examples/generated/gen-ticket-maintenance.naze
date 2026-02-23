@@ -1,0 +1,51 @@
+-- Building maintenance work order
+app "Maintenance Ticket" {
+  state ticket-id = "MNT-1190"
+  state status = "Scheduled"
+  state priority = "Normal"
+
+  column padding: 24px, gap: 16px {
+    heading "Maintenance Ticket" color: #475569
+
+    rect padding: 20px, color: #ffffff, radius: 12px {
+      column gap: 12px {
+        row gap: 8px {
+          text "Work Order" font-weight: bold, font-size: 18px
+          spacer
+          rect padding: 6px, color: #f1f5f9, radius: 4px {
+            text "{status}" color: #475569, font-size: 12px
+          }
+        }
+
+        separator
+
+        row gap: 16px {
+          column gap: 4px {
+            text "ID" color: #94a3b8, font-size: 11px
+            text "{ticket-id}" font-size: 14px
+          }
+          column gap: 4px {
+            text "Priority" color: #94a3b8, font-size: 11px
+            text "{priority}" font-size: 14px, color: #0ea5e9
+          }
+          column gap: 4px {
+            text "Location" color: #94a3b8, font-size: 11px
+            text "Floor 3" font-size: 14px
+          }
+        }
+
+        separator
+
+        text "Replace HVAC filter in server room." color: #334155
+        text "Estimated time: 2 hours, technician assigned" color: #64748b, font-size: 13px
+      }
+    }
+
+    match status {
+      "Scheduled": rect padding: 10px, color: #f1f5f9, radius: 8px {
+        text "Scheduled for next Tuesday" color: #475569, font-size: 13px
+      }
+      _: text "Unknown status" color: #94a3b8
+    }
+  }
+}

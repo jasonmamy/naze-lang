@@ -1,0 +1,24 @@
+-- Package delivery tracking timeline
+app "Order Tracking" {
+  state events = [{time: "Mon 8AM", title: "Ordered", detail: "Payment confirmed"}, {time: "Tue 2PM", title: "Packed", detail: "Warehouse processed"}, {time: "Thu 10AM", title: "Shipped", detail: "In transit via carrier"}, {time: "Fri 3PM", title: "Delivered", detail: "Left at front door"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Order Tracking" color: #ea580c
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #f97316, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

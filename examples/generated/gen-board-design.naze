@@ -1,0 +1,54 @@
+-- Design task tracking board
+app "Design Board" {
+  state todo = [{title: "Wireframes", tag: "ux"}, {title: "Icon set", tag: "graphics"}]
+  state doing = [{title: "Prototype", tag: "ux"}]
+  state done = [{title: "Style guide", tag: "brand"}]
+  computed todo-count = todo | count
+  computed doing-count = doing | count
+  computed done-count = done | count
+
+  column padding: 24px, gap: 16px {
+    heading "Design Board" color: #ec4899
+
+    row gap: 16px {
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #d1d5db, radius: 5px
+          text "To Do ({todo-count})" font-weight: bold, font-size: 14px
+        }
+        each card in todo {
+          rect padding: 12px, color: #fdf2f8, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #f472b6, radius: 5px
+          text "In Progress ({doing-count})" font-weight: bold, font-size: 14px
+        }
+        each card in doing {
+          rect padding: 12px, color: #fdf2f8, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #34d399, radius: 5px
+          text "Done ({done-count})" font-weight: bold, font-size: 14px
+        }
+        each card in done {
+          rect padding: 12px, color: #fdf2f8, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+    }
+  }
+}

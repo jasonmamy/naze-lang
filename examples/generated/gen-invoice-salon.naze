@@ -1,0 +1,57 @@
+-- Hair salon service receipt
+app "Salon Receipt" {
+  state item1-qty = 1
+  state item2-qty = 1
+  state item1-price = 45
+  state item2-price = 85
+  state tax-rate = 7
+  computed subtotal = item1-qty * item1-price + item2-qty * item2-price
+  computed tax = subtotal * tax-rate / 100
+  computed total = subtotal + tax
+
+  column padding: 24px, gap: 16px {
+    heading "Salon Receipt" color: #be185d
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        text "Style Studio" font-size: 18px, font-weight: bold
+        text "55 Beauty Pkwy" color: #64748b, font-size: 13px
+        separator
+        text "Invoice #SS-3390" color: #94a3b8, font-size: 12px
+      }
+    }
+
+    column gap: 4px {
+      row gap: 8px {
+        text "Haircut" font-weight: bold
+        spacer
+        text "{item1-qty} x ${item1-price}" color: #64748b
+      }
+      row gap: 8px {
+        text "Coloring" font-weight: bold
+        spacer
+        text "{item2-qty} x ${item2-price}" color: #64748b
+      }
+    }
+
+    separator
+
+    column gap: 4px {
+      row gap: 8px {
+        text "Subtotal" color: #64748b
+        spacer
+        text "${subtotal}"
+      }
+      row gap: 8px {
+        text "Tax ({tax-rate}%)" color: #64748b
+        spacer
+        text "${tax}"
+      }
+      row gap: 8px {
+        text "Total" font-weight: bold, font-size: 18px
+        spacer
+        text "${total}" font-weight: bold, font-size: 18px, color: #be185d
+      }
+    }
+  }
+}

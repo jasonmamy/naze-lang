@@ -1,0 +1,17 @@
+-- Programming languages sorted by name
+app "Languages" {
+  state items = [{name: "Rust", paradigm: "systems"}, {name: "Python", paradigm: "scripting"}, {name: "Go", paradigm: "compiled"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Languages"
+    text "{total} languages" color: #64748b
+
+    each lang in items | sort-by name {
+      row padding: 8px, color: #faf5ff, radius: 4px, gap: 8px {
+        text "{lang.name}" font-weight: bold
+        text "{lang.paradigm}" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+-- Accessibility font size selector
+app "Font Size" {
+  state choice = "medium"
+
+  column padding: 20px, gap: 16px {
+    heading "Font Size"
+
+    select bind: choice {
+      option "Small" value: "small"
+      option "Medium" value: "medium"
+      option "Large" value: "large"
+    }
+
+    match choice {
+      "small": rect padding: 16px, color: #f8fafc, radius: 8px {
+        text "Small text: compact display" color: #64748b
+      }
+      "medium": rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Medium text: default reading size" color: #2563eb
+      }
+      "large": rect padding: 16px, color: #faf5ff, radius: 8px {
+        text "Large text: enhanced readability" color: #7c3aed
+      }
+      _: text "Select an option" color: #94a3b8
+    }
+  }
+}

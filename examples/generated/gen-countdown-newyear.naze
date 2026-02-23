@@ -1,0 +1,28 @@
+-- New Year countdown in seconds
+app "New Year Countdown" {
+  state secs = 120
+  state event-name = "Happy New Year 2027"
+
+  timer tick: every 1s {
+    set secs = secs - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "New Year Countdown"
+    text "{event-name}" color: #64748b
+
+    rect padding: 24px, color: #1e1b4b, radius: 12px {
+      text "{secs}" font-size: 64px, color: #c084fc
+      text "seconds remaining" color: #c084fc
+    }
+
+    if secs == 0 {
+      text "Happy New Year!" font-size: 20px, color: #16a34a, font-weight: bold
+    }
+
+    rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+      text "Reset" color: #ffffff
+      on click: set secs = 120
+    }
+  }
+}

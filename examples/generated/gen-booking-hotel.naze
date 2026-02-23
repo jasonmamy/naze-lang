@@ -1,0 +1,28 @@
+-- Hotel room reservation form
+app "Hotel Booking" {
+  state guest-name = ""
+  state check-in = ""
+  state nights = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Hotel Booking" color: #2563eb
+    text "Reserve your stay" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: check-in, placeholder: "Check-in date"
+    input bind: nights, placeholder: "Number of nights"
+
+    rect width: 140px, height: 44px, color: #2563eb, radius: 8px {
+      text "Reserve" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Your room is booked!" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+-- Fitness tracker
+app "FitLog" {
+  storage username: local "fit-username" default: "Athlete"
+  state elapsed = 0
+  state tab = "workout"
+  state exercises = [{name: "Running", cal: 300, mins: 30}, {name: "Cycling", cal: 200, mins: 20}]
+  computed total-cal = exercises | map cal | sum
+
+  timer session-timer: every 1s {
+    set elapsed = elapsed + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "FitLog - {username}"
+    text "{elapsed}s elapsed" color: #2563eb
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #16a34a, radius: 4px {
+        text "Workout" color: #ffffff
+        on click: set tab = "workout"
+      }
+      rect width: 80px, height: 32px, color: #f59e0b, radius: 4px {
+        text "Stats" color: #ffffff
+        on click: set tab = "stats"
+      }
+    }
+
+    if tab == "stats" {
+      text "Total calories: {total-cal}" font-size: 24px, color: #16a34a
+    }
+
+    if tab == "workout" {
+      each ex in exercises {
+        row padding: 12px, color: #f0fdf4, radius: 8px, gap: 8px {
+          text "{ex.name}" font-weight: bold
+          text "{ex.cal} cal" color: #16a34a
+        }
+      }
+    }
+  }
+}

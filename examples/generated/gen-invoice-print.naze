@@ -1,0 +1,57 @@
+-- Print shop order receipt
+app "Print Shop Invoice" {
+  state item1-qty = 10
+  state item2-qty = 200
+  state item1-price = 8
+  state item2-price = 1
+  state tax-rate = 7
+  computed subtotal = item1-qty * item1-price + item2-qty * item2-price
+  computed tax = subtotal * tax-rate / 100
+  computed total = subtotal + tax
+
+  column padding: 24px, gap: 16px {
+    heading "Print Shop Invoice" color: #ea580c
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        text "InkPress Studio" font-size: 18px, font-weight: bold
+        text "300 Print Ave" color: #64748b, font-size: 13px
+        separator
+        text "Invoice #IP-6620" color: #94a3b8, font-size: 12px
+      }
+    }
+
+    column gap: 4px {
+      row gap: 8px {
+        text "Posters" font-weight: bold
+        spacer
+        text "{item1-qty} x ${item1-price}" color: #64748b
+      }
+      row gap: 8px {
+        text "Business Cards" font-weight: bold
+        spacer
+        text "{item2-qty} x ${item2-price}" color: #64748b
+      }
+    }
+
+    separator
+
+    column gap: 4px {
+      row gap: 8px {
+        text "Subtotal" color: #64748b
+        spacer
+        text "${subtotal}"
+      }
+      row gap: 8px {
+        text "Tax ({tax-rate}%)" color: #64748b
+        spacer
+        text "${tax}"
+      }
+      row gap: 8px {
+        text "Total" font-weight: bold, font-size: 18px
+        spacer
+        text "${total}" font-weight: bold, font-size: 18px, color: #ea580c
+      }
+    }
+  }
+}

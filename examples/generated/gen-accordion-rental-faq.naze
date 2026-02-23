@@ -1,0 +1,48 @@
+-- Property rental FAQ accordion
+app "Rental FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Rental FAQ"
+
+    rect padding: 12px, color: #fef3c7, radius: 8px {
+      text "How do I book a property?" font-weight: bold, color: #92400e
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #fde68a {
+        text "Browse listings and request a booking online." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fef3c7, radius: 8px {
+      text "What is the deposit policy?" font-weight: bold, color: #92400e
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #fde68a {
+        text "One month deposit, refundable at checkout." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fef3c7, radius: 8px {
+      text "Are pets allowed?" font-weight: bold, color: #92400e
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #fde68a {
+        text "Depends on the property. Check each listing." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fef3c7, radius: 8px {
+      text "How do I report an issue?" font-weight: bold, color: #92400e
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #fde68a {
+        text "Use the in-app maintenance request form." color: #475569
+      }
+    }
+  }
+}

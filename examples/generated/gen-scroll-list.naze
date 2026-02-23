@@ -1,0 +1,17 @@
+-- Scroll container
+app "Scrollable" {
+  state items = ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8"]
+
+  column padding: 20px, gap: 16px {
+    heading "Scroll Demo"
+    scroll height: 200px {
+      column gap: 4px {
+        each item in items {
+          rect padding: 12px, color: #f3f4f6, radius: 4px {
+            text "{item}"
+          }
+        }
+      }
+    }
+  }
+}

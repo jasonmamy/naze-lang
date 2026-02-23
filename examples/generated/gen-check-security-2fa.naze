@@ -1,0 +1,31 @@
+-- Security and authentication
+app "Security Settings" {
+  state two-factor = false
+  state login-alerts = true
+  state session-timeout = true
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Security Settings"
+    text "Protect your account" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: two-factor, label: "Two-factor authentication"
+        checkbox bind: login-alerts, label: "Login alerts"
+        checkbox bind: session-timeout, label: "Auto-logout after inactivity"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

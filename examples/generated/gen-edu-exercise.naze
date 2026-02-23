@@ -1,0 +1,17 @@
+-- Exercise tracker
+app "Exercise Log" {
+  state exercises = [{name: "Push-ups", sets: "3", reps: "15"}, {name: "Squats", sets: "4", reps: "12"}, {name: "Planks", sets: "3", reps: "60s"}]
+  computed exercise-count = exercises | count
+
+  column padding: 20px, gap: 16px {
+    heading "Today's Workout"
+    text "{exercise-count} exercises" color: #64748b
+
+    each ex in exercises {
+      row padding: 12px, color: #ecfdf5, radius: 8px, gap: 12px {
+        text "{ex.name}" font-weight: bold
+        text "{ex.sets} x {ex.reps}" color: #16a34a
+      }
+    }
+  }
+}

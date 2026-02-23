@@ -1,0 +1,20 @@
+-- Search and filter list
+app "Search" {
+  state query = ""
+  state items = [{name: "Apple", category: "fruit"}, {name: "Carrot", category: "vegetable"}, {name: "Banana", category: "fruit"}, {name: "Broccoli", category: "vegetable"}, {name: "Cherry", category: "fruit"}]
+
+  computed total = items | count
+
+  column padding: 20px, gap: 12px {
+    heading "Search & Filter"
+    input bind: query, placeholder: "Search items..."
+    text "{total} items total"
+
+    each item in items | sort-by name {
+      row padding: 8px, color: #f3f4f6, radius: 4px, gap: 8px {
+        text "{item.name}" font-weight: bold
+        text "{item.category}" color: #64748b
+      }
+    }
+  }
+}

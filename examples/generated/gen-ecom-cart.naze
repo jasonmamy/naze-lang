@@ -1,0 +1,25 @@
+-- Shopping cart
+app "Shopping Cart" {
+  state items = [{name: "Notebook", qty: "2", price: "12"}, {name: "Pen Set", qty: "1", price: "8"}, {name: "Eraser", qty: "3", price: "2"}]
+  computed item-count = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Shopping Cart"
+    text "{item-count} items in cart" color: #64748b
+
+    each item in items {
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 12px {
+        column gap: 4px {
+          text "{item.name}" font-weight: bold
+          text "Qty: {item.qty}" color: #64748b
+        }
+        text "${item.price}" color: #2563eb, font-size: 18px
+      }
+    }
+
+    separator
+    rect width: 160px, height: 44px, color: #16a34a, radius: 8px {
+      text "Proceed to Checkout" color: #ffffff
+    }
+  }
+}

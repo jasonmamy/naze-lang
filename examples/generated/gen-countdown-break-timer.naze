@@ -1,0 +1,28 @@
+-- Work break countdown timer
+app "Break Timer" {
+  state break-secs = 300
+  state event-name = "Take a Break"
+
+  timer tick: every 1s {
+    set break-secs = break-secs - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Break Timer"
+    text "{event-name}" color: #64748b
+
+    rect padding: 24px, color: #ecfdf5, radius: 12px {
+      text "{break-secs}" font-size: 64px, color: #059669
+      text "seconds of break left" color: #059669
+    }
+
+    if break-secs == 0 {
+      text "Break over!" font-size: 20px, color: #16a34a, font-weight: bold
+    }
+
+    rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+      text "Reset" color: #ffffff
+      on click: set break-secs = 300
+    }
+  }
+}

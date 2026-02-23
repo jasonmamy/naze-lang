@@ -1,0 +1,26 @@
+-- Contact book
+app "Contacts" {
+  state new-name = ""
+  state contacts = [{name: "Alice Smith", phone: "555-0101"}, {name: "Bob Jones", phone: "555-0202"}, {name: "Carol White", phone: "555-0303"}]
+  computed total = contacts | count
+
+  column padding: 20px, gap: 16px {
+    heading "Contact Book"
+    text "{total} contacts" color: #64748b
+
+    row gap: 8px {
+      input bind: new-name, placeholder: "Name"
+      rect width: 60px, height: 36px, color: #16a34a, radius: 4px {
+        text "Add" color: #ffffff
+        on click: set new-name = ""
+      }
+    }
+
+    each contact in contacts | sort-by name {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 12px {
+        text "{contact.name}" font-weight: bold
+        text "{contact.phone}" color: #2563eb
+      }
+    }
+  }
+}

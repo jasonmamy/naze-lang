@@ -1,0 +1,34 @@
+-- Company website with services, team, and careers
+app "Acme Corp" {
+  column padding: 20px, gap: 16px {
+    heading "Acme Corp"
+    text "Building the future"
+    link "Services", to: "/services"
+    link "Team", to: "/team"
+    link "Careers", to: "/careers"
+  }
+}
+
+page "/services" {
+  column padding: 20px {
+    heading "Services"
+    text "What we offer"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/team" {
+  column padding: 20px {
+    heading "Our Team"
+    text "Meet the team"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/careers" {
+  column padding: 20px {
+    heading "Careers"
+    text "Open positions"
+    link "Back to Home", to: "/"
+  }
+}

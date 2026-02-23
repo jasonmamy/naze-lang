@@ -1,0 +1,22 @@
+-- Social links page
+app "Social Links" {
+  column padding: 24px, gap: 12px {
+    heading "Follow Us" color: #0f172a
+    text "Stay connected on social media" color: #64748b
+
+    column gap: 8px {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        link "Twitter - @ourcompany" href: "https://twitter.com/ourcompany"
+      }
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        link "GitHub - ourcompany" href: "https://github.com/ourcompany"
+      }
+      rect padding: 12px, color: #fef3c7, radius: 8px {
+        link "LinkedIn - Our Company" href: "https://linkedin.com/company/ours"
+      }
+      rect padding: 12px, color: #fce7f3, radius: 8px {
+        link "YouTube - OurChannel" href: "https://youtube.com/@ourchannel"
+      }
+    }
+  }
+}

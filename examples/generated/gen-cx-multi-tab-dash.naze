@@ -1,0 +1,53 @@
+-- Multi-tab dashboard
+app "Admin Panel" {
+  state tab = "overview"
+  state users = 1420
+  state revenue = 34500
+  state orders = 287
+  computed avg = revenue / orders
+
+  column padding: 20px, gap: 16px {
+    heading "Admin Dashboard" color: #1e293b
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #2563eb, radius: 4px {
+        text "Overview" color: #ffffff
+        on click: set tab = "overview"
+      }
+      rect width: 100px, height: 36px, color: #8b5cf6, radius: 4px {
+        text "Analytics" color: #ffffff
+        on click: set tab = "analytics"
+      }
+      rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+        text "Settings" color: #ffffff
+        on click: set tab = "settings"
+      }
+    }
+
+    separator
+
+    match tab {
+      "overview": column gap: 12px {
+        grid columns: 2, gap: 12px {
+          rect padding: 16px, color: #eff6ff, radius: 8px {
+            text "Users" color: #64748b, font-size: 12px
+            text "{users}" font-size: 24px, color: #1e40af
+          }
+          rect padding: 16px, color: #f0fdf4, radius: 8px {
+            text "Revenue" color: #64748b, font-size: 12px
+            text "${revenue}" font-size: 24px, color: #166534
+          }
+        }
+      }
+      "analytics": column gap: 12px {
+        text "Orders: {orders}" font-size: 18px
+        text "Avg order: ${avg}" font-size: 18px, color: #2563eb
+      }
+      "settings": column gap: 12px {
+        text "Admin Settings" font-weight: bold
+        text "Configure your dashboard" color: #64748b
+      }
+      _: text "Unknown"
+    }
+  }
+}

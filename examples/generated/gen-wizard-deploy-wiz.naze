@@ -1,0 +1,55 @@
+-- Deployment wizard with environment and region
+app "Deploy App" {
+  state step = 1
+  state app-name = ""
+  state deploy-env = ""
+  state deploy-region = ""
+
+  column padding: 24px, gap: 16px {
+    heading "Deploy App"
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "App Name" font-weight: bold, font-size: 18px
+        text "Which app to deploy?" color: #64748b
+        input bind: app-name, placeholder: "my-app"
+        rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Environment" font-weight: bold, font-size: 18px
+        text "Where to deploy?" color: #64748b
+        input bind: deploy-env, placeholder: "staging or production"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 1
+          }
+          rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+            text "Next" color: #ffffff
+            on click: set step = 3
+          }
+        }
+      }
+      3: column gap: 12px {
+        text "Region" font-weight: bold, font-size: 18px
+        text "Select deployment region" color: #64748b
+        input bind: deploy-region, placeholder: "us-east-1"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 2
+          }
+          rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+            text "Deploy" color: #ffffff
+            on click: set step = 1
+          }
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

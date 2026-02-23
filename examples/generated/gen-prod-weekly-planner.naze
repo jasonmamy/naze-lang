@@ -1,0 +1,29 @@
+-- Weekly planner with daily tasks
+app "Weekly Planner" {
+  state items = [{day: "Monday", task: "Sprint planning"}, {day: "Tuesday", task: "Code review"}, {day: "Wednesday", task: "Feature dev"}, {day: "Thursday", task: "Testing"}, {day: "Friday", task: "Retrospective"}]
+  state view = "current"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Weekly Planner"
+    text "{total} activities" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #f59e0b, radius: 4px {
+        text "This Week" color: #ffffff
+        on click: set view = "current"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Next" color: #ffffff
+        on click: set view = "next"
+      }
+    }
+
+    each act in items | sort-by day {
+      row padding: 12px, color: #fef3c7, radius: 4px, gap: 12px {
+        text "{act.day}" font-weight: bold
+        text "{act.task}" color: #92400e
+      }
+    }
+  }
+}

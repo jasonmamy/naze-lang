@@ -1,0 +1,19 @@
+-- Goal tracker
+app "Goal Tracker" {
+  state goals = [{name: "Read 12 books", done: "8", target: "12"}, {name: "Run 100km", done: "67", target: "100"}, {name: "Save $5000", done: "3200", target: "5000"}]
+  computed goal-count = goals | count
+
+  column padding: 20px, gap: 16px {
+    heading "My Goals"
+    text "{goal-count} active goals" color: #64748b
+
+    each g in goals {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        column gap: 4px {
+          text "{g.name}" font-weight: bold
+          text "{g.done} / {g.target}" color: #16a34a, font-size: 18px
+        }
+      }
+    }
+  }
+}

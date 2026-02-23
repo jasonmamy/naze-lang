@@ -1,0 +1,21 @@
+-- Contact information card
+app "Contact Card" {
+  state contact-name = "Carol Davis"
+
+  column padding: 20px, gap: 16px {
+    heading "Contact Card"
+
+    rect width: 320px, color: #f0fdf4, radius: 12px, padding: 20px {
+      column gap: 8px {
+        text "{contact-name}" font-size: 22px, font-weight: bold
+        text "carol@example.com" color: #64748b
+        separator
+        row gap: 12px {
+          text "Phone: 555-0123" color: #16a34a
+          text "Ext: 401" color: #16a34a
+        }
+        text "San Francisco, CA" color: #94a3b8, font-size: 13px
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+-- Scoreboard
+app "Scoreboard" {
+  state players = [{name: "Alice", score: "2450"}, {name: "Bob", score: "2100"}, {name: "Carol", score: "1950"}, {name: "Dan", score: "1800"}]
+  state round = 1
+  computed player-count = players | count
+
+  column padding: 20px, gap: 16px {
+    heading "Scoreboard"
+    text "Round {round}" color: #64748b
+    text "{player-count} players" color: #94a3b8
+
+    each p in players | sort-by score {
+      row padding: 12px, color: #fef3c7, radius: 8px, gap: 12px {
+        text "{p.name}" font-weight: bold
+        text "{p.score} pts" color: #92400e, font-size: 18px
+      }
+    }
+
+    rect width: 120px, height: 36px, color: #f59e0b, radius: 8px {
+      text "Next Round" color: #ffffff
+      on click: set round = round + 1
+    }
+  }
+}

@@ -1,0 +1,25 @@
+-- Meditation timer counting breaths
+app "Meditate" {
+  state breaths = 0
+  state active = false
+
+  timer tick: every 4s {
+    set breaths = breaths + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Meditate"
+    text "{breaths} breaths" font-size: 48px, color: #14b8a6
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Start" color: #ffffff
+        on click: set active = true
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set breaths = 0
+      }
+    }
+  }
+}

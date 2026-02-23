@@ -1,0 +1,30 @@
+-- Project management dashboard
+app "Project" {
+  state tasks-done = 45
+  state in-progress = 12
+  state bugs = 8
+  state velocity = 21
+
+  column padding: 20px, gap: 16px {
+    heading "Project"
+
+    grid columns: 2, gap: 16px {
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Done" color: #64748b, font-size: 14px
+        text "{tasks-done}" font-size: 28px
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "In Progress" color: #64748b, font-size: 14px
+        text "{in-progress}" font-size: 28px
+      }
+      rect padding: 16px, color: #fce7f3, radius: 8px {
+        text "Bugs" color: #64748b, font-size: 14px
+        text "{bugs}" font-size: 28px
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Velocity" color: #64748b, font-size: 14px
+        text "{velocity}" font-size: 28px
+      }
+    }
+  }
+}

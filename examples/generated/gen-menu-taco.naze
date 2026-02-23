@@ -1,0 +1,40 @@
+-- Mexican taco menu
+app "Taco Stand" {
+  state category = "Tacos"
+  state items = [{name: "Al Pastor", desc: "Pineapple, onion, cilantro", price: "$4"}, {name: "Carne Asada", desc: "Grilled steak, guacamole", price: "$5"}, {name: "Horchata", desc: "Rice milk, cinnamon, vanilla", price: "$3"}]
+  computed total-items = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Taco Stand" color: #ea580c
+
+    row gap: 8px {
+      rect padding: 8px, color: #ea580c, radius: 4px {
+        text "Tacos" color: #ffffff, font-size: 13px
+        on click: set category = "Tacos"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Burritos" font-size: 13px
+        on click: set category = "Burritos"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Drinks" font-size: 13px
+        on click: set category = "Drinks"
+      }
+    }
+
+    text "{total-items} items on the menu" color: #94a3b8, font-size: 12px
+
+    each item in items {
+      rect padding: 12px, color: #fff7ed, radius: 8px {
+        row gap: 8px {
+          column gap: 2px {
+            text "{item.name}" font-weight: bold
+            text "{item.desc}" color: #64748b, font-size: 13px
+          }
+          spacer
+          text "{item.price}" font-weight: bold, color: #ea580c
+        }
+      }
+    }
+  }
+}

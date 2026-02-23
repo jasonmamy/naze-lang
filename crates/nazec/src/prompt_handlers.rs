@@ -176,11 +176,15 @@ async fn call_ollama(req: &PromptRequest) -> Result<PromptResponse, String> {
             { "role": "system", "content": req.system },
             { "role": "user", "content": req.user }
         ],
-        "stream": false,
+        "stream": true,
+        "options": {
+            "num_ctx": 16384,
+            "num_predict": req.max_tokens
+        },
     });
 
     let client = reqwest::Client::new();
-    let resp = client
+    let mut resp = client
         .post(format!("{}/api/chat", base_url))
         .header("Content-Type", "application/json")
         .json(&body)
@@ -194,17 +198,46 @@ async fn call_ollama(req: &PromptRequest) -> Result<PromptResponse, String> {
         return Err(format!("Ollama error ({}): {}", status, text));
     }
 
-    let json: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| format!("Ollama response parse error: {}", e))?;
+    // Stream NDJSON chunks, printing a dot per token so the user sees progress
+    let mut full_text = String::new();
+    let mut token_count: u32 = 0;
+    let mut buf = String::new();
 
-    let text = json["message"]["content"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
+    while let Some(chunk) = resp.chunk().await.map_err(|e| format!("Ollama stream error: {}", e))? {
+        buf.push_str(&String::from_utf8_lossy(&chunk));
+        // Each chunk may contain one or more newline-delimited JSON objects
+        while let Some(newline_pos) = buf.find('\n') {
+            let line: String = buf.drain(..=newline_pos).collect();
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(content) = json["message"]["content"].as_str() {
+                    full_text.push_str(content);
+                    token_count += 1;
+                    // Print a dot every 20 tokens to show progress
+                    if token_count.is_multiple_of(20) {
+                        eprint!(".");
+                    }
+                }
+            }
+        }
+    }
+    // Process any remaining data in buffer (no trailing newline)
+    let remaining = buf.trim();
+    if !remaining.is_empty() {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(remaining) {
+            if let Some(content) = json["message"]["content"].as_str() {
+                full_text.push_str(content);
+            }
+        }
+    }
+    if token_count > 0 {
+        eprintln!(" ({} tokens)", token_count);
+    }
 
-    Ok(PromptResponse { text })
+    Ok(PromptResponse { text: full_text })
 }
 
 // ─── Generic OpenAI-compatible ──────────────────────────────────────────────

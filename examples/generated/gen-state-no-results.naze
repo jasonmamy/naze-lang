@@ -1,0 +1,26 @@
+-- Empty search results state
+app "No Results" {
+  state action-taken = false
+
+  column padding: 40px, gap: 16px {
+    rect width: 100px, height: 100px, color: #fef3c7, radius: 50px {
+      text "0" font-size: 40px, color: #f59e0b
+    }
+
+    heading "No Results Found" font-size: 22px
+    text "Try adjusting your search terms or filters." color: #64748b
+
+    if action-taken == false {
+      rect width: 130px, height: 44px, color: #f59e0b, radius: 8px {
+        text "Clear Filters" color: #ffffff
+        on click: set action-taken = true
+      }
+    }
+
+    if action-taken {
+      text "Filters cleared" color: #16a34a
+    }
+
+    text "Tip: Use fewer keywords for broader results" color: #94a3b8, font-size: 13px
+  }
+}

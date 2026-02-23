@@ -1,0 +1,31 @@
+-- Human resources department contacts
+app "HR Contacts" {
+  column padding: 24px, gap: 16px {
+    heading "HR Contacts" color: #14b8a6
+    text "People operations team" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 16px, color: #f0fdfa, radius: 8px {
+        column gap: 4px {
+          text "Recruiting" font-weight: bold
+          text "Open positions" color: #64748b, font-size: 14px
+          text "jobs@example.com" color: #14b8a6, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f0fdfa, radius: 8px {
+        column gap: 4px {
+          text "Benefits" font-weight: bold
+          text "Insurance and perks" color: #64748b, font-size: 14px
+          text "benefits@example.com" color: #14b8a6, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f0fdfa, radius: 8px {
+        column gap: 4px {
+          text "Culture" font-weight: bold
+          text "Events and DEI" color: #64748b, font-size: 14px
+          text "culture@example.com" color: #14b8a6, font-size: 14px
+        }
+      }
+    }
+  }
+}

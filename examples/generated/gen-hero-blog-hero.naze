@@ -1,0 +1,31 @@
+-- Blog landing hero with latest post CTA
+app "Blog Hero" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #faf5ff {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Stories Worth Reading" font-size: 36px, color: #581c87
+        text "Insights on technology, design, and culture." font-size: 18px, color: #7c3aed
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #7c3aed, radius: 8px {
+            text "Latest Posts" color: #ffffff, font-size: 16px
+            on click: navigate "/blog"
+          }
+          rect width: 140px, height: 48px, color: #ede9fe, radius: 8px {
+            text "Subscribe" color: #6d28d9, font-size: 16px
+            on click: navigate "/subscribe"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #ede9fe {
+      row padding: 12px, gap: 24px {
+        text "500+ articles" color: #7c3aed, font-size: 14px
+        text "50K readers" color: #7c3aed, font-size: 14px
+        text "Weekly digest" color: #7c3aed, font-size: 14px
+      }
+    }
+  }
+}

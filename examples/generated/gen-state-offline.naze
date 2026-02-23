@@ -1,0 +1,26 @@
+-- Network offline state with retry
+app "Offline" {
+  state action-taken = false
+
+  column padding: 40px, gap: 16px {
+    rect width: 100px, height: 100px, color: #f1f5f9, radius: 50px {
+      text "X" font-size: 40px, color: #64748b
+    }
+
+    heading "You Are Offline" font-size: 22px
+    text "Please check your internet connection and try again." color: #64748b
+
+    if action-taken == false {
+      rect width: 100px, height: 44px, color: #64748b, radius: 8px {
+        text "Retry" color: #ffffff
+        on click: set action-taken = true
+      }
+    }
+
+    if action-taken {
+      text "Reconnecting..." color: #16a34a
+    }
+
+    text "Some features require an internet connection" color: #94a3b8, font-size: 13px
+  }
+}

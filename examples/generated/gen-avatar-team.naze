@@ -1,0 +1,35 @@
+-- Team member avatars with initials
+app "Team Members" {
+  column padding: 24px, gap: 16px {
+    heading "Team Members"
+
+    row gap: 16px {
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #3b82f6, radius: 24px {
+          text "AB" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Alice B." font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #ef4444, radius: 24px {
+          text "CD" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Charlie D." font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #16a34a, radius: 24px {
+          text "EF" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Eve F." font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #f59e0b, radius: 24px {
+          text "GH" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Grace H." font-size: 12px, color: #64748b
+      }
+    }
+
+    text "4 team members online" color: #94a3b8, font-size: 14px
+  }
+}

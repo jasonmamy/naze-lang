@@ -1,0 +1,55 @@
+-- Onboarding wizard for new user setup
+app "Welcome Setup" {
+  state step = 1
+  state user-name = ""
+  state company = ""
+  state role-choice = ""
+
+  column padding: 24px, gap: 16px {
+    heading "Welcome Setup"
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "Welcome!" font-weight: bold, font-size: 18px
+        text "Tell us your name" color: #64748b
+        input bind: user-name, placeholder: "Your name"
+        rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Your Company" font-weight: bold, font-size: 18px
+        text "Where do you work?" color: #64748b
+        input bind: company, placeholder: "Company name"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 1
+          }
+          rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+            text "Next" color: #ffffff
+            on click: set step = 3
+          }
+        }
+      }
+      3: column gap: 12px {
+        text "Your Role" font-weight: bold, font-size: 18px
+        text "What do you do?" color: #64748b
+        input bind: role-choice, placeholder: "Job title"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 2
+          }
+          rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+            text "Get Started" color: #ffffff
+            on click: set step = 1
+          }
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

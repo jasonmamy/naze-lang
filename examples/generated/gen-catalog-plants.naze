@@ -1,0 +1,23 @@
+-- Indoor plant catalog
+app "Plant Nursery" {
+  state items = [{name: "Monstera", price: "$35", care: "Medium light"}, {name: "Snake Plant", price: "$20", care: "Low light"}, {name: "Pothos", price: "$15", care: "Any light"}, {name: "Fiddle Leaf", price: "$45", care: "Bright light"}]
+  computed item-count = items | count
+  state view = "grid"
+
+  column padding: 24px, gap: 16px {
+    heading "Plant Nursery" color: #15803d
+    text "{item-count} plants available" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #f0fdf4, radius: 10px {
+          column gap: 6px {
+            text "{item.name}" font-weight: bold, font-size: 16px
+            text "{item.price}" color: #15803d, font-size: 14px
+            text "{item.care}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

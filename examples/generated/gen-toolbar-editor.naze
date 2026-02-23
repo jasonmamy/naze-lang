@@ -1,0 +1,44 @@
+-- Text editor toolbar with formatting actions
+app "Text Editor" {
+  state active-tool = "bold"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #f8fafc {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #1e293b, radius: 6px {
+          text "B" color: #ffffff, font-size: 14px
+          on click: set active-tool = "bold"
+        }
+        rect width: 36px, height: 36px, color: #1e293b, radius: 6px {
+          text "I" color: #ffffff, font-size: 14px
+          on click: set active-tool = "italic"
+        }
+        rect width: 36px, height: 36px, color: #1e293b, radius: 6px {
+          text "U" color: #ffffff, font-size: 14px
+          on click: set active-tool = "underline"
+        }
+        rect width: 36px, height: 36px, color: #1e293b, radius: 6px {
+          text "S" color: #ffffff, font-size: 14px
+          on click: set active-tool = "strike"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #ef4444, radius: 6px {
+          text "X" color: #ffffff, font-size: 14px
+          on click: set active-tool = "clear"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "bold": text "Bold text formatting active." color: #64748b
+        "italic": text "Italic text formatting active." color: #64748b
+        "underline": text "Underline formatting active." color: #64748b
+        "strike": text "Strikethrough formatting active." color: #64748b
+        "clear": text "Clear all formatting." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

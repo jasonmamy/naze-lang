@@ -1,0 +1,19 @@
+-- Sort toggle
+app "Sort Demo" {
+  state direction = "asc"
+  state items = [{name: "Banana"}, {name: "Apple"}, {name: "Cherry"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Sorted List"
+    text "Direction: {direction}" color: #64748b
+
+    rect width: 120px, height: 36px, color: #6366f1, radius: 4px {
+      text "Toggle Sort" color: #ffffff
+      on click: set direction = "desc"
+    }
+
+    each item in items | sort-by name {
+      text "{item.name}" font-size: 16px
+    }
+  }
+}

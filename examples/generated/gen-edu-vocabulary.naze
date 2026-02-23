@@ -1,0 +1,31 @@
+-- Vocabulary builder with definitions
+app "Vocabulary" {
+  state items = [{word: "Ephemeral", meaning: "Lasting a short time"}, {word: "Ubiquitous", meaning: "Found everywhere"}, {word: "Pragmatic", meaning: "Practical approach"}]
+  state current = 0
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Vocabulary"
+    text "{current} of {total} learned" color: #8b5cf6
+
+    each v in items {
+      rect padding: 12px, color: #faf5ff, radius: 8px {
+        column gap: 4px {
+          text "{v.word}" font-weight: bold
+          text "{v.meaning}" color: #64748b
+        }
+      }
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #8b5cf6, radius: 8px {
+        text "Learn" color: #ffffff
+        on click: set current = current + 1
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set current = 0
+      }
+    }
+  }
+}

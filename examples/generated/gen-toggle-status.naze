@@ -1,0 +1,30 @@
+-- Status selector with active, paused, and stopped states
+app "Status" {
+  state status = "active"
+
+  column padding: 20px, gap: 16px {
+    heading "Status"
+
+    match status {
+      "active": text "System active" color: #16a34a, font-size: 20px
+      "paused": text "System paused" color: #f59e0b, font-size: 20px
+      "stopped": text "System stopped" color: #dc2626, font-size: 20px
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #16a34a, radius: 4px {
+        text "active" color: #ffffff
+        on click: set status = "active"
+      }
+      rect width: 100px, height: 36px, color: #f59e0b, radius: 4px {
+        text "paused" color: #ffffff
+        on click: set status = "paused"
+      }
+      rect width: 100px, height: 36px, color: #dc2626, radius: 4px {
+        text "stopped" color: #ffffff
+        on click: set status = "stopped"
+      }
+    }
+  }
+}

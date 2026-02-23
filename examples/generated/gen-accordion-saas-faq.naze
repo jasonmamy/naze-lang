@@ -1,0 +1,48 @@
+-- SaaS product FAQ accordion
+app "SaaS FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "SaaS FAQ"
+
+    rect padding: 12px, color: #ecfeff, radius: 8px {
+      text "What platforms are supported?" font-weight: bold, color: #155e75
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #cffafe {
+        text "Web, iOS, Android, and desktop." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #ecfeff, radius: 8px {
+      text "Is team collaboration supported?" font-weight: bold, color: #155e75
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #cffafe {
+        text "Yes, with real-time collaboration features." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #ecfeff, radius: 8px {
+      text "How do integrations work?" font-weight: bold, color: #155e75
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #cffafe {
+        text "Connect via Zapier, webhooks, or our API." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #ecfeff, radius: 8px {
+      text "What about data backup?" font-weight: bold, color: #155e75
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #cffafe {
+        text "Automatic daily backups with 30-day retention." color: #475569
+      }
+    }
+  }
+}

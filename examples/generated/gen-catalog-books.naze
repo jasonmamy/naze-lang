@@ -1,0 +1,23 @@
+-- Bookstore catalog with author and price
+app "Book Catalog" {
+  state items = [{name: "Clean Code", author: "R. Martin", price: "$35"}, {name: "The Pragmatic Programmer", author: "Hunt & Thomas", price: "$42"}, {name: "Refactoring", author: "M. Fowler", price: "$38"}, {name: "DDIA", author: "M. Kleppmann", price: "$45"}]
+  computed item-count = items | count
+  state view = "grid"
+
+  column padding: 24px, gap: 16px {
+    heading "Book Catalog" color: #92400e
+    text "{item-count} books available" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #fef3c7, radius: 10px {
+          column gap: 6px {
+            text "{item.name}" font-weight: bold, font-size: 16px
+            text "{item.author}" color: #92400e, font-size: 14px
+            text "{item.price}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

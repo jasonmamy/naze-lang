@@ -1,0 +1,33 @@
+-- Rating comparison
+app "Rating Comparison" {
+  state product-a = "Widget Pro"
+  state product-b = "Widget Lite"
+  state perf-a = 9
+  state perf-b = 7
+  state design-a = 8
+  state design-b = 9
+  state value-a = 6
+  state value-b = 9
+
+  column padding: 20px, gap: 16px {
+    heading "Rating Comparison"
+
+    grid columns: 3, gap: 8px {
+      text "Criteria" font-weight: bold, color: #64748b
+      text "{product-a}" font-weight: bold, color: #2563eb
+      text "{product-b}" font-weight: bold, color: #16a34a
+
+      text "Performance"
+      text "{perf-a}/10" color: #2563eb
+      text "{perf-b}/10" color: #16a34a
+
+      text "Design"
+      text "{design-a}/10" color: #2563eb
+      text "{design-b}/10" color: #16a34a
+
+      text "Value"
+      text "{value-a}/10" color: #2563eb
+      text "{value-b}/10" color: #16a34a
+    }
+  }
+}

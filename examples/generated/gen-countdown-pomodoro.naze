@@ -1,0 +1,37 @@
+-- Pomodoro timer
+app "Pomodoro" {
+  state time-left = 1500
+  state mode = "work"
+  state sessions = 0
+
+  timer pomodoro: every 1s {
+    set time-left = time-left - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Pomodoro Timer"
+
+    match mode {
+      "work": text "Focus Time" color: #dc2626, font-weight: bold, font-size: 20px
+      _: text "Break Time" color: #16a34a, font-weight: bold, font-size: 20px
+    }
+
+    text "{time-left} seconds" font-size: 48px, color: #1e293b
+    text "Sessions completed: {sessions}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #dc2626, radius: 4px {
+        text "Work" color: #ffffff
+        on click: set mode = "work"
+      }
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "Break" color: #ffffff
+        on click: set mode = "break"
+      }
+      rect width: 80px, height: 36px, color: #64748b, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set time-left = 1500
+      }
+    }
+  }
+}

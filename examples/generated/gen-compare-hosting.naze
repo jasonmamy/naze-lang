@@ -1,0 +1,40 @@
+-- Compare cloud hosting providers
+app "Hosting Comparison" {
+  state selected = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Hosting Comparison"
+    text "Compare providers" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #fdf2f8, radius: 8px {
+        text "Cloud A" font-weight: bold, font-size: 18px
+        text "From $5/mo" color: #64748b
+        separator
+        text "99.9% Uptime"
+        text "Auto scaling"
+        text "Free SSL"
+        rect width: 100px, height: 32px, color: #db2777, radius: 4px {
+          text "Select" color: #ffffff
+          on click: set selected = "Cloud A"
+        }
+      }
+      rect padding: 16px, color: #f0f9ff, radius: 8px {
+        text "Cloud B" font-weight: bold, font-size: 18px
+        text "From $10/mo" color: #64748b
+        separator
+        text "99.99% Uptime"
+        text "Global CDN"
+        text "DDoS Protection"
+        rect width: 100px, height: 32px, color: #db2777, radius: 4px {
+          text "Select" color: #ffffff
+          on click: set selected = "Cloud B"
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #db2777, font-weight: bold
+    }
+  }
+}

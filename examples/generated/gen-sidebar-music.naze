@@ -1,0 +1,40 @@
+-- Music app sidebar with library sections
+app "Music Player" {
+  state active-page = "library"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #0f172a {
+      column padding: 16px, gap: 4px {
+        text "Beats" font-weight: bold, font-size: 18px, color: #ec4899
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Library" color: #94a3b8
+          on click: set active-page = "library"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Playlists" color: #94a3b8
+          on click: set active-page = "playlists"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Artists" color: #94a3b8
+          on click: set active-page = "artists"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Albums" color: #94a3b8
+          on click: set active-page = "albums"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "library": heading "Library"
+        "playlists": heading "Playlists"
+        "artists": heading "Artists"
+        "albums": heading "Albums"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

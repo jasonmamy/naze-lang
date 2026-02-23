@@ -1,0 +1,32 @@
+-- Warning toast for risky operations
+app "Warning Notice" {
+  state show-toast = false
+  state action-done = false
+
+  column padding: 24px, gap: 16px {
+    heading "Warning Notice"
+    text "You are about to make changes." color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #f59e0b, radius: 8px {
+        text "Proceed" color: #ffffff
+        on click: set show-toast = true
+        on click: set action-done = true
+      }
+    }
+
+    if show-toast {
+      rect width: 340px, height: 48px, color: #fffbeb, radius: 8px {
+        row padding: 12px, gap: 12px {
+          text "[!!]" font-size: 16px
+          text "This action may affect other users." color: #92400e, font-size: 14px
+          spacer
+          rect width: 24px, height: 24px, radius: 4px {
+            text "x" color: #92400e, font-size: 12px
+            on click: set show-toast = false
+          }
+        }
+      }
+    }
+  }
+}

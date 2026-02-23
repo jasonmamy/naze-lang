@@ -1,0 +1,26 @@
+-- Group listing with member counts
+app "Groups" {
+  state items = [{name: "Rust Devs", members: "128 members"}, {name: "UI Design", members: "64 members"}, {name: "Open Source", members: "256 members"}]
+  state new-entry = ""
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Groups"
+    text "{total} groups" color: #64748b
+
+    row gap: 8px {
+      input bind: new-entry, placeholder: "New group name..."
+      rect width: 80px, height: 40px, color: #eab308, radius: 8px {
+        text "Create" color: #ffffff
+        on click: append new-entry to items
+      }
+    }
+
+    each grp in items {
+      row padding: 12px, color: #fefce8, radius: 8px, gap: 8px {
+        text "{grp.name}" font-weight: bold
+        text "{grp.members}" color: #64748b
+      }
+    }
+  }
+}

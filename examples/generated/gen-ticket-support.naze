@@ -1,0 +1,51 @@
+-- Customer support ticket view
+app "Support Ticket" {
+  state ticket-id = "SUP-4421"
+  state status = "Open"
+  state priority = "High"
+
+  column padding: 24px, gap: 16px {
+    heading "Support Ticket" color: #dc2626
+
+    rect padding: 20px, color: #ffffff, radius: 12px {
+      column gap: 12px {
+        row gap: 8px {
+          text "Bug Report" font-weight: bold, font-size: 18px
+          spacer
+          rect padding: 6px, color: #fef2f2, radius: 4px {
+            text "{status}" color: #dc2626, font-size: 12px
+          }
+        }
+
+        separator
+
+        row gap: 16px {
+          column gap: 4px {
+            text "ID" color: #94a3b8, font-size: 11px
+            text "{ticket-id}" font-size: 14px
+          }
+          column gap: 4px {
+            text "Priority" color: #94a3b8, font-size: 11px
+            text "{priority}" font-size: 14px, color: #dc2626
+          }
+          column gap: 4px {
+            text "Category" color: #94a3b8, font-size: 11px
+            text "Login Issue" font-size: 14px
+          }
+        }
+
+        separator
+
+        text "User cannot log in with SSO credentials." color: #334155
+        text "Reported by: john@example.com on Jan 15" color: #64748b, font-size: 13px
+      }
+    }
+
+    match status {
+      "Open": rect padding: 10px, color: #fef2f2, radius: 8px {
+        text "Awaiting engineer assignment" color: #dc2626, font-size: 13px
+      }
+      _: text "Unknown status" color: #94a3b8
+    }
+  }
+}

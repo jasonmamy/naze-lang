@@ -1,0 +1,24 @@
+-- Software version release timeline
+app "Release History" {
+  state events = [{time: "v1.0", title: "Initial Release", detail: "Core features only"}, {time: "v1.5", title: "Polish", detail: "Bug fixes and perf"}, {time: "v2.0", title: "Major Update", detail: "New API and plugins"}, {time: "v2.1", title: "Patch", detail: "Security fixes"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Release History" color: #475569
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #64748b, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

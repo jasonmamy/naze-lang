@@ -3,6 +3,7 @@ mod analyze;
 mod android_build;
 mod build;
 mod cli;
+mod context;
 mod dep_commands;
 mod deps;
 mod dev;
@@ -82,6 +83,7 @@ fn main() {
             analyze::run(&bin, wasm.as_deref(), compare.as_deref())
         }
         Command::Playground { port } => playground::run(port),
+        Command::Context => do_context(),
         Command::Ai { subcommand } => ai::run(subcommand),
     };
 
@@ -146,6 +148,12 @@ fn do_dev(port: u16, open: bool) -> Result<(), Box<dyn std::error::Error>> {
 fn do_serve(port: u16, host: &str) -> Result<(), Box<dyn std::error::Error>> {
     let manifest = manifest::load("naze.toml")?;
     serve::run(&manifest, port, host)
+}
+
+fn do_context() -> Result<(), Box<dyn std::error::Error>> {
+    let manifest = manifest::load("naze.toml")?;
+    let resolved_deps = deps::resolve_deps(&manifest, std::path::Path::new("."))?;
+    context::run(&manifest, &resolved_deps)
 }
 
 fn do_test(filter: Option<&str>, format: Format) -> Result<(), Box<dyn std::error::Error>> {

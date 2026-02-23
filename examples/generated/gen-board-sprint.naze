@@ -1,0 +1,54 @@
+-- Agile sprint kanban board
+app "Sprint Board" {
+  state todo = [{title: "API endpoint", tag: "backend"}, {title: "Unit tests", tag: "testing"}]
+  state doing = [{title: "Auth flow", tag: "frontend"}]
+  state done = [{title: "DB schema", tag: "backend"}]
+  computed todo-count = todo | count
+  computed doing-count = doing | count
+  computed done-count = done | count
+
+  column padding: 24px, gap: 16px {
+    heading "Sprint Board" color: #2563eb
+
+    row gap: 16px {
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #94a3b8, radius: 5px
+          text "To Do ({todo-count})" font-weight: bold, font-size: 14px
+        }
+        each card in todo {
+          rect padding: 12px, color: #f8fafc, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #3b82f6, radius: 5px
+          text "In Progress ({doing-count})" font-weight: bold, font-size: 14px
+        }
+        each card in doing {
+          rect padding: 12px, color: #f8fafc, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #22c55e, radius: 5px
+          text "Done ({done-count})" font-weight: bold, font-size: 14px
+        }
+        each card in done {
+          rect padding: 12px, color: #f8fafc, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+    }
+  }
+}

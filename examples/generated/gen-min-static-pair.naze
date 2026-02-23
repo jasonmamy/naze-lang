@@ -1,0 +1,7 @@
+-- Heading and one line of descriptive text
+app "Greeting" {
+  column padding: 20px {
+    heading "Good Morning"
+    text "Have a great day" color: #64748b
+  }
+}

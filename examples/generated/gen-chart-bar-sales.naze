@@ -1,0 +1,36 @@
+-- Monthly sales bar chart
+app "Sales Chart" {
+  state jan = 120
+  state feb = 180
+  state mar = 150
+  state apr = 210
+
+  column padding: 24px, gap: 16px {
+    heading "Monthly Sales" color: #1e40af
+
+    row gap: 12px {
+      column gap: 4px {
+        rect width: 40px, height: 120px, color: #3b82f6, radius: 4px
+        text "Jan" font-size: 12px, color: #64748b
+        text "{jan}" font-size: 11px, color: #94a3b8
+      }
+      column gap: 4px {
+        rect width: 40px, height: 180px, color: #3b82f6, radius: 4px
+        text "Feb" font-size: 12px, color: #64748b
+        text "{feb}" font-size: 11px, color: #94a3b8
+      }
+      column gap: 4px {
+        rect width: 40px, height: 150px, color: #3b82f6, radius: 4px
+        text "Mar" font-size: 12px, color: #64748b
+        text "{mar}" font-size: 11px, color: #94a3b8
+      }
+      column gap: 4px {
+        rect width: 40px, height: 210px, color: #3b82f6, radius: 4px
+        text "Apr" font-size: 12px, color: #64748b
+        text "{apr}" font-size: 11px, color: #94a3b8
+      }
+    }
+
+    text "Values in thousands" color: #94a3b8, font-size: 12px
+  }
+}

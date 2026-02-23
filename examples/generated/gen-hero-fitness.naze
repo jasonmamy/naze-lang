@@ -1,0 +1,31 @@
+-- Fitness app hero section with workout CTA
+app "Fitness Hero" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #0f172a {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Train Smarter Today" font-size: 36px, color: #22c55e
+        text "Personalized workouts and nutrition plans." font-size: 18px, color: #86efac
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #22c55e, radius: 8px {
+            text "Start Training" color: #0f172a, font-size: 16px
+            on click: navigate "/workouts"
+          }
+          rect width: 140px, height: 48px, color: #1e293b, radius: 8px {
+            text "View Plans" color: #86efac, font-size: 16px
+            on click: navigate "/plans"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #1e293b {
+      row padding: 12px, gap: 24px {
+        text "100+ workouts" color: #4ade80, font-size: 14px
+        text "AI coaching" color: #4ade80, font-size: 14px
+        text "Free plan" color: #4ade80, font-size: 14px
+      }
+    }
+  }
+}

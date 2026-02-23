@@ -1,0 +1,17 @@
+-- Movie list sorted by title
+app "Movies" {
+  state items = [{title: "Inception", year: "2010"}, {title: "Matrix", year: "1999"}, {title: "Arrival", year: "2016"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Movies"
+    text "{total} movies" color: #64748b
+
+    each movie in items | sort-by title {
+      row padding: 8px, color: #fce7f3, radius: 4px, gap: 8px {
+        text "{movie.title}" font-weight: bold
+        text "{movie.year}" color: #64748b
+      }
+    }
+  }
+}

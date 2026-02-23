@@ -1,0 +1,30 @@
+-- Student grades dashboard
+app "Grades" {
+  state gpa = 3
+  state courses = 6
+  state credits = 18
+  state rank = 15
+
+  column padding: 20px, gap: 16px {
+    heading "Grades"
+
+    grid columns: 2, gap: 16px {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "GPA" color: #64748b, font-size: 14px
+        text "{gpa}" font-size: 28px
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Courses" color: #64748b, font-size: 14px
+        text "{courses}" font-size: 28px
+      }
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        text "Credits" color: #64748b, font-size: 14px
+        text "{credits}" font-size: 28px
+      }
+      rect padding: 16px, color: #fce7f3, radius: 8px {
+        text "Class Rank" color: #64748b, font-size: 14px
+        text "{rank}" font-size: 28px
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+-- Feature comparison matrix
+app "Feature Matrix" {
+  column padding: 24px, gap: 12px {
+    heading "Compare Plans" color: #1e293b
+
+    grid columns: 4, gap: 8px {
+      text "Feature" font-weight: bold
+      text "Basic" font-weight: bold, color: #64748b
+      text "Pro" font-weight: bold, color: #2563eb
+      text "Team" font-weight: bold, color: #7c3aed
+
+      text "Users"
+      text "1"
+      text "5"
+      text "Unlimited"
+
+      text "Storage"
+      text "1GB"
+      text "50GB"
+      text "500GB"
+
+      text "API Access"
+      text "No"
+      text "Yes"
+      text "Yes"
+
+      text "Support"
+      text "Email"
+      text "Chat"
+      text "Dedicated"
+
+      text "Analytics"
+      text "Basic"
+      text "Advanced"
+      text "Custom"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+-- Game inventory
+app "Inventory" {
+  state selected-slot = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Inventory"
+    text "Selected: {selected-slot}" color: #64748b
+
+    grid columns: 4, gap: 4px {
+      rect width: 70px, height: 70px, color: #e2e8f0, radius: 4px {
+        text "Sword"
+        on click: set selected-slot = "sword"
+      }
+      rect width: 70px, height: 70px, color: #e2e8f0, radius: 4px {
+        text "Shield"
+        on click: set selected-slot = "shield"
+      }
+      rect width: 70px, height: 70px, color: #e2e8f0, radius: 4px {
+        text "Potion"
+        on click: set selected-slot = "potion"
+      }
+      rect width: 70px, height: 70px, color: #e2e8f0, radius: 4px {
+        text "Key"
+        on click: set selected-slot = "key"
+      }
+      rect width: 70px, height: 70px, color: #e2e8f0, radius: 4px {
+        text "Armor"
+        on click: set selected-slot = "armor"
+      }
+      rect width: 70px, height: 70px, color: #e2e8f0, radius: 4px {
+        text "Ring"
+        on click: set selected-slot = "ring"
+      }
+      rect width: 70px, height: 70px, color: #f3f4f6, radius: 4px {
+        text "Empty" color: #94a3b8
+      }
+      rect width: 70px, height: 70px, color: #f3f4f6, radius: 4px {
+        text "Empty" color: #94a3b8
+      }
+    }
+  }
+}

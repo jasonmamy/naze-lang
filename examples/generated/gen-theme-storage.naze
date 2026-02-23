@@ -1,0 +1,41 @@
+-- Theme switching with storage
+theme light {
+  colors {
+    bg: #ffffff
+    fg: #0f172a
+    primary: #2563eb
+    card: #f1f5f9
+  }
+}
+
+theme dark extends light {
+  colors {
+    bg: #0f172a
+    fg: #f8fafc
+    primary: #60a5fa
+    card: #1e293b
+  }
+}
+
+app "Theme Demo" {
+  storage theme-pref: local "app-theme" default: "light"
+
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Theme Settings" color: theme.colors.fg
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #f1f5f9, radius: 8px {
+        text "Light"
+        on click: set-theme "light"
+      }
+      rect width: 100px, height: 40px, color: #1e293b, radius: 8px {
+        text "Dark" color: #ffffff
+        on click: set-theme "dark"
+      }
+    }
+
+    rect padding: 16px, color: theme.colors.card, radius: 8px {
+      text "This card uses theme colors" color: theme.colors.fg
+    }
+  }
+}

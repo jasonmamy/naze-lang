@@ -1,0 +1,42 @@
+-- Toast notification stack
+app "Toast Stack" {
+  state show-toast1 = true
+  state show-toast2 = true
+  state show-toast3 = true
+
+  column padding: 24px, gap: 16px {
+    heading "Notifications"
+
+    column gap: 8px {
+      if show-toast1 {
+        row padding: 12px, color: #ecfdf5, radius: 8px, gap: 8px {
+          text "File saved successfully" color: #166534
+          rect width: 24px, height: 24px, color: #16a34a, radius: 4px {
+            text "x" color: #ffffff, font-size: 12px
+            on click: set show-toast1 = false
+          }
+        }
+      }
+
+      if show-toast2 {
+        row padding: 12px, color: #eff6ff, radius: 8px, gap: 8px {
+          text "New message received" color: #1e40af
+          rect width: 24px, height: 24px, color: #2563eb, radius: 4px {
+            text "x" color: #ffffff, font-size: 12px
+            on click: set show-toast2 = false
+          }
+        }
+      }
+
+      if show-toast3 {
+        row padding: 12px, color: #fef3c7, radius: 8px, gap: 8px {
+          text "Update available" color: #92400e
+          rect width: 24px, height: 24px, color: #f59e0b, radius: 4px {
+            text "x" color: #ffffff, font-size: 12px
+            on click: set show-toast3 = false
+          }
+        }
+      }
+    }
+  }
+}

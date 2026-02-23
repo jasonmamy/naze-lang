@@ -1,0 +1,30 @@
+-- Job listing search with role and company
+app "Job Search" {
+  state query = ""
+  state items = [{title: "Frontend Dev", company: "Acme", loc: "Remote"}, {title: "Backend Eng", company: "Globex", loc: "NYC"}, {title: "DevOps Lead", company: "Initech", loc: "SF"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Job Search"
+
+    row gap: 8px {
+      input bind: query, placeholder: "Search jobs..."
+      rect width: 90px, height: 40px, color: #2563eb, radius: 8px {
+        text "Search" color: #ffffff
+        on click: set query = ""
+      }
+    }
+
+    text "{total} jobs found" color: #64748b
+
+    each job in items | sort-by title {
+      rect padding: 12px, color: #f8fafc, radius: 6px {
+        row gap: 12px {
+          text "{job.title}" font-weight: bold
+          text "{job.company}" color: #64748b, font-size: 13px
+          text "{job.loc}" color: #16a34a, font-size: 12px
+        }
+      }
+    }
+  }
+}

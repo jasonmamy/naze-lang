@@ -1,0 +1,48 @@
+-- Legal terms accordion with collapsible answers
+app "Legal FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Legal FAQ"
+
+    rect padding: 12px, color: #fafafa, radius: 8px {
+      text "What are the terms of service?" font-weight: bold, color: #171717
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #f5f5f5 {
+        text "Standard terms apply. See full document." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fafafa, radius: 8px {
+      text "How is my data used?" font-weight: bold, color: #171717
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #f5f5f5 {
+        text "Only for service operation. Never sold." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fafafa, radius: 8px {
+      text "Can I export my data?" font-weight: bold, color: #171717
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #f5f5f5 {
+        text "Yes, full data export available anytime." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fafafa, radius: 8px {
+      text "What is your GDPR policy?" font-weight: bold, color: #171717
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #f5f5f5 {
+        text "We are fully GDPR compliant." color: #475569
+      }
+    }
+  }
+}

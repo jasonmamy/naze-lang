@@ -1,0 +1,31 @@
+-- Display configuration settings
+app "Display Preferences" {
+  state compact-mode = false
+  state show-avatars = true
+  state animations-on = true
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Display Preferences"
+    text "Customize your view" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: compact-mode, label: "Compact mode"
+        checkbox bind: show-avatars, label: "Show user avatars"
+        checkbox bind: animations-on, label: "Enable animations"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

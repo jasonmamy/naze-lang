@@ -1,0 +1,30 @@
+-- Product usage analytics dashboard
+app "Product Metrics" {
+  state dau = 5200
+  state mau = 28000
+  state nps = 72
+  state churn = 2
+
+  column padding: 24px, gap: 16px {
+    heading "Product Metrics" color: #0f172a
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #f0f9ff, radius: 10px {
+        text "Daily Active Users" color: #64748b, font-size: 13px
+        text "{dau}" font-size: 28px, color: #0284c7
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 10px {
+        text "Monthly Active" color: #64748b, font-size: 13px
+        text "{mau}" font-size: 28px, color: #059669
+      }
+      rect padding: 16px, color: #f5f3ff, radius: 10px {
+        text "NPS Score" color: #64748b, font-size: 13px
+        text "{nps}" font-size: 28px, color: #7c3aed
+      }
+      rect padding: 16px, color: #fef2f2, radius: 10px {
+        text "Churn Rate %" color: #64748b, font-size: 13px
+        text "{churn}" font-size: 28px, color: #ef4444
+      }
+    }
+  }
+}

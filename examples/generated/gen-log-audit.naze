@@ -1,0 +1,18 @@
+-- Security audit trail for admin actions
+app "Audit Trail" {
+  state entries = [{time: "08:00", action: "Password changed", user: "admin"}, {time: "08:15", action: "Role updated", user: "admin"}, {time: "09:00", action: "API key rotated", user: "admin"}, {time: "11:30", action: "User suspended", user: "admin"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Audit Trail" color: #dc2626
+    text "{total-entries} audit entries" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #fef2f2, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #dc2626, font-size: 12px
+      }
+    }
+  }
+}

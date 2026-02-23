@@ -1,0 +1,6 @@
+-- App showing a single image element
+app "Photo" {
+  column padding: 16px {
+    image src: "/photo.jpg", width: 300px
+  }
+}

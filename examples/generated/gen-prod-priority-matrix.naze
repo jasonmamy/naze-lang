@@ -1,0 +1,28 @@
+-- Priority matrix
+app "Priority Matrix" {
+  state urgent-important = ["Fix production bug", "Client deadline"]
+  state not-urgent-important = ["Strategic planning", "Team training"]
+
+  column padding: 20px, gap: 16px {
+    heading "Priority Matrix"
+
+    grid columns: 2, gap: 12px {
+      rect padding: 12px, color: #fef2f2, radius: 8px {
+        column gap: 4px {
+          text "Do First" font-weight: bold, color: #dc2626
+          each item in urgent-important {
+            text "{item}" font-size: 14px
+          }
+        }
+      }
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        column gap: 4px {
+          text "Schedule" font-weight: bold, color: #2563eb
+          each item in not-urgent-important {
+            text "{item}" font-size: 14px
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+-- Startup launch hero with signup CTA
+app "Startup Launch" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #4f46e5 {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Revolutionize Your Workflow" font-size: 36px, color: #ffffff
+        text "AI-powered tools that save you hours every day." font-size: 18px, color: #c7d2fe
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #ffffff, radius: 8px {
+            text "Try Free" color: #4f46e5, font-size: 16px
+            on click: navigate "/trial"
+          }
+          rect width: 140px, height: 48px, color: #6366f1, radius: 8px {
+            text "Watch Demo" color: #ffffff, font-size: 16px
+            on click: navigate "/demo"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #4338ca {
+      row padding: 12px, gap: 24px {
+        text "500+ companies" color: #c7d2fe, font-size: 14px
+        text "2M tasks done" color: #c7d2fe, font-size: 14px
+        text "4.9 rating" color: #c7d2fe, font-size: 14px
+      }
+    }
+  }
+}

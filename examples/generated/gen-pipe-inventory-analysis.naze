@@ -1,0 +1,22 @@
+-- Inventory analysis
+app "Stock Check" {
+  state products = [{name: "Widget A", qty: 150, price: 10}, {name: "Widget B", qty: 3, price: 25}, {name: "Widget C", qty: 45, price: 15}]
+  computed total-products = products | count
+  computed low-stock = products | filter qty < 10 | count
+
+  column padding: 20px, gap: 16px {
+    heading "Inventory Analysis"
+    row gap: 16px {
+      text "Products: {total-products}" color: #64748b
+      text "Low stock: {low-stock}" color: #ef4444
+    }
+
+    each p in products | sort-by qty {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 8px {
+        text "{p.name}" font-weight: bold
+        text "Qty: {p.qty}" color: #2563eb
+        text "${p.price}" color: #64748b
+      }
+    }
+  }
+}

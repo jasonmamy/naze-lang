@@ -1,0 +1,22 @@
+-- Invite form with email and role
+app "Invite" {
+  state invite-email = ""
+  state role = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Invite"
+
+    input bind: invite-email, placeholder: "Email to invite"
+    input bind: role, placeholder: "Role"
+
+    rect width: 120px, height: 40px, color: #06b6d4, radius: 8px {
+      text "Send Invite" color: #ffffff
+      on click: set submitted = true
+    }
+
+    if submitted {
+      text "Invite sent!" color: #16a34a
+    }
+  }
+}

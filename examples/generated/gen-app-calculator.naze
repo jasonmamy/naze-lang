@@ -1,0 +1,48 @@
+-- Calculator
+app "Calculator" {
+  state display = 0
+  state memory = 0
+
+  column padding: 20px, gap: 8px {
+    heading "Calculator"
+    text "{display}" font-size: 36px, color: #1e293b
+
+    grid columns: 4, gap: 4px {
+      rect width: 60px, height: 50px, color: #e2e8f0, radius: 4px {
+        text "7"
+        on click: set display = 7
+      }
+      rect width: 60px, height: 50px, color: #e2e8f0, radius: 4px {
+        text "8"
+        on click: set display = 8
+      }
+      rect width: 60px, height: 50px, color: #e2e8f0, radius: 4px {
+        text "9"
+        on click: set display = 9
+      }
+      rect width: 60px, height: 50px, color: #f59e0b, radius: 4px {
+        text "C" color: #ffffff
+        on click: set display = 0
+      }
+    }
+
+    grid columns: 4, gap: 4px {
+      rect width: 60px, height: 50px, color: #e2e8f0, radius: 4px {
+        text "4"
+        on click: set display = 4
+      }
+      rect width: 60px, height: 50px, color: #e2e8f0, radius: 4px {
+        text "5"
+        on click: set display = 5
+      }
+      rect width: 60px, height: 50px, color: #e2e8f0, radius: 4px {
+        text "6"
+        on click: set display = 6
+      }
+      rect width: 60px, height: 50px, color: #2563eb, radius: 4px {
+        text "+" color: #ffffff
+        on click: set memory = display
+      }
+    }
+  }
+}

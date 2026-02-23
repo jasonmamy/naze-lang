@@ -175,6 +175,8 @@ pub enum Command {
         #[arg(long, default_value = "4000")]
         port: u16,
     },
+    /// Export project context as JSON for AI agents
+    Context,
     /// AI code generation and dataset tools
     Ai {
         #[command(subcommand)]

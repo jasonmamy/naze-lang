@@ -1,0 +1,31 @@
+-- E-commerce dashboard with revenue and order metrics
+app "Store Dashboard" {
+  state orders-today = 87
+  state revenue-today = 6420
+  state cart-abandons = 34
+  computed avg-order-val = revenue-today / orders-today
+
+  column padding: 24px, gap: 20px {
+    heading "Store Dashboard"
+    text "Today's snapshot" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #faf5ff, radius: 8px {
+        text "Orders" color: #64748b, font-size: 12px
+        text "{orders-today}" font-size: 28px, color: #7e22ce
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Revenue ($)" color: #64748b, font-size: 12px
+        text "{revenue-today}" font-size: 28px, color: #166534
+      }
+      rect padding: 16px, color: #fefce8, radius: 8px {
+        text "Cart Abandons" color: #64748b, font-size: 12px
+        text "{cart-abandons}" font-size: 28px, color: #a16207
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Avg Order Value ($): {avg-order-val}" font-size: 18px, color: #7e22ce
+    }
+  }
+}

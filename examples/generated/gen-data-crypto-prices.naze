@@ -1,0 +1,22 @@
+-- Cryptocurrency price display grid
+app "Crypto Prices" {
+  state items = [{name: "Bitcoin", value: "$43,200", detail: "+2.4%"}, {name: "Ethereum", value: "$2,310", detail: "+1.8%"}, {name: "Solana", value: "$98", detail: "+5.1%"}, {name: "Cardano", value: "$0.52", detail: "-0.3%"}]
+  computed total = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Crypto Prices"
+    text "{total} coins" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each coin in items | sort-by name {
+        rect padding: 14px, color: #fefce8, radius: 8px {
+          column gap: 4px {
+            text "{coin.name}" font-weight: bold, font-size: 15px
+            text "{coin.value}" color: #a16207, font-size: 22px
+            text "{coin.detail}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

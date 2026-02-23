@@ -1,0 +1,28 @@
+-- Progress bar with buttons
+app "Progress" {
+  state value = 35
+
+  column padding: 20px, gap: 16px {
+    heading "Progress Bar"
+    text "{value}%"
+
+    container width: 300px, height: 24px, color: #e2e8f0, radius: 12px {
+      rect height: 24px, color: #2563eb, radius: 12px
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 8px {
+        text "+10" color: #ffffff
+        on click: set value = value + 10
+      }
+      rect width: 80px, height: 36px, color: #dc2626, radius: 8px {
+        text "-10" color: #ffffff
+        on click: set value = value - 10
+      }
+      rect width: 80px, height: 36px, color: #64748b, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set value = 0
+      }
+    }
+  }
+}

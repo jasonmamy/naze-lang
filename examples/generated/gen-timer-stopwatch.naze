@@ -1,0 +1,25 @@
+-- Stopwatch counting up in seconds
+app "Stopwatch" {
+  state elapsed = 0
+  state active = false
+
+  timer tick: every 1s {
+    set elapsed = elapsed + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Stopwatch"
+    text "{elapsed} seconds" font-size: 48px, color: #2563eb
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Start" color: #ffffff
+        on click: set active = true
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set elapsed = 0
+      }
+    }
+  }
+}

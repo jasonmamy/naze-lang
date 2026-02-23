@@ -1,0 +1,24 @@
+-- Workout progress timeline
+app "Fitness Journey" {
+  state events = [{time: "Week 1", title: "Start", detail: "Baseline assessment"}, {time: "Week 4", title: "Progress", detail: "5kg bench increase"}, {time: "Week 8", title: "Milestone", detail: "First 5K run"}, {time: "Week 12", title: "Goal", detail: "Target weight reached"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Fitness Journey" color: #16a34a
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #22c55e, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

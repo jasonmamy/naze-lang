@@ -1,0 +1,14 @@
+-- Select dropdown
+app "Picker" {
+  state choice = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Choose a Color"
+    select bind: choice {
+      option "Red" value: "red"
+      option "Green" value: "green"
+      option "Blue" value: "blue"
+    }
+    text "You chose: {choice}" color: #2563eb, font-size: 18px
+  }
+}

@@ -1,0 +1,39 @@
+-- Jazz playlist with classic standards
+app "Jazz Essentials" {
+  state tracks = [{title: "Take Five", artist: "Dave Brubeck", duration: "5:24"}, {title: "So What", artist: "Miles Davis", duration: "9:22"}, {title: "My Favorite Things", artist: "John Coltrane", duration: "13:41"}]
+  state current-track = 0
+  state playing = false
+  computed track-count = tracks | count
+
+  column padding: 20px, gap: 16px {
+    heading "Jazz Essentials"
+    text "{track-count} tracks" color: #64748b
+
+    if playing {
+      text "Now Playing" color: #1d4ed8, font-weight: bold
+    }
+
+    each track in tracks {
+      row padding: 10px, color: #eff6ff, radius: 8px, gap: 8px {
+        text "{track.title}" font-weight: bold
+        text "{track.artist}" color: #64748b
+        text "{track.duration}" color: #1d4ed8, font-size: 12px
+      }
+    }
+
+    row gap: 8px {
+      rect width: 60px, height: 36px, color: #1d4ed8, radius: 4px {
+        text "Prev" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track - 1
+      }
+      rect width: 60px, height: 36px, color: #1d4ed8, radius: 4px {
+        text "Play" color: #ffffff, font-size: 12px
+        on click: set playing = true
+      }
+      rect width: 60px, height: 36px, color: #1d4ed8, radius: 4px {
+        text "Next" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track + 1
+      }
+    }
+  }
+}

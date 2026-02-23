@@ -1,0 +1,41 @@
+-- Thunderstorm weather alert
+app "Storm Warning" {
+  state temp = 28
+  state feels-like = 32
+  state humidity = 70
+  state wind = 40
+  state condition = "Thunderstorms"
+
+  column padding: 24px, gap: 16px, color: #fefce8 {
+    heading "Dallas Weather" color: #a16207
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #fef9c3, radius: 12px {
+        text "STM" font-size: 36px
+      }
+      column gap: 4px {
+        text "{temp}C" font-size: 48px, font-weight: bold, color: #a16207
+        text "{condition}" color: #64748b, font-size: 16px
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Feels Like" color: #64748b, font-size: 11px
+        text "{feels-like}C" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Humidity" color: #64748b, font-size: 11px
+        text "{humidity}%" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Wind" color: #64748b, font-size: 11px
+        text "{wind} km/h" font-size: 18px
+      }
+    }
+
+    separator
+
+    text "Forecast: Severe storms possible this evening" color: #94a3b8, font-size: 13px
+  }
+}

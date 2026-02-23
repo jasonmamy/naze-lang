@@ -1,0 +1,26 @@
+-- Empty inbox state with compose action
+app "Empty Inbox" {
+  state action-taken = false
+
+  column padding: 40px, gap: 16px {
+    rect width: 100px, height: 100px, color: #eff6ff, radius: 50px {
+      text "0" font-size: 40px, color: #3b82f6
+    }
+
+    heading "No Messages" font-size: 22px
+    text "Your inbox is empty. Start a conversation!" color: #64748b
+
+    if action-taken == false {
+      rect width: 120px, height: 44px, color: #3b82f6, radius: 8px {
+        text "Compose" color: #ffffff
+        on click: set action-taken = true
+      }
+    }
+
+    if action-taken {
+      text "Opening composer..." color: #16a34a
+    }
+
+    text "Messages will appear here" color: #94a3b8, font-size: 13px
+  }
+}

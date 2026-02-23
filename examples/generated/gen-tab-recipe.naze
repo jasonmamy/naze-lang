@@ -1,0 +1,39 @@
+-- Recipe tabs with ingredients, steps, and nutrition
+app "Recipe Viewer" {
+  state tab = "ingredients"
+
+  column padding: 20px, gap: 16px {
+    heading "Recipe Viewer"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #ef4444, radius: 0px {
+        text "Ingredients" color: #ffffff
+        on click: set tab = "ingredients"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Steps" color: #334155
+        on click: set tab = "steps"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Nutrition" color: #334155
+        on click: set tab = "nutrition"
+      }
+    }
+
+    match tab {
+      "ingredients": column padding: 16px, gap: 8px {
+        text "Ingredients List" font-weight: bold
+        text "2 cups flour, 1 cup sugar, 3 eggs, butter." color: #64748b
+      }
+      "steps": column padding: 16px, gap: 8px {
+        text "Cooking Steps" font-weight: bold
+        text "Mix dry ingredients, add wet, bake at 350F." color: #64748b
+      }
+      "nutrition": column padding: 16px, gap: 8px {
+        text "Nutrition Facts" font-weight: bold
+        text "320 calories per serving, 12g protein." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+-- Leave team confirmation dialog
+app "Leave Team" {
+  state show-modal = false
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Leave Team"
+    text "You are a member of this team." color: #64748b
+
+    rect width: 140px, height: 40px, color: #e11d48, radius: 8px {
+      text "Leave Team" color: #ffffff
+      on click: set show-modal = true
+    }
+
+    if confirmed {
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        text "You have left the team." color: #16a34a
+      }
+    }
+
+    if show-modal {
+      rect width: 400px, height: 220px, color: #00000066, radius: 0px {
+        rect width: 360px, height: 180px, color: #ffffff, radius: 12px {
+          column padding: 24px, gap: 12px {
+            text "Leave Team?" font-weight: bold, font-size: 18px
+            text "You will lose access to team resources." color: #64748b
+            row gap: 8px {
+              rect width: 100px, height: 36px, color: #e11d48, radius: 6px {
+                text "Leave" color: #ffffff
+                on click: set confirmed = true
+                on click: set show-modal = false
+              }
+              rect width: 100px, height: 36px, color: #e2e8f0, radius: 6px {
+                text "Stay" color: #334155
+                on click: set show-modal = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

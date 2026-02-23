@@ -1,0 +1,33 @@
+-- Blog website footer with category links
+app "Blog Footer" {
+  column {
+    spacer height: 40px
+
+    rect width: 800px, color: #1e1b4b {
+      column padding: 32px, gap: 16px {
+        row gap: 48px {
+          column gap: 6px {
+            text "Categories" font-weight: bold, color: #e0e7ff
+            text "Technology" color: #a5b4fc, font-size: 14px
+            text "Design" color: #a5b4fc, font-size: 14px
+            text "Business" color: #a5b4fc, font-size: 14px
+          }
+          column gap: 6px {
+            text "Popular" font-weight: bold, color: #e0e7ff
+            text "Getting Started" color: #a5b4fc, font-size: 14px
+            text "Best Practices" color: #a5b4fc, font-size: 14px
+            text "Case Studies" color: #a5b4fc, font-size: 14px
+          }
+          column gap: 6px {
+            text "More" font-weight: bold, color: #e0e7ff
+            text "Newsletter" color: #a5b4fc, font-size: 14px
+            text "RSS Feed" color: #a5b4fc, font-size: 14px
+            text "Sponsor" color: #a5b4fc, font-size: 14px
+          }
+        }
+        separator
+        text "2025 The Dev Blog. Written by developers." color: #a5b4fc, font-size: 12px
+      }
+    }
+  }
+}

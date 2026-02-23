@@ -1,0 +1,32 @@
+-- Budget breakdown
+app "Budget" {
+  state expenses = [{label: "Rent", amount: 1500, cat: "housing"}, {label: "Food", amount: 600, cat: "food"}, {label: "Transport", amount: 200, cat: "transport"}]
+  state income = 4000
+  computed total-spent = expenses | map amount | sum
+  computed remaining = income - total-spent
+
+  column padding: 20px, gap: 16px {
+    heading "Monthly Budget"
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        text "Income" color: #64748b, font-size: 12px
+        text "${income}" font-size: 20px, color: #16a34a
+      }
+      rect padding: 12px, color: #fef2f2, radius: 8px {
+        text "Spent" color: #64748b, font-size: 12px
+        text "${total-spent}" font-size: 20px, color: #ef4444
+      }
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        text "Left" color: #64748b, font-size: 12px
+        text "${remaining}" font-size: 20px, color: #2563eb
+      }
+    }
+
+    each exp in expenses | sort-by amount {
+      row padding: 4px, gap: 8px {
+        text "{exp.label}" font-weight: bold
+        text "${exp.amount}" color: #ef4444
+      }
+    }
+  }
+}

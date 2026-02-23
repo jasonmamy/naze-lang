@@ -1,5 +1,7 @@
 # Phase 3: Language Completion & Developer Experience
 
+**Status:** Complete. All milestones delivered except M21 (LSP polish, moved to Phase 6 as M45).
+
 **Goal:** Complete the language with Tier 1 computation features (pipeline operators, pattern matching, pure functions), finalize developer tooling (testing, incremental compilation), and polish cross-platform builds. Target: sub-second hot reload, testing in CI, AI generates correct Naze >80% for common patterns.
 
 **Architecture shift:** Phase 2's runtime handles state, events, and rendering. Phase 3 adds a computation layer (pipeline operators, pattern matching, pure functions) and an application logic layer (shared state, computed values, full HTTP, WebSocket streams, browser storage, timers, URL parameters). Together these let apps express data transformations and application behavior declaratively, without escaping to JavaScript. Key design: pipeline operators execute at runtime (10 built-in functions), while pure functions inline at compile time (AST-level substitution) and pattern matching desugars to if/else chains at compile time (no new IR/runtime constructs).

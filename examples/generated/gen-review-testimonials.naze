@@ -1,0 +1,16 @@
+-- Testimonials
+app "Testimonials" {
+  state testimonials = [{name: "James K.", quote: "Saved us hours every week"}, {name: "Maria L.", quote: "Best investment this year"}, {name: "Chen W.", quote: "Support team is incredible"}]
+
+  column padding: 20px, gap: 16px {
+    heading "What Customers Say"
+
+    each t in testimonials {
+      rect padding: 16px, color: #f8fafc, radius: 12px {
+        text "{t.quote}" font-size: 16px, color: #374151
+        separator
+        text "-- {t.name}" color: #64748b
+      }
+    }
+  }
+}

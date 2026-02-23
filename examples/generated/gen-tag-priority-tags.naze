@@ -1,0 +1,36 @@
+-- Issue priority label tags
+app "Priority Labels" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Priority Labels"
+    text "Assign priority" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #fee2e2, radius: 12px {
+        text "Critical" color: #991b1b, font-size: 13px
+        on click: set selected-tag = "Critical"
+      }
+      rect padding: 8px, color: #fff7ed, radius: 12px {
+        text "High" color: #c2410c, font-size: 13px
+        on click: set selected-tag = "High"
+      }
+      rect padding: 8px, color: #fef3c7, radius: 12px {
+        text "Medium" color: #92400e, font-size: 13px
+        on click: set selected-tag = "Medium"
+      }
+      rect padding: 8px, color: #dbeafe, radius: 12px {
+        text "Low" color: #1e40af, font-size: 13px
+        on click: set selected-tag = "Low"
+      }
+      rect padding: 8px, color: #f1f5f9, radius: 12px {
+        text "Trivial" color: #475569, font-size: 13px
+        on click: set selected-tag = "Trivial"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

@@ -1,0 +1,35 @@
+-- System status board with indicators
+app "Service Health" {
+  state api-health = "healthy"
+  state db-health = "healthy"
+  state cache-health = "degraded"
+  state queue-health = "down"
+
+  column padding: 24px, gap: 16px {
+    heading "Service Health"
+    text "All systems monitored" color: #64748b
+
+    column gap: 8px {
+      row padding: 12px, color: #f0fdf4, radius: 6px, gap: 12px {
+        rect width: 12px, height: 12px, color: #22c55e, radius: 6px
+        text "API Gateway" font-weight: bold
+        text "{api-health}" color: #16a34a
+      }
+      row padding: 12px, color: #f0fdf4, radius: 6px, gap: 12px {
+        rect width: 12px, height: 12px, color: #22c55e, radius: 6px
+        text "Database" font-weight: bold
+        text "{db-health}" color: #16a34a
+      }
+      row padding: 12px, color: #fefce8, radius: 6px, gap: 12px {
+        rect width: 12px, height: 12px, color: #f59e0b, radius: 6px
+        text "Cache Layer" font-weight: bold
+        text "{cache-health}" color: #ca8a04
+      }
+      row padding: 12px, color: #fef2f2, radius: 6px, gap: 12px {
+        rect width: 12px, height: 12px, color: #ef4444, radius: 6px
+        text "Job Queue" font-weight: bold
+        text "{queue-health}" color: #dc2626
+      }
+    }
+  }
+}

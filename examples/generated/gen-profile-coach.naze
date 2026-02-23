@@ -1,0 +1,43 @@
+-- Fitness coach profile page
+app "Coach Profile" {
+  state username = "fit_sam"
+  state bio = "Certified personal trainer"
+  state followers = 4300
+  state following = 220
+  computed ratio = followers / following
+
+  column padding: 24px, gap: 16px {
+    heading "Coach Profile"
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #16a34a, radius: 40px {
+        text "S" color: #ffffff, font-size: 32px
+      }
+      column gap: 4px {
+        text "{username}" font-size: 22px, font-weight: bold
+        text "{bio}" color: #64748b
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Followers" color: #64748b, font-size: 12px
+        text "{followers}" font-size: 20px, color: #15803d
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Following" color: #64748b, font-size: 12px
+        text "{following}" font-size: 20px, color: #15803d
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Ratio" color: #64748b, font-size: 12px
+        text "{ratio}" font-size: 20px, color: #15803d
+      }
+    }
+
+    separator
+
+    rect padding: 12px, color: #f0fdf4, radius: 8px {
+      link "Programs" href: "https://fitcoach.com"
+    }
+  }
+}

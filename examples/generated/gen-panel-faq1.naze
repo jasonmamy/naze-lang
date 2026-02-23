@@ -1,0 +1,27 @@
+-- FAQ with expandable answer
+app "FAQ" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "FAQ"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "What is Naze?" font-weight: bold
+          rect width: 70px, height: 28px, color: #2563eb, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "Naze is a declarative UI language." color: #334155
+          text "It compiles to WASM and renders via Canvas2D." color: #64748b
+          text "No HTML, no CSS, no JavaScript." color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

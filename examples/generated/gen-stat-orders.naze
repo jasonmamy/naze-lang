@@ -1,0 +1,29 @@
+-- E-commerce order metrics
+app "Order Stats" {
+  state orders = 87
+  state returns = 12
+
+  column padding: 20px, gap: 16px {
+    heading "Order Stats"
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Orders" color: #64748b, font-size: 12px
+        text "{orders}" font-size: 24px, color: #16a34a
+      }
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        text "Returns" color: #64748b, font-size: 12px
+        text "{returns}" font-size: 24px, color: #f97316
+      }
+    }
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #16a34a, radius: 4px {
+        text "+1" color: #ffffff
+        on click: set orders = orders + 1
+      }
+      rect width: 80px, height: 32px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set orders = 87
+      }
+    }
+  }
+}

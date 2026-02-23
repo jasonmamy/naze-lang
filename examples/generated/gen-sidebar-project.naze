@@ -1,0 +1,40 @@
+-- Project management sidebar with workflow tabs
+app "Project Manager" {
+  state active-page = "board"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #fffbeb {
+      column padding: 16px, gap: 4px {
+        text "Projects" font-weight: bold, font-size: 18px, color: #f59e0b
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Board" color: #92400e
+          on click: set active-page = "board"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Timeline" color: #92400e
+          on click: set active-page = "timeline"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Backlog" color: #92400e
+          on click: set active-page = "backlog"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Archive" color: #92400e
+          on click: set active-page = "archive"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "board": heading "Board"
+        "timeline": heading "Timeline"
+        "backlog": heading "Backlog"
+        "archive": heading "Archive"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

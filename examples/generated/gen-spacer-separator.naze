@@ -1,0 +1,12 @@
+-- Spacer and separator
+app "Layout Demo" {
+  column padding: 20px, gap: 8px {
+    heading "Section One"
+    text "First section content"
+    spacer height: 24px
+    separator
+    spacer height: 24px
+    heading "Section Two"
+    text "Second section content"
+  }
+}

@@ -1,0 +1,25 @@
+-- Pull request status badges
+app "PR Status" {
+  state status = "draft"
+
+  column padding: 20px, gap: 16px {
+    heading "PR Status"
+
+    row gap: 8px {
+      rect width: 80px, height: 28px, color: #64748b, radius: 12px {
+        text "draft" color: #ffffff, font-size: 12px
+        on click: set status = "draft"
+      }
+      rect width: 80px, height: 28px, color: #8b5cf6, radius: 12px {
+        text "review" color: #ffffff, font-size: 12px
+        on click: set status = "review"
+      }
+      rect width: 80px, height: 28px, color: #16a34a, radius: 12px {
+        text "merged" color: #ffffff, font-size: 12px
+        on click: set status = "merged"
+      }
+    }
+
+    text "Current: {status}" font-size: 18px, font-weight: bold
+  }
+}

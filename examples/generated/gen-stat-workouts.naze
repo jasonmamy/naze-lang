@@ -1,0 +1,29 @@
+-- Workout session tracker
+app "Gym Stats" {
+  state sessions = 48
+  state streak = 7
+
+  column padding: 20px, gap: 16px {
+    heading "Gym Stats"
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Sessions" color: #64748b, font-size: 12px
+        text "{sessions}" font-size: 24px, color: #2563eb
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Streak" color: #64748b, font-size: 12px
+        text "{streak}" font-size: 24px, color: #16a34a
+      }
+    }
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+        text "+1" color: #ffffff
+        on click: set sessions = sessions + 1
+      }
+      rect width: 80px, height: 32px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set sessions = 48
+      }
+    }
+  }
+}

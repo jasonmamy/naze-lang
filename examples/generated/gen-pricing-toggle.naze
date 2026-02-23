@@ -1,0 +1,48 @@
+-- Monthly vs annual pricing toggle
+app "Toggle Pricing" {
+  state annual = false
+  state plan = "none"
+
+  column padding: 24px, gap: 16px {
+    heading "Pricing Plans" color: #0f172a
+
+    row gap: 8px {
+      text "Monthly" font-weight: bold
+      rect width: 60px, height: 30px, color: #e2e8f0, radius: 15px {
+        text "Toggle"
+        on click: set annual = true
+      }
+      text "Annual" color: #64748b
+    }
+
+    if annual == false {
+      row gap: 16px {
+        rect padding: 16px, color: #f8fafc, radius: 8px {
+          text "Basic: $9/mo" font-weight: bold
+          on click: set plan = "basic-mo"
+        }
+        rect padding: 16px, color: #eff6ff, radius: 8px {
+          text "Pro: $29/mo" font-weight: bold
+          on click: set plan = "pro-mo"
+        }
+      }
+    }
+
+    if annual {
+      row gap: 16px {
+        rect padding: 16px, color: #f8fafc, radius: 8px {
+          text "Basic: $90/yr" font-weight: bold
+          on click: set plan = "basic-yr"
+        }
+        rect padding: 16px, color: #eff6ff, radius: 8px {
+          text "Pro: $290/yr" font-weight: bold
+          on click: set plan = "pro-yr"
+        }
+      }
+    }
+
+    if plan != "none" {
+      text "Selected: {plan}" color: #16a34a
+    }
+  }
+}

@@ -1,0 +1,14 @@
+-- We are hiring announcement banner
+app "Hiring Banner" {
+  column {
+    rect width: 800px, height: 220px, color: #eff6ff, radius: 12px {
+      column padding: 36px, gap: 12px {
+        text "Join Our Team" color: #1e3a8a, font-size: 30px, font-weight: bold
+        text "We are looking for passionate builders." color: #1d4ed8, font-size: 16px
+        rect width: 150px, height: 44px, color: #2563eb, radius: 8px {
+          text "View Openings" color: #ffffff
+        }
+      }
+    }
+  }
+}

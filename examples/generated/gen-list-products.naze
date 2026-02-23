@@ -1,0 +1,17 @@
+-- Product catalog sorted by name
+app "Products" {
+  state items = [{name: "Widget", price: "9.99"}, {name: "Gadget", price: "24.99"}, {name: "Tool", price: "14.99"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Products"
+    text "{total} products" color: #64748b
+
+    each product in items | sort-by name {
+      row padding: 8px, color: #f0fdf4, radius: 4px, gap: 8px {
+        text "{product.name}" font-weight: bold
+        text "{product.price}" color: #64748b
+      }
+    }
+  }
+}

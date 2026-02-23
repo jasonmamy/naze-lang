@@ -1,0 +1,26 @@
+-- Coral and pink color scheme
+theme coral {
+  colors {
+    primary: #ff6b6b
+    secondary: #ffa8a8
+    bg: #fff5f5
+    text-color: #c92a2a
+    accent: #ff8787
+  }
+}
+
+app "Coral Theme" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Coral Theme" color: theme.colors.text-color
+
+    rect padding: 16px, color: theme.colors.primary, radius: 8px {
+      text "Primary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.secondary, radius: 8px {
+      text "Secondary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.accent, radius: 8px {
+      text "Accent" color: #ffffff
+    }
+  }
+}

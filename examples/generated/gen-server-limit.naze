@@ -1,0 +1,24 @@
+-- Server function with limit
+model articles {
+  id number primary
+  title text
+  published bool default false
+}
+
+server function top-articles(n: number) {
+  find articles where published == true order id desc limit n
+}
+
+app "Articles" {
+  data articles: top-articles(10)
+
+  column padding: 20px, gap: 16px {
+    heading "Top Articles"
+
+    if articles.data {
+      each article in articles.data {
+        text "{article.title}" font-size: 16px
+      }
+    }
+  }
+}

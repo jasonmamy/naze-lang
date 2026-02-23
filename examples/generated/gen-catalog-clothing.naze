@@ -1,0 +1,23 @@
+-- Fashion items catalog
+app "Clothing Store" {
+  state items = [{name: "Cotton Tee", price: "$25", category: "Tops"}, {name: "Slim Jeans", price: "$65", category: "Bottoms"}, {name: "Wool Sweater", price: "$85", category: "Tops"}, {name: "Canvas Sneakers", price: "$55", category: "Shoes"}]
+  computed item-count = items | count
+  state view = "grid"
+
+  column padding: 24px, gap: 16px {
+    heading "Clothing Store" color: #db2777
+    text "{item-count} items in stock" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #fdf2f8, radius: 10px {
+          column gap: 6px {
+            text "{item.name}" font-weight: bold, font-size: 16px
+            text "{item.price}" color: #db2777, font-size: 14px
+            text "{item.category}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

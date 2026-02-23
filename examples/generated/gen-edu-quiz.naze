@@ -1,0 +1,31 @@
+-- Quiz app with questions and score tracking
+app "Quick Quiz" {
+  state items = [{question: "What is 2+2?", answer: "4"}, {question: "Capital of Japan?", answer: "Tokyo"}, {question: "Largest planet?", answer: "Jupiter"}]
+  state current = 0
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Quick Quiz"
+    text "{current} of {total} answered" color: #2563eb
+
+    each q in items {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        column gap: 4px {
+          text "{q.question}" font-weight: bold
+          text "{q.answer}" color: #64748b
+        }
+      }
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #2563eb, radius: 8px {
+        text "Next" color: #ffffff
+        on click: set current = current + 1
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set current = 0
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+-- Video player
+app "Video Player" {
+  state playing = false
+  state position = 0
+  state title = "Introduction to Naze"
+
+  timer playback: every 1s {
+    set position = position + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Video Player"
+
+    rect width: 400px, height: 225px, color: #1e293b, radius: 8px {
+      text "{title}" color: #ffffff, font-size: 18px
+    }
+
+    text "{position}s elapsed" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Play" color: #ffffff
+        on click: set playing = true
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Pause" color: #ffffff
+        on click: set playing = false
+      }
+      rect width: 80px, height: 40px, color: #dc2626, radius: 8px {
+        text "Restart" color: #ffffff
+        on click: set position = 0
+      }
+    }
+  }
+}

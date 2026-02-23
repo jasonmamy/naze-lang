@@ -1,0 +1,25 @@
+-- Shopping list
+app "Shopping" {
+  state budget = 100
+  state spent = 0
+  state items = [{name: "Milk", price: "4", category: "dairy"}, {name: "Bread", price: "3", category: "bakery"}, {name: "Chicken", price: "12", category: "meat"}]
+  computed remaining = budget - spent
+  computed item-count = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Shopping List"
+    row gap: 16px {
+      text "Budget: ${budget}" color: #64748b
+      text "Remaining: ${remaining}" color: #16a34a
+      text "{item-count} items" color: #94a3b8
+    }
+
+    each item in items | sort-by category {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 8px {
+        text "{item.name}" font-weight: bold
+        text "${item.price}" color: #2563eb
+        text "{item.category}" color: #94a3b8, font-size: 12px
+      }
+    }
+  }
+}

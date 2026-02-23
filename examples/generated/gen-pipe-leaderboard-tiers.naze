@@ -1,0 +1,18 @@
+-- Tiered leaderboard
+app "Leaderboard" {
+  state players = [{name: "Alice", elo: 2450}, {name: "Bob", elo: 1800}, {name: "Carol", elo: 2100}, {name: "Dan", elo: 1500}]
+  computed total = players | count
+  computed elite = players | filter elo > 2000 | count
+
+  column padding: 20px, gap: 16px {
+    heading "Ranking"
+    text "{total} players, {elite} elite" color: #64748b
+
+    each p in players | sort-by elo | take 3 {
+      row padding: 8px, color: #fef3c7, radius: 4px, gap: 8px {
+        text "{p.name}" font-weight: bold
+        text "{p.elo} ELO" color: #92400e
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+-- Daily digest
+app "Daily Digest" {
+  state date = "February 17, 2026"
+  state stories = [{title: "Tech Giant Launches New Product", summary: "Revolutionary device unveiled at keynote event"}, {title: "Economic Growth Exceeds Forecasts", summary: "GDP growth reaches 3.2% in Q4"}, {title: "Major Scientific Discovery", summary: "Researchers identify New particle at CERN"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Daily Digest"
+    text "{date}" color: #64748b
+
+    separator
+
+    each story in stories {
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        text "{story.title}" font-weight: bold, font-size: 16px
+        text "{story.summary}" color: #64748b
+      }
+    }
+  }
+}

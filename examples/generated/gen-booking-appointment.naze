@@ -1,0 +1,28 @@
+-- Doctor appointment scheduler
+app "Appointment" {
+  state guest-name = ""
+  state appt-date = ""
+  state reason = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Appointment" color: #8b5cf6
+    text "Schedule your visit" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: appt-date, placeholder: "Preferred date"
+    input bind: reason, placeholder: "Reason for visit"
+
+    rect width: 140px, height: 44px, color: #8b5cf6, radius: 8px {
+      text "Schedule" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Appointment scheduled!" color: #64748b
+      }
+    }
+  }
+}

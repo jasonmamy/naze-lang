@@ -1,0 +1,26 @@
+-- Dark midnight color scheme
+theme midnight {
+  colors {
+    primary: #7209b7
+    secondary: #3a0ca3
+    bg: #10002b
+    text-color: #e0aaff
+    accent: #560bad
+  }
+}
+
+app "Midnight Theme" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Midnight Theme" color: theme.colors.text-color
+
+    rect padding: 16px, color: theme.colors.primary, radius: 8px {
+      text "Primary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.secondary, radius: 8px {
+      text "Secondary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.accent, radius: 8px {
+      text "Accent" color: #ffffff
+    }
+  }
+}

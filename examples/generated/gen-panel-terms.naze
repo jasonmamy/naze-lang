@@ -1,0 +1,27 @@
+-- Terms of service toggle
+app "Terms Panel" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "Terms Panel"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "Terms of Service" font-weight: bold
+          rect width: 70px, height: 28px, color: #64748b, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "By using this service you agree to our terms." color: #334155
+          text "Data is processed securely and never shared." color: #64748b
+          text "Last updated: January 2026" color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

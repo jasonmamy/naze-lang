@@ -1,0 +1,39 @@
+-- Counter with timer and computed state
+app "Advanced Counter" {
+  state count = 0
+  state speed = 1
+  computed doubled = count * 2
+
+  timer auto-tick: every 1s {
+    set count = count + speed
+  }
+
+  column padding: 24px, gap: 16px {
+    heading "Advanced Counter" color: #6366f1
+    text "Count: {count}" font-size: 24px
+    text "Doubled: {doubled}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #6366f1, radius: 8px {
+        text "+1" color: #ffffff
+        on click: set count = count + 1
+      }
+      rect width: 80px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set count = 0
+      }
+    }
+
+    row gap: 8px {
+      text "Speed:" color: #64748b
+      rect width: 60px, height: 32px, color: #e2e8f0, radius: 4px {
+        text "1x"
+        on click: set speed = 1
+      }
+      rect width: 60px, height: 32px, color: #e2e8f0, radius: 4px {
+        text "5x"
+        on click: set speed = 5
+      }
+    }
+  }
+}

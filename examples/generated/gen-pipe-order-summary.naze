@@ -1,0 +1,19 @@
+-- Order summary
+app "Order" {
+  state items = [{name: "Laptop", price: 999, qty: 1}, {name: "Mouse", price: 29, qty: 2}, {name: "Keyboard", price: 79, qty: 1}]
+  computed item-count = items | count
+  computed total-price = items | map price | sum
+
+  column padding: 20px, gap: 16px {
+    heading "Order Summary"
+    text "{item-count} items, Subtotal: ${total-price}" color: #2563eb
+
+    each item in items | sort-by price {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 12px {
+        text "{item.name}" font-weight: bold
+        text "x{item.qty}" color: #64748b
+        text "${item.price}" color: #2563eb
+      }
+    }
+  }
+}

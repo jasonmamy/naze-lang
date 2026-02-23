@@ -1,0 +1,14 @@
+-- Newsletter signup call-to-action banner
+app "Newsletter CTA" {
+  column {
+    rect width: 800px, height: 200px, color: #ecfdf5, radius: 12px {
+      column padding: 32px, gap: 12px {
+        text "Stay in the loop" color: #065f46, font-size: 28px, font-weight: bold
+        text "Weekly tips and insights delivered to your inbox." color: #047857, font-size: 16px
+        rect width: 120px, height: 44px, color: #059669, radius: 8px {
+          text "Subscribe" color: #ffffff
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+-- Rectangle area calculator
+app "Area" {
+  state width = 10
+  state length = 20
+  computed area = width * length
+
+  column padding: 20px, gap: 16px {
+    heading "Area"
+    text "Width: {width}" font-size: 18px
+    text "Length: {length}" color: #64748b
+    text "Area: {area}" font-size: 24px, color: #0ea5e9
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #0ea5e9, radius: 4px {
+        text "+" color: #ffffff
+        on click: set width = width + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set width = 10
+      }
+    }
+  }
+}

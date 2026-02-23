@@ -1,0 +1,36 @@
+-- Clothing size badge chips
+app "Size Selector" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Size Selector"
+    text "Pick your size" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #f1f5f9, radius: 12px {
+        text "XS" color: #475569, font-size: 13px
+        on click: set selected-tag = "XS"
+      }
+      rect padding: 8px, color: #f1f5f9, radius: 12px {
+        text "S" color: #475569, font-size: 13px
+        on click: set selected-tag = "S"
+      }
+      rect padding: 8px, color: #1e293b, radius: 12px {
+        text "M" color: #f8fafc, font-size: 13px
+        on click: set selected-tag = "M"
+      }
+      rect padding: 8px, color: #f1f5f9, radius: 12px {
+        text "L" color: #475569, font-size: 13px
+        on click: set selected-tag = "L"
+      }
+      rect padding: 8px, color: #f1f5f9, radius: 12px {
+        text "XL" color: #475569, font-size: 13px
+        on click: set selected-tag = "XL"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

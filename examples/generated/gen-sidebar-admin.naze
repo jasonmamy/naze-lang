@@ -1,0 +1,40 @@
+-- Admin sidebar with section navigation
+app "Admin Panel" {
+  state active-page = "dashboard"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #1e293b {
+      column padding: 16px, gap: 4px {
+        text "Admin" font-weight: bold, font-size: 18px, color: #ffffff
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Dashboard" color: #cbd5e1
+          on click: set active-page = "dashboard"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Users" color: #cbd5e1
+          on click: set active-page = "users"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Settings" color: #cbd5e1
+          on click: set active-page = "settings"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Reports" color: #cbd5e1
+          on click: set active-page = "reports"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "dashboard": heading "Dashboard"
+        "users": heading "Users"
+        "settings": heading "Settings"
+        "reports": heading "Reports"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

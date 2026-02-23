@@ -1,0 +1,38 @@
+-- Key-value detail view
+app "Order Details" {
+  state order-id = "ORD-48291"
+  state order-status = "shipped"
+  state total-amount = 284
+
+  column padding: 24px, gap: 16px {
+    heading "Order Details"
+
+    column gap: 8px {
+      row padding: 10px, color: #f8fafc, radius: 4px, gap: 16px {
+        text "Order ID" color: #64748b, font-size: 13px
+        text "{order-id}" font-weight: bold
+      }
+      row padding: 10px, color: #f8fafc, radius: 4px, gap: 16px {
+        text "Status" color: #64748b, font-size: 13px
+        text "{order-status}" color: #16a34a, font-weight: bold
+      }
+      row padding: 10px, color: #f8fafc, radius: 4px, gap: 16px {
+        text "Total" color: #64748b, font-size: 13px
+        text "${total-amount}" font-weight: bold, font-size: 18px
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #2563eb, radius: 6px {
+        text "Track" color: #ffffff
+        on click: set order-status = "tracking"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 6px {
+        text "Receipt"
+        on click: set order-status = "receipt"
+      }
+    }
+  }
+}

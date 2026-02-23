@@ -1,0 +1,36 @@
+-- Real estate filter with bedrooms and type
+app "Property Filters" {
+  state min-beds = 1
+  state property-type = "any"
+  state results-count = 200
+
+  column padding: 20px, gap: 16px {
+    heading "Property Filters"
+    text "{results-count} results" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "Filters" font-weight: bold, font-size: 16px
+
+      text "Property Type" font-weight: bold, color: #374151, font-size: 14px
+      select bind: property-type {
+      option "Any" value: "any"
+      option "House" value: "house"
+      option "Apartment" value: "apt"
+      option "Condo" value: "condo"
+    }
+
+      text "Min Bedrooms" font-weight: bold, color: #374151, font-size: 14px
+      input bind: min-beds, placeholder: "Bedrooms"
+    }
+
+    rect width: 120px, height: 36px, color: #7c3aed, radius: 4px {
+      text "Apply Filters" color: #ffffff
+      on click: set results-count = 34
+    }
+
+    rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+      text "Clear All"
+      on click: set min-beds = 1
+    }
+  }
+}

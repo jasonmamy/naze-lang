@@ -1,0 +1,33 @@
+-- Company website footer with sitemap columns
+app "Company Footer" {
+  column {
+    spacer height: 40px
+
+    rect width: 800px, color: #0f172a {
+      column padding: 32px, gap: 16px {
+        row gap: 48px {
+          column gap: 6px {
+            text "Product" font-weight: bold, color: #ffffff
+            text "Features" color: #94a3b8, font-size: 14px
+            text "Pricing" color: #94a3b8, font-size: 14px
+            text "Changelog" color: #94a3b8, font-size: 14px
+          }
+          column gap: 6px {
+            text "Company" font-weight: bold, color: #ffffff
+            text "About Us" color: #94a3b8, font-size: 14px
+            text "Careers" color: #94a3b8, font-size: 14px
+            text "Blog" color: #94a3b8, font-size: 14px
+          }
+          column gap: 6px {
+            text "Support" font-weight: bold, color: #ffffff
+            text "Help Center" color: #94a3b8, font-size: 14px
+            text "Contact" color: #94a3b8, font-size: 14px
+            text "Status" color: #94a3b8, font-size: 14px
+          }
+        }
+        separator
+        text "2025 Acme Inc. All rights reserved." color: #94a3b8, font-size: 12px
+      }
+    }
+  }
+}

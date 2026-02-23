@@ -1,0 +1,30 @@
+-- Price range filter
+app "Price Filter" {
+  state min-price = 0
+  state max-price = 500
+  state showing = 78
+
+  column padding: 20px, gap: 16px {
+    heading "Price Range"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      row gap: 12px {
+        column gap: 4px {
+          text "Min Price" font-size: 12px, color: #64748b
+          input bind: min-price, placeholder: "Min $"
+        }
+        column gap: 4px {
+          text "Max Price" font-size: 12px, color: #64748b
+          input bind: max-price, placeholder: "Max $"
+        }
+      }
+    }
+
+    text "Showing {showing} items from ${min-price} to ${max-price}" color: #64748b
+
+    rect width: 120px, height: 36px, color: #16a34a, radius: 4px {
+      text "Apply Range" color: #ffffff
+      on click: set showing = 22
+    }
+  }
+}

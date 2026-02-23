@@ -1,0 +1,17 @@
+-- City directory sorted by name
+app "Cities" {
+  state items = [{name: "Tokyo", country: "Japan"}, {name: "Paris", country: "France"}, {name: "London", country: "UK"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Cities"
+    text "{total} cities" color: #64748b
+
+    each city in items | sort-by name {
+      row padding: 8px, color: #f0f9ff, radius: 4px, gap: 8px {
+        text "{city.name}" font-weight: bold
+        text "{city.country}" color: #64748b
+      }
+    }
+  }
+}

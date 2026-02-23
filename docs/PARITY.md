@@ -2,7 +2,9 @@
 
 This document compares Naze's foundational primitives (current + fully specced through M30) against what's needed to build a modern component library equivalent to [shadcn/ui](https://ui.shadcn.com/). The goal is to identify gaps and propose spec additions to close them.
 
-**Key finding:** 4 missing primitives block ~60% of shadcn's components. Two new milestones (M19b, M19c) close the gap from 30/59 to 52/59 buildable (51% to 88%).
+**Last updated:** Phase 5 complete. Most gaps identified below have been closed by milestones M19b, M19c, M19d, M19e, M35, and M40. Current parity: ~95%+ component UI, ~99% application logic.
+
+**Key finding (historical):** 4 missing primitives blocked ~60% of shadcn's components. Two milestones (M19b, M19c) closed the gap from 30/59 to 52/59 buildable (51% to 88%). Subsequent milestones brought this to ~95%+.
 
 ---
 
@@ -34,9 +36,9 @@ The components (Dialog, Dropdown, Tooltip, etc.) are compositions of these three
 | Component events (callbacks) | Callback props | M19: `emit` | Planned |
 | Refs / direct element access | `useRef` | -- | **Gap** |
 | Effect hooks (side effects) | `useEffect` | -- | **Gap** |
-| Context / shared state | `useContext` | Theme tokens only | **Gap** |
-| Error boundaries | `ErrorBoundary` | -- | **Gap** |
-| Portals (render elsewhere) | `createPortal` | -- | **Gap** (see M19b) |
+| Context / shared state | `useContext` | `shared state` (M19d) | Covered |
+| Error boundaries | `ErrorBoundary` | `error` block (M35) | Covered |
+| Portals (render elsewhere) | `createPortal` | `overlay` element (M19b) | Covered |
 
 **Assessment:** Core model is solid. The "portals" gap is addressed by M19b's overlay system. Refs, effects, context, and error boundaries are architectural gaps but don't block most UI components. Most shadcn components need portals (overlays) far more than they need refs or effects.
 
@@ -51,18 +53,18 @@ The components (Dialog, Dropdown, Tooltip, etc.) are compositions of these three
 | Opacity | `opacity-50` | `opacity: 0.5` | Covered |
 | Flex layout | `flex`, `grow`, `shrink` | `row`, `column`, `flex-grow`, `flex-shrink` | Covered |
 | Grid layout | `grid`, `grid-cols-3` | `grid columns: 3` | Covered |
-| Responsive breakpoints | `md:flex-row` | M17: `responsive: stack below 768px` | Planned |
-| Dark mode | `dark:bg-gray-900` | M19: `theme dark extends default` | Planned |
+| Responsive breakpoints | `md:flex-row` | `responsive: 768px` (M17) | Covered |
+| Dark mode | `dark:bg-gray-900` | `theme dark extends default` (M19) | Covered |
 | Transitions + animation | `transition-all` | `transition: "prop 300ms ease"` | Covered |
-| Shadows (box, drop) | `shadow-md` | -- | **Gap** (see M19c) |
-| Text alignment | `text-center` | -- | **Gap** (see M19c) |
-| Text overflow / truncation | `truncate` | -- | **Gap** (see M19c) |
-| Text decoration | `underline` | -- | **Gap** (see M19c) |
-| Line height / letter spacing | `leading-6` | -- | **Gap** (see M19c) |
-| Gradients | `bg-gradient-to-r` | -- | **Gap** (see M19c) |
-| Transforms (rotate, scale) | `rotate-45`, `scale-110` | -- | **Gap** (see M19c) |
-| Z-index / stacking | `z-50` | -- | **Gap** (see M19b) |
-| Cursor styles | `cursor-pointer` | Pointer on clickable only | **Gap** (see M19c) |
+| Shadows (box, drop) | `shadow-md` | `shadow: sm/md/lg/xl` (M19c) | Covered |
+| Text alignment | `text-center` | `text-align: center` (M19c) | Covered |
+| Text overflow / truncation | `truncate` | `text-overflow: ellipsis` (M19c) | Covered |
+| Text decoration | `underline` | `text-decoration: underline` (M19c) | Covered |
+| Line height / letter spacing | `leading-6` | `line-height`, `letter-spacing` (M19c) | Covered |
+| Gradients | `bg-gradient-to-r` | `gradient: "linear(...)"` (M19c) | Covered |
+| Transforms (rotate, scale) | `rotate-45`, `scale-110` | `transform: "rotate(45deg)"` (M19c) | Covered |
+| Z-index / stacking | `z-50` | `overlay` element (M19b) | Covered |
+| Cursor styles | `cursor-pointer` | `cursor: pointer/grab/text/...` (M19c) | Covered |
 
 **Assessment:** Layout and core styling are strong. The gaps are visual polish properties (shadows, gradients, transforms) and text formatting (alignment, overflow, decoration). All addressed by M19c.
 
@@ -74,14 +76,14 @@ The components (Dialog, Dropdown, Tooltip, etc.) are compositions of these three
 | Keyboard nav (Tab/Enter/Escape) | Built-in | `on click` via Enter, Escape clears focus | Covered |
 | ARIA roles + labels | Automatic | `role`, `label` props | Covered |
 | Screen reader support | ARIA | Hidden DOM overlay | Covered |
-| Arrow key nav in menus | `RovingFocusGroup` | -- | **Gap** (see M19b) |
-| Focus trapping (modals) | `FocusTrap` | -- | **Gap** (see M19b) |
-| Outside click detection | `DismissableLayer` | -- | **Gap** (see M19b) |
-| Scroll locking | `ScrollLock` | -- | **Gap** (see M19b) |
-| Portal / overlay rendering | `Portal` | -- | **Gap** (see M19b) |
-| Floating positioning | `@floating-ui/react` | -- | **Gap** (see M19b) |
-| Right-click / context menu | `onContextMenu` | -- | **Gap** (see M19b) |
-| Pointer tracking | `onPointerMove` | -- | **Gap** (see M19b) |
+| Arrow key nav in menus | `RovingFocusGroup` | `on arrow-up/down/left/right` (M19b) | Covered |
+| Focus trapping (modals) | `FocusTrap` | `focus-trap: true` (M19b) | Covered |
+| Outside click detection | `DismissableLayer` | `on click-outside` (M19b) | Covered |
+| Scroll locking | `ScrollLock` | `scroll-lock: true` (M19b) | Covered |
+| Portal / overlay rendering | `Portal` | `overlay` element (M19b) | Covered |
+| Floating positioning | `@floating-ui/react` | `anchor: "id"` + `anchor-placement` (M19b) | Covered |
+| Right-click / context menu | `onContextMenu` | `on context-menu` (M19b) | Covered |
+| Pointer tracking | `onPointerMove` | `on pointer-move` (M19b) | Covered |
 
 **Assessment:** Basic accessibility is good. The critical gap is the entire overlay/floating layer — needed by Dialog, Dropdown, Tooltip, Popover, Toast, Sheet, Command, Context Menu, Hover Card, Combobox, Menubar, Navigation Menu, and Date Picker. All addressed by M19b.
 
@@ -199,31 +201,31 @@ These components are functional without M19c but need its properties for visual 
 | **Breadcrumb** | `text-overflow: ellipsis` | Long paths can't truncate |
 | **Button (loading)** | `transform: "rotate()"` | Loading spinner inside button |
 
-### Remaining Gaps After M19b + M19c
+### Remaining Gaps After All Milestones
 
-| Component | Remaining Gap | Milestone That Closes It |
-|-----------|--------------|--------------------------|
-| **Chart** | No SVG or canvas drawing API for data visualization | M23 (WASM imports) — import a charting library |
-| **Input OTP** | Per-character input cells with auto-advance | Buildable with creative use of multiple `input` elements + state, but awkward |
-| **Sidebar** | Responsive collapse at breakpoint | M17 (responsive breakpoints) |
-| **Calendar** | Complex date arithmetic | M15 (pure functions for date math) |
-| **Direction** | RTL layout support | Not yet specced; layout engine change |
-| **Textarea** | Multi-line text input element | Minor gap: add `textarea` element or `input type: "multiline"` |
+Most gaps identified above have been closed. M19b delivered overlays, M19c delivered visual properties, M17 delivered responsive breakpoints, M15 delivered pipelines/functions, M19e delivered textarea + JS interop + device APIs, M35 delivered error boundaries, M19d delivered shared state. Remaining gaps:
+
+| Component | Remaining Gap | Status |
+|-----------|--------------|--------|
+| **Chart** | No SVG or canvas drawing API for data visualization | Bridged via WASM imports (M23) — import a charting library |
+| **Input OTP** | Per-character input cells with auto-advance | Buildable with multiple `input` elements + state |
+| **Direction** | RTL layout support | Not yet specced; layout engine change needed |
 
 ---
 
 ## Parity Score Summary
 
-| Milestone Set | Components Buildable | Score |
-|---|---|---|
-| Current spec (M1-M19) | 30 | **51%** |
-| + M19b (overlay system) | 47 | **80%** |
-| + M19c (visual properties) | 52 | **88%** |
-| + M15 (pipelines) + M17 (responsive) | 54 | **92%** |
-| + M23 (WASM imports for Chart) | 55 | **93%** |
-| + `textarea` element + RTL support | 59 | **100%** |
+| Milestone Set | Components Buildable | Score | Status |
+|---|---|---|---|
+| Phase 2 spec (M1-M14) | 30 | **51%** | Complete |
+| + M19b (overlay system) | 47 | **80%** | Complete |
+| + M19c (visual properties) | 52 | **88%** | Complete |
+| + M15 (pipelines) + M17 (responsive) | 54 | **92%** | Complete |
+| + M23 (WASM imports for Chart) | 55 | **93%** | Complete |
+| + M19e (textarea) + M35 (error boundaries) | 57 | **~97%** | Complete |
+| Remaining: RTL + OTP | 59 | **100%** | RTL not yet specced |
 
-**M19b is the single highest-leverage addition** — it unblocks 17 components by adding one new element (`overlay`) and a handful of props/events.
+**Current achieved: ~95%+ component parity.** Remaining gaps are SVG/vector graphics, RTL layout, and rich text editing.
 
 ---
 
@@ -243,15 +245,15 @@ The short answer: **no**. Naze achieves strong component parity (~92% with all p
 | **Derived / computed state** | `useMemo`, computed values, selectors | M19d: `computed name = expression` | **Implemented** ✅ |
 | **Side effects** | `useEffect`, lifecycle hooks | Reactive `data` URLs + `computed` (by design — no imperative effects) | **Covered** |
 | **Complex async flows** | `async/await`, promises, concurrent rendering | M19d: enhanced `data` (full HTTP, `trigger: manual`) | **Implemented** ✅ |
-| **Third-party JS libraries** | Chart.js, Stripe.js, Mapbox, Clerk, etc. | M19e: `js` interop (sync + async calls to `globalThis` functions) | **Partial** — covers most SDK use cases |
+| **Third-party JS libraries** | Chart.js, Stripe.js, Mapbox, Clerk, etc. | M19e: `js` interop (sync + async calls to `globalThis` functions) | **Implemented** ✅ — covers most SDK use cases |
 | **WebSockets / real-time** | Socket.io, Pusher, SSE | M19d: `data: stream "wss://..."` | **Implemented** ✅ |
-| **Browser APIs** | localStorage, clipboard, geolocation, camera, notifications | M19d: `storage`, `copy`, `param`; M19e: `device` (geolocation, camera), `notify` | **Implemented** ✅ (M19d portion) |
+| **Browser APIs** | localStorage, clipboard, geolocation, camera, notifications | M19d: `storage`, `copy`, `param`; M19e: `device` (geolocation, camera), `notify`; M40: accelerometer | **Implemented** ✅ |
 | **File uploads** | `<input type="file">`, drag-to-upload | M19d: `input type: "file"` + enhanced `data` POST (multipart) | **Implemented** ✅ |
 | **Rich text editing** | Tiptap, Slate, ProseMirror, contentEditable | -- (incompatible with Canvas2D rendering) | **Architectural gap** |
 | **Timers / scheduling** | `setTimeout`, `setInterval`, debounce/throttle | M19d: `timer` (after/every), `debounce`/`throttle` modifiers | **Implemented** ✅ |
-| **Error handling** | `try/catch`, error boundaries, fallback UI | `data.error` + `if`/`else`; full error boundaries deferred to M19b | **Partial** |
+| **Error handling** | `try/catch`, error boundaries, fallback UI | `data.error` + `if`/`else`; `error` block with fallback UI and retry (M35) | **Implemented** ✅ |
 | **URL search params** | `useSearchParams`, query string state | M19d: `param name: type default: value` | **Implemented** ✅ |
-| **Textarea** | `<textarea>` for multi-line text input | M19e: `textarea` element | **Closed** |
+| **Textarea** | `<textarea>` for multi-line text input | M19e + M40: `textarea` element with Canvas2D rendering | **Implemented** ✅ |
 | **Dynamic imports** | `React.lazy()`, route-based code splitting | M23 lazy WASM loading (module-level) | **Partial** |
 
 ### What Naze Can Fully Replicate
@@ -424,27 +426,27 @@ rect cursor: grab, width: 200px, height: 30px {
 
 ## Spec Additions Cross-Reference
 
-| Gap | shadcn Components Affected | Milestone | Priority |
-|-----|---------------------------|-----------|----------|
-| Overlay / portal rendering | 17 components | **M19b** | Critical |
-| Focus trapping | Dialog, Alert Dialog, Sheet, Drawer | **M19b** | Critical |
-| Outside click detection | Dropdown, Popover, Combobox, Context Menu, Command | **M19b** | Critical |
-| Scroll locking | Dialog, Alert Dialog, Sheet, Drawer | **M19b** | Critical |
-| Anchor/floating positioning | Tooltip, Popover, Hover Card, Dropdown, Context Menu | **M19b** | Critical |
-| Arrow key navigation | Dropdown, Command, Combobox, Menubar, Select | **M19b** | Critical |
-| Right-click event | Context Menu | **M19b** | Critical |
-| Pointer tracking | Resizable | **M19b** | Critical |
-| Shadows | All elevated components (~30) | **M19c** | Important |
-| Text alignment | Tables, headings, numbers | **M19c** | Important |
-| Text overflow | Tables, cards, breadcrumbs | **M19c** | Important |
-| Transforms | Spinner, animations, icons | **M19c** | Important |
-| Gradients | Backgrounds, hover effects | **M19c** | Medium |
-| Text decoration | Links, deleted items | **M19c** | Medium |
-| Line height / spacing | Typography polish | **M19c** | Medium |
-| Cursor styles | Drag handles, disabled states | **M19c** | Medium |
-| SVG / icons | Icon support across all components | Future | Low |
-| Textarea element | Textarea component | Future | Low |
-| RTL layout | Direction component | Future | Low |
+| Gap | shadcn Components Affected | Milestone | Status |
+|-----|---------------------------|-----------|--------|
+| Overlay / portal rendering | 17 components | **M19b** | Delivered ✅ |
+| Focus trapping | Dialog, Alert Dialog, Sheet, Drawer | **M19b** | Delivered ✅ |
+| Outside click detection | Dropdown, Popover, Combobox, Context Menu, Command | **M19b** | Delivered ✅ |
+| Scroll locking | Dialog, Alert Dialog, Sheet, Drawer | **M19b** | Delivered ✅ |
+| Anchor/floating positioning | Tooltip, Popover, Hover Card, Dropdown, Context Menu | **M19b** | Delivered ✅ |
+| Arrow key navigation | Dropdown, Command, Combobox, Menubar, Select | **M19b** | Delivered ✅ |
+| Right-click event | Context Menu | **M19b** | Delivered ✅ |
+| Pointer tracking | Resizable | **M19b** | Delivered ✅ |
+| Shadows | All elevated components (~30) | **M19c** | Delivered ✅ |
+| Text alignment | Tables, headings, numbers | **M19c** | Delivered ✅ |
+| Text overflow | Tables, cards, breadcrumbs | **M19c** | Delivered ✅ |
+| Transforms | Spinner, animations, icons | **M19c** | Delivered ✅ |
+| Gradients | Backgrounds, hover effects | **M19c** | Delivered ✅ |
+| Text decoration | Links, deleted items | **M19c** | Delivered ✅ |
+| Line height / spacing | Typography polish | **M19c** | Delivered ✅ |
+| Cursor styles | Drag handles, disabled states | **M19c** | Delivered ✅ |
+| Textarea element | Textarea component | **M19e + M40** | Delivered ✅ |
+| SVG / icons | Icon support across all components | Future | Not yet specced |
+| RTL layout | Direction component | Future | Not yet specced |
 
 ---
 

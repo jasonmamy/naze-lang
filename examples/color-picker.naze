@@ -1,0 +1,36 @@
+-- Color picker grid
+app "Color Picker" {
+  state selected = "blue"
+
+  column padding: 20px, gap: 16px {
+    heading "Pick a Color"
+    text "Selected: {selected}" color: #2563eb, font-size: 18px
+
+    grid columns: 4, gap: 8px {
+      rect width: 50px, height: 50px, color: #ef4444, radius: 8px {
+        on click: set selected = "red"
+      }
+      rect width: 50px, height: 50px, color: #f97316, radius: 8px {
+        on click: set selected = "orange"
+      }
+      rect width: 50px, height: 50px, color: #eab308, radius: 8px {
+        on click: set selected = "yellow"
+      }
+      rect width: 50px, height: 50px, color: #22c55e, radius: 8px {
+        on click: set selected = "green"
+      }
+      rect width: 50px, height: 50px, color: #2563eb, radius: 8px {
+        on click: set selected = "blue"
+      }
+      rect width: 50px, height: 50px, color: #8b5cf6, radius: 8px {
+        on click: set selected = "purple"
+      }
+      rect width: 50px, height: 50px, color: #ec4899, radius: 8px {
+        on click: set selected = "pink"
+      }
+      rect width: 50px, height: 50px, color: #64748b, radius: 8px {
+        on click: set selected = "gray"
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+-- Pricing with add-on features
+app "Plan Builder" {
+  state base = 10
+  state add-storage = false
+  state add-support = false
+  computed total = base + 5 + 10
+
+  column padding: 24px, gap: 16px {
+    heading "Build Your Plan" color: #6366f1
+    text "Start at $10/mo and add what you need" color: #64748b
+
+    rect padding: 16px, color: #eff6ff, radius: 8px {
+      text "Base Plan - $10/mo" font-weight: bold
+      text "5 projects, 5GB storage" color: #64748b, font-size: 14px
+    }
+
+    text "Add-ons:" font-weight: bold
+    checkbox bind: add-storage, label: "Extra Storage (+$5/mo)"
+    checkbox bind: add-support, label: "Priority Support (+$10/mo)"
+
+    separator
+    text "Estimated total: ${total}/mo" font-size: 20px, color: #6366f1
+  }
+}

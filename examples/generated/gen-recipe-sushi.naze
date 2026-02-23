@@ -1,0 +1,34 @@
+-- Homemade sushi roll recipe
+app "Salmon Sushi Roll" {
+  state servings = 4
+  state ingredients = [{name: "Sushi Rice", amount: "2 cups"}, {name: "Salmon", amount: "300g"}, {name: "Nori", amount: "5 sheets"}, {name: "Avocado", amount: "1"}]
+  state current-step = 1
+
+  column padding: 20px, gap: 16px {
+    heading "Salmon Sushi Roll"
+    text "Japanese | 45 min | {servings} servings" color: #64748b
+
+    rect padding: 16px, color: #fce7f3, radius: 8px {
+      text "Ingredients" font-weight: bold, font-size: 18px
+      each item in ingredients {
+        text "- {item.name}: {item.amount}" color: #374151
+      }
+    }
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "Step {current-step}" font-weight: bold, font-size: 18px, color: #db2777
+      text "Cook rice, slice fish, roll with nori, cut into pieces" color: #374151
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #db2777, radius: 4px {
+        text "Next Step" color: #ffffff
+        on click: set current-step = current-step + 1
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set current-step = 1
+      }
+    }
+  }
+}

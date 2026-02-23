@@ -1,0 +1,39 @@
+-- Analytics tabs with overview, traffic, and conversions
+app "Analytics View" {
+  state tab = "overview"
+
+  column padding: 20px, gap: 16px {
+    heading "Analytics View"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #06b6d4, radius: 0px {
+        text "Overview" color: #ffffff
+        on click: set tab = "overview"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Traffic" color: #334155
+        on click: set tab = "traffic"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Goals" color: #334155
+        on click: set tab = "goals"
+      }
+    }
+
+    match tab {
+      "overview": column padding: 16px, gap: 8px {
+        text "Dashboard Overview" font-weight: bold
+        text "1,240 visitors today, up 12 percent from last week." color: #64748b
+      }
+      "traffic": column padding: 16px, gap: 8px {
+        text "Traffic Sources" font-weight: bold
+        text "Direct 45 percent, Search 30 percent, Social 25 percent." color: #64748b
+      }
+      "goals": column padding: 16px, gap: 8px {
+        text "Goal Tracking" font-weight: bold
+        text "3 of 5 monthly goals completed." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

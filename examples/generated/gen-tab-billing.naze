@@ -1,0 +1,39 @@
+-- Billing tabs with invoices, methods, and history
+app "Billing Center" {
+  state tab = "invoices"
+
+  column padding: 20px, gap: 16px {
+    heading "Billing Center"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #7c3aed, radius: 0px {
+        text "Invoices" color: #ffffff
+        on click: set tab = "invoices"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Methods" color: #334155
+        on click: set tab = "methods"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "History" color: #334155
+        on click: set tab = "history"
+      }
+    }
+
+    match tab {
+      "invoices": column padding: 16px, gap: 8px {
+        text "Current Invoices" font-weight: bold
+        text "No outstanding invoices at this time." color: #64748b
+      }
+      "methods": column padding: 16px, gap: 8px {
+        text "Payment Methods" font-weight: bold
+        text "Visa ending in 4242 is your default." color: #64748b
+      }
+      "history": column padding: 16px, gap: 8px {
+        text "Transaction History" font-weight: bold
+        text "12 transactions in the last 30 days." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+-- Mixed layout
+app "Mixed Layout" {
+  column gap: 0px {
+    row padding: 16px, color: #1e293b, gap: 16px {
+      heading "SiteTitle" color: #ffffff, font-size: 18px
+      text "Home" color: #94a3b8
+      text "About" color: #94a3b8
+    }
+
+    column padding: 20px, gap: 16px {
+      heading "Featured"
+      grid columns: 3, gap: 12px {
+        rect padding: 16px, color: #eff6ff, radius: 8px {
+          text "Article 1" font-weight: bold
+        }
+        rect padding: 16px, color: #f0fdf4, radius: 8px {
+          text "Article 2" font-weight: bold
+        }
+        rect padding: 16px, color: #fef3c7, radius: 8px {
+          text "Article 3" font-weight: bold
+        }
+      }
+    }
+
+    row padding: 16px, color: #f1f5f9 {
+      text "Footer content" color: #64748b
+    }
+  }
+}

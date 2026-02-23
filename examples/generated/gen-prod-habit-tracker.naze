@@ -1,0 +1,21 @@
+-- Daily habit tracker
+app "Habit Tracker" {
+  state habits = [{name: "Morning run", streak: "12"}, {name: "Read 30min", streak: "8"}, {name: "No sugar", streak: "5"}, {name: "Journal", streak: "21"}]
+  state day = 1
+
+  timer next-day: every 1s {
+    set day = day + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Daily Habits"
+    text "Day {day}" color: #64748b
+
+    each h in habits | sort-by streak {
+      row padding: 12px, color: #ecfdf5, radius: 8px, gap: 12px {
+        text "{h.name}" font-weight: bold
+        text "{h.streak} day streak" color: #16a34a
+      }
+    }
+  }
+}

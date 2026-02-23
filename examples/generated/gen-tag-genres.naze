@@ -1,0 +1,36 @@
+-- Music genre filter tag chips
+app "Music Genres" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Music Genres"
+    text "Filter by genre" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #fef2f2, radius: 12px {
+        text "Rock" color: #991b1b, font-size: 13px
+        on click: set selected-tag = "Rock"
+      }
+      rect padding: 8px, color: #faf5ff, radius: 12px {
+        text "Jazz" color: #6b21a8, font-size: 13px
+        on click: set selected-tag = "Jazz"
+      }
+      rect padding: 8px, color: #ecfeff, radius: 12px {
+        text "Electronic" color: #155e75, font-size: 13px
+        on click: set selected-tag = "Electronic"
+      }
+      rect padding: 8px, color: #fefce8, radius: 12px {
+        text "Classical" color: #713f12, font-size: 13px
+        on click: set selected-tag = "Classical"
+      }
+      rect padding: 8px, color: #f0fdf4, radius: 12px {
+        text "Hip Hop" color: #14532d, font-size: 13px
+        on click: set selected-tag = "Hip Hop"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

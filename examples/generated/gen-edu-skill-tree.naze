@@ -1,0 +1,21 @@
+-- Skill tree
+app "Skill Tree" {
+  state skills = [{name: "HTML Basics", status: "unlocked"}, {name: "CSS Layout", status: "unlocked"}, {name: "JavaScript", status: "locked"}, {name: "React", status: "locked"}]
+  computed unlocked = 2
+
+  column padding: 20px, gap: 16px {
+    heading "Skill Tree"
+    text "{unlocked} skills unlocked" color: #6366f1
+
+    each skill in skills {
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 8px {
+        text "{skill.name}" font-weight: bold
+        match skill.status {
+          "unlocked": text "Available" color: #16a34a
+          "locked": text "Locked" color: #dc2626
+          _: text "Unknown" color: #64748b
+        }
+      }
+    }
+  }
+}

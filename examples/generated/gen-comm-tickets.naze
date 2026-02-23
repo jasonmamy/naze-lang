@@ -1,0 +1,30 @@
+-- Support ticket list with status
+app "Support Tickets" {
+  state items = [{title: "Login issue", status: "Open"}, {title: "Payment failed", status: "In Progress"}, {title: "Feature request", status: "Closed"}]
+  state issue = ""
+  state submitted = "idle"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Support Tickets"
+    text "{total} tickets" color: #64748b
+
+    input bind: issue, placeholder: "Describe issue..."
+
+    rect width: 120px, height: 40px, color: #ec4899, radius: 8px {
+      text "New Ticket" color: #ffffff
+      on click: set submitted = "submitted"
+    }
+
+    if submitted == "submitted" {
+      text "Ticket submitted!" color: #16a34a
+    }
+
+    each ticket in items {
+      row padding: 12px, color: #fdf2f8, radius: 4px, gap: 8px {
+        text "{ticket.title}" font-weight: bold
+        text "{ticket.status}" color: #64748b
+      }
+    }
+  }
+}

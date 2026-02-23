@@ -1,0 +1,39 @@
+-- Product page tabs with description, specs, reviews
+app "Product Details" {
+  state tab = "desc"
+
+  column padding: 20px, gap: 16px {
+    heading "Product Details"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #16a34a, radius: 0px {
+        text "Description" color: #ffffff
+        on click: set tab = "desc"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Specs" color: #334155
+        on click: set tab = "specs"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Reviews" color: #334155
+        on click: set tab = "reviews"
+      }
+    }
+
+    match tab {
+      "desc": column padding: 16px, gap: 8px {
+        text "Product Overview" font-weight: bold
+        text "A premium quality item built for durability." color: #64748b
+      }
+      "specs": column padding: 16px, gap: 8px {
+        text "Technical Specifications" font-weight: bold
+        text "Weight: 250g, Dimensions: 15x10x5cm" color: #64748b
+      }
+      "reviews": column padding: 16px, gap: 8px {
+        text "Customer Reviews" font-weight: bold
+        text "4.5 out of 5 stars from 128 reviews." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

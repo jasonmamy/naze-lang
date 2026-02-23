@@ -63,13 +63,13 @@ fn validate_source(source: &str) -> Vec<CompileError> {
     let nodes = match naze_parser::parse(source, "generated.naze") {
         Ok(n) => n,
         Err(e) => {
-            return vec![CompileError {
-                message: e.to_string(),
-                file: "generated.naze".into(),
-                line: 0,
-                column: 0,
-                severity: Severity::Error,
-            }];
+            return vec![CompileError::new(
+                e.to_string(),
+                "generated.naze".into(),
+                0,
+                0,
+                Severity::Error,
+            )];
         }
     };
 
@@ -135,291 +135,42 @@ fn extract_code(response: &str) -> String {
 
 // ─── Prompt templates ────────────────────────────────────────────────────────
 
-const LANGUAGE_REFERENCE: &str = include_str!("../../../docs/AGENTS.md");
+const LANGUAGE_REFERENCE: &str = include_str!("../../../docs/AGENTS_SLIM.md");
 
-const EXAMPLE_COUNTER: &str = r#"-- Counter with increment and reset
-app "Counter" {
-  state count = 0
-  column padding: 20px, gap: 16px {
-    heading "My Counter"
-    text "Count: {count}"
-    rect width: 200px, height: 50px, color: #2563eb, radius: 8px {
-      text "Increment"
-      on click: set count = count + 1
-    }
-    rect width: 200px, height: 50px, color: #dc2626, radius: 8px {
-      text "Reset"
-      on click: set count = 0
-    }
-  }
-}"#;
-
-const EXAMPLE_DASHBOARD: &str = r#"-- Dashboard layout with header, sidebar, and metric cards
-app "Dashboard" {
-  column gap: 0px {
-    container padding: 16px, color: #1e293b {
-      heading "Dashboard" font-size: 20px, color: #ffffff
-    }
-    row padding: 20px, gap: 20px {
-      column width: 200px, gap: 8px, padding: 16px, color: #f8fafc {
-        text "Overview"
-        text "Analytics"
-        text "Settings"
-      }
-      column gap: 16px {
-        heading "Overview"
-        row gap: 16px {
-          container padding: 16px, color: #eff6ff, radius: 8px, width: 180px {
-            column gap: 4px {
-              text "Revenue"
-              heading "$12,345" font-size: 24px
-            }
-          }
-          container padding: 16px, color: #f0fdf4, radius: 8px, width: 180px {
-            column gap: 4px {
-              text "Users"
-              heading "1,234" font-size: 24px
-            }
-          }
-        }
-      }
-    }
-  }
-}"#;
-
-const EXAMPLE_DATA_FETCH: &str = r#"-- Data fetching with loading/error states
-app "Posts" {
-  data posts: fetch "https://jsonplaceholder.typicode.com/posts?_limit=5"
-
-  column gap: 16px, padding: 20px {
-    heading "API Data"
-
-    if posts.loading {
-      text "Loading...", color: #666666
-    }
-
-    if posts.error {
-      text "Error: {posts.error}", color: #dc2626
-    }
-
-    if posts.data {
-      each post in posts.data {
-        column padding: 12px, color: #f3f4f6, radius: 8px {
-          heading "{post.title}", font-size: 16px
-          text "{post.body}", color: #666666, font-size: 14px
-        }
-      }
-    }
-  }
-}"#;
-
-const EXAMPLE_PIPELINE: &str = r#"-- Pipeline operators: filter, sort, aggregate
-app "Student Scores" {
-  state students = [{name: "Alice", score: 92}, {name: "Bob", score: 67}, {name: "Carol", score: 85}, {name: "Dave", score: 45}]
-
-  computed passing = students | filter score > 60
-  computed total-score = students | map score | sum
-  computed student-count = students | count
-
-  column padding: 20px, gap: 16px {
-    heading "Student Scores"
-    text "Total students: {student-count}"
-    text "Total score: {total-score}"
-
-    heading "Passing (score > 60):" font-size: 18px
-    each student in students | filter score > 60 | sort-by name {
-      text "{student.name}: {student.score}"
-    }
-  }
-}"#;
-
-const EXAMPLE_FORM: &str = r#"-- Form with validation and error display
-app "Sign Up" {
-  state username = ""
-  state email = ""
-
-  column padding: 20px, gap: 12px {
-    heading "Create Account"
-
-    text "Username"
-    input bind: username, placeholder: "Enter username", validate: { required: true, min-length: 3, max-length: 20 }
-    if username_error {
-      text "{username_error}" color: #dc2626
-    }
-
-    text "Email"
-    input bind: email, type: "email", placeholder: "Enter email", validate: { required: true }
-    if email_error {
-      text "{email_error}" color: #dc2626
-    }
-
-    row gap: 8px {
-      if username_valid {
-        text "Username OK" color: #16a34a
-      }
-      if email_valid {
-        text "Email OK" color: #16a34a
-      }
-    }
-  }
-}"#;
-
-const EXAMPLE_ROUTING: &str = r#"-- Multi-page app with navigation
-app "My Site" {
-  row padding: 16px, gap: 24px, color: #1e293b {
-    heading "My App" color: #ffffff, font-size: 18px
-    link "Home", to: "/"
-    link "About", to: "/about"
-  }
-
-  page "/" {
-    column padding: 24px, gap: 16px {
-      heading "Welcome Home"
-      text "Click the links above to navigate."
-    }
-  }
-
-  page "/about" {
-    column padding: 24px, gap: 16px {
-      heading "About Us"
-      text "Built with Naze."
-    }
-  }
-}"#;
-
-const EXAMPLE_COMPONENT: &str = r#"-- Component definition with typed parameters and defaults
-component card(bg: color = #ffffff, width: number = 200px) {
-  container padding: 16px, color: bg, radius: 8px, width: width {
-    column gap: 8px {
-      heading "Card Title" font-size: 16px
-      text "Card content goes here."
-    }
-  }
-}"#;
-
-const EXAMPLE_MATCH: &str = r#"-- Pattern matching for conditional rendering
-app "Match Demo" {
-  state status = "active"
-
-  column padding: 20px, gap: 16px {
-    heading "Pattern Matching"
-
-    match status {
-      "active": text "Status: Active" color: #16a34a
-      "inactive": text "Status: Inactive" color: #dc2626
-      "pending": text "Status: Pending..." color: #eab308
-      _: text "Status: Unknown"
-    }
-
-    row gap: 8px {
-      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
-        text "Active" color: #ffffff
-        on click: set status = "active"
-      }
-      rect width: 80px, height: 36px, color: #dc2626, radius: 4px {
-        text "Inactive" color: #ffffff
-        on click: set status = "inactive"
-      }
-    }
-  }
-}"#;
-
-const EXAMPLE_THEME: &str = r#"-- Named themes with extends and runtime switching
-theme light {
-  colors {
-    bg: #ffffff
-    fg: #0f172a
-    primary: #2563eb
-  }
-  spacing {
-    sm: 8px
-    md: 16px
-  }
+fn is_finetuned_model(model: Option<&str>) -> bool {
+    model
+        .map(|m| m.to_lowercase().contains("naze"))
+        .unwrap_or(false)
 }
 
-theme dark extends light {
-  colors {
-    bg: #1e293b
-    fg: #f8fafc
-    primary: #60a5fa
-  }
-}
-
-app "Theme Demo" {
-  column padding: 20px, gap: 16px, color: theme.colors.bg {
-    heading "Theme Switching" color: theme.colors.fg
-    row gap: 12px {
-      rect width: 100px, height: 40px, color: theme.colors.primary, radius: 8px {
-        text "Light" color: #ffffff
-        on click: set-theme "light"
-      }
-      rect width: 100px, height: 40px, color: theme.colors.primary, radius: 8px {
-        text "Dark" color: #ffffff
-        on click: set-theme "dark"
-      }
-    }
-  }
-}"#;
-
-const EXAMPLE_ANIMATION: &str = r#"-- Transitions and interactive toggle
-app "Animation" {
-  state expanded = false
-
-  column gap: 16px, padding: 20px {
-    heading "Animation Demo"
-
-    if expanded {
-      row width: 200px, height: 150px, color: #3b82f6, radius: 8px, padding: 16px, transition: "height 300ms ease-out" {
-        text "Click to shrink" color: #ffffff
-        on click: set expanded = false
-      }
-    }
-    if expanded == false {
-      row width: 200px, height: 60px, color: #3b82f6, radius: 8px, padding: 16px, transition: "height 300ms ease-out" {
-        text "Click to expand" color: #ffffff
-        on click: set expanded = true
-      }
-    }
-  }
-}"#;
-
-fn build_system_prompt() -> String {
-    format!(
+fn build_system_prompt(model: Option<&str>) -> String {
+    if is_finetuned_model(model) {
         "You are a Naze language expert. Generate valid .naze code based on the user's description.\n\
-         Output ONLY the raw .naze code. No markdown fences, no explanations, no commentary.\n\n\
-         {}\n\n\
-         ## Additional Examples\n\n\
-         ### Counter app\n```\n{}\n```\n\n\
-         ### Dashboard layout\n```\n{}\n```\n\n\
-         ### Data fetching\n```\n{}\n```\n\n\
-         ### Pipeline operators\n```\n{}\n```\n\n\
-         ### Form with validation\n```\n{}\n```\n\n\
-         ### Multi-page routing\n```\n{}\n```\n\n\
-         ### Component definition\n```\n{}\n```\n\n\
-         ### Pattern matching\n```\n{}\n```\n\n\
-         ### Theming\n```\n{}\n```\n\n\
-         ### Animation\n```\n{}\n```",
-        LANGUAGE_REFERENCE,
-        EXAMPLE_COUNTER,
-        EXAMPLE_DASHBOARD,
-        EXAMPLE_DATA_FETCH,
-        EXAMPLE_PIPELINE,
-        EXAMPLE_FORM,
-        EXAMPLE_ROUTING,
-        EXAMPLE_COMPONENT,
-        EXAMPLE_MATCH,
-        EXAMPLE_THEME,
-        EXAMPLE_ANIMATION,
-    )
+         Output ONLY the raw .naze code. No markdown fences, no explanations, no commentary."
+            .to_string()
+    } else {
+        format!(
+            "You are a Naze language expert. Generate valid .naze code based on the user's description.\n\
+             Output ONLY the raw .naze code. No markdown fences, no explanations, no commentary.\n\n\
+             {}",
+            LANGUAGE_REFERENCE,
+        )
+    }
 }
 
-fn build_fix_system_prompt() -> String {
-    format!(
+fn build_fix_system_prompt(model: Option<&str>) -> String {
+    if is_finetuned_model(model) {
         "You are a Naze language expert. Fix the compiler errors in the given code.\n\
-         Output ONLY the corrected .naze code. No markdown fences, no explanations.\n\n\
-         {}",
-        LANGUAGE_REFERENCE,
-    )
+         Output ONLY the corrected .naze code. No markdown fences, no explanations."
+            .to_string()
+    } else {
+        format!(
+            "You are a Naze language expert. Fix the compiler errors in the given code.\n\
+             Output ONLY the corrected .naze code. No markdown fences, no explanations.\n\n\
+             {}",
+            LANGUAGE_REFERENCE,
+        )
+    }
 }
 
 fn build_describe_system_prompt() -> String {
@@ -439,16 +190,27 @@ async fn do_generate(
     max_retries: u32,
     output: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let system = build_system_prompt();
+    let system = build_system_prompt(model);
+    // For retries, always use the full reference — error correction is
+    // out-of-distribution for fine-tuned models that only learned "instruction → code"
+    let retry_system = build_fix_system_prompt(None);
     let mut user_prompt = prompt.to_string();
     let mut last_code = String::new();
+    let mut is_retry = false;
 
     for attempt in 1..=max_retries + 1 {
-        eprintln!("  generating... (attempt {}/{})", attempt, max_retries + 1);
+        eprintln!(
+            "\n--- attempt {}/{} --- generating...",
+            attempt,
+            max_retries + 1
+        );
+        let t0 = std::time::Instant::now();
+
+        let current_system = if is_retry { &retry_system } else { &system };
 
         let req = prompt_handlers::PromptRequest {
             provider: provider.to_string(),
-            system: system.clone(),
+            system: current_system.clone(),
             user: user_prompt.clone(),
             model: model.unwrap_or("").to_string(),
             max_tokens: 4000,
@@ -459,19 +221,23 @@ async fn do_generate(
             .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
 
+        let elapsed = t0.elapsed();
+        eprintln!("  completed in {:.1}s", elapsed.as_secs_f64());
+
         let code = extract_code(&resp.text);
         last_code = code.clone();
 
         let errors = validate_source(&code);
         if !has_errors(&errors) {
-            eprintln!("  valid!");
+            eprintln!("  result: valid!");
             output_code(&code, output)?;
             return Ok(());
         }
 
         if attempt <= max_retries {
             let error_text = format_errors(&errors);
-            eprintln!("  {} error(s), retrying...", errors.len());
+            eprintln!("  result: {} error(s), retrying...", errors.len());
+            is_retry = true;
             user_prompt = format!(
                 "The following .naze code has compiler errors. Fix them and output ONLY the corrected code.\n\n\
                  ## Code\n{}\n\n## Errors\n{}",
@@ -520,7 +286,7 @@ async fn do_fix(
         return Ok(());
     }
 
-    let system = build_fix_system_prompt();
+    let system = build_fix_system_prompt(model);
     let mut current_code = source;
 
     for attempt in 1..=max_retries {
@@ -533,11 +299,12 @@ async fn do_fix(
 
         let error_text = format_errors(&current_errors);
         eprintln!(
-            "  fixing... (attempt {}/{}) — {} error(s)",
+            "\n--- attempt {}/{} --- fixing {} error(s)...",
             attempt,
             max_retries,
             current_errors.len()
         );
+        let t0 = std::time::Instant::now();
 
         let user_prompt = format!(
             "Fix the compiler errors in this code.\n\n## Code\n{}\n\n## Errors\n{}",
@@ -556,6 +323,9 @@ async fn do_fix(
         let resp = prompt_handlers::execute_prompt(&req)
             .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+
+        let elapsed = t0.elapsed();
+        eprintln!("  completed in {:.1}s", elapsed.as_secs_f64());
 
         current_code = extract_code(&resp.text);
     }
@@ -780,46 +550,67 @@ mod tests {
     #[test]
     fn test_format_errors() {
         let errors = vec![
-            CompileError {
-                message: "unknown element 'colum'".into(),
-                file: "test.naze".into(),
-                line: 2,
-                column: 3,
-                severity: Severity::Error,
-            },
-            CompileError {
-                message: "something".into(),
-                file: "test.naze".into(),
-                line: 0,
-                column: 0,
-                severity: Severity::Warning,
-            },
+            CompileError::new(
+                "unknown element 'colum'".into(),
+                "test.naze".into(),
+                2,
+                3,
+                Severity::Error,
+            ),
+            CompileError::new(
+                "something".into(),
+                "test.naze".into(),
+                0,
+                0,
+                Severity::Warning,
+            ),
         ];
         let text = format_errors(&errors);
         assert_eq!(text, "Line 2: unknown element 'colum'");
     }
 
     #[test]
-    fn test_all_examples_validate() {
-        // Verify that all embedded few-shot examples compile
-        for (name, code) in [
-            ("counter", EXAMPLE_COUNTER),
-            ("dashboard", EXAMPLE_DASHBOARD),
-            ("data-fetch", EXAMPLE_DATA_FETCH),
-            ("pipeline", EXAMPLE_PIPELINE),
-            ("form", EXAMPLE_FORM),
-            ("routing", EXAMPLE_ROUTING),
-            ("component", EXAMPLE_COMPONENT),
-            ("match", EXAMPLE_MATCH),
-            ("theme", EXAMPLE_THEME),
-            ("animation", EXAMPLE_ANIMATION),
-        ] {
+    fn test_language_reference_examples_validate() {
+        // Extract ```naze code blocks from AGENTS_SLIM.md and verify they compile
+        let mut in_block = false;
+        let mut block = String::new();
+        let mut blocks = Vec::new();
+
+        for line in LANGUAGE_REFERENCE.lines() {
+            if line.starts_with("```naze") {
+                in_block = true;
+                block.clear();
+            } else if line.starts_with("```") && in_block {
+                in_block = false;
+                if !block.trim().is_empty() {
+                    blocks.push(block.clone());
+                }
+            } else if in_block {
+                block.push_str(line);
+                block.push('\n');
+            }
+        }
+
+        // Only validate complete app/component examples (skip fragments)
+        let full_examples: Vec<_> = blocks
+            .iter()
+            .filter(|b| b.contains("app ") || b.contains("component "))
+            .collect();
+
+        assert!(
+            full_examples.len() >= 4,
+            "expected at least 4 complete examples in AGENTS_SLIM.md, found {}",
+            full_examples.len()
+        );
+
+        for (i, code) in full_examples.iter().enumerate() {
             let errors = validate_source(code);
             assert!(
                 !has_errors(&errors),
-                "example '{}' has errors: {:?}",
-                name,
-                errors
+                "AGENTS_SLIM.md example {} has errors: {:?}\n\nCode:\n{}",
+                i + 1,
+                errors,
+                code
             );
         }
     }

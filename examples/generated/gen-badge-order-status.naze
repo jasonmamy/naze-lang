@@ -1,0 +1,25 @@
+-- Order status tracker
+app "Order Status" {
+  state status = "pending"
+
+  column padding: 20px, gap: 16px {
+    heading "Order Status"
+
+    row gap: 8px {
+      rect width: 80px, height: 28px, color: #f59e0b, radius: 12px {
+        text "pending" color: #ffffff, font-size: 12px
+        on click: set status = "pending"
+      }
+      rect width: 80px, height: 28px, color: #2563eb, radius: 12px {
+        text "shipped" color: #ffffff, font-size: 12px
+        on click: set status = "shipped"
+      }
+      rect width: 80px, height: 28px, color: #16a34a, radius: 12px {
+        text "delivered" color: #ffffff, font-size: 12px
+        on click: set status = "delivered"
+      }
+    }
+
+    text "Current: {status}" font-size: 18px, font-weight: bold
+  }
+}

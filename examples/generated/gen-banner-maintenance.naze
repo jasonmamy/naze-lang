@@ -1,0 +1,14 @@
+-- Scheduled maintenance announcement
+app "Maintenance Notice" {
+  column {
+    rect width: 800px, height: 180px, color: #fef2f2, radius: 8px {
+      column padding: 28px, gap: 12px {
+        text "Scheduled Maintenance" color: #991b1b, font-size: 26px, font-weight: bold
+        text "We will be down for upgrades on Sunday 2am-4am EST." color: #dc2626, font-size: 16px
+        rect width: 120px, height: 44px, color: #ef4444, radius: 8px {
+          text "Learn More" color: #ffffff
+        }
+      }
+    }
+  }
+}

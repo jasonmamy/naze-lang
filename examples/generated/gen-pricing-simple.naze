@@ -1,0 +1,35 @@
+-- Simple two-tier pricing
+app "Simple Pricing" {
+  state plan = "free"
+
+  column padding: 24px, gap: 16px {
+    heading "Pricing" color: #0f172a
+
+    row gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Free" font-weight: bold, font-size: 20px
+          text "$0" color: #16a34a, font-size: 32px
+          text "3 projects" font-size: 14px
+          text "Basic support" font-size: 14px
+          rect width: 100px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Current" color: #475569
+            on click: set plan = "free"
+          }
+        }
+      }
+      rect padding: 20px, color: #eff6ff, radius: 12px {
+        column gap: 8px {
+          text "Pro" font-weight: bold, font-size: 20px
+          text "$19/mo" color: #2563eb, font-size: 32px
+          text "Unlimited projects" font-size: 14px
+          text "Priority support" font-size: 14px
+          rect width: 100px, height: 36px, color: #2563eb, radius: 6px {
+            text "Upgrade" color: #ffffff
+            on click: set plan = "pro"
+          }
+        }
+      }
+    }
+  }
+}

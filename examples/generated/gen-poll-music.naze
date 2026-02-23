@@ -1,0 +1,40 @@
+-- Music genre popularity survey
+app "Music Genre Poll" {
+  state opt-a = 15
+  state opt-b = 12
+  state opt-c = 9
+  computed total-votes = opt-a + opt-b + opt-c
+
+  column padding: 24px, gap: 16px {
+    heading "Music Genre Poll" color: #8b5cf6
+    text "Favorite genre?" font-size: 18px
+    text "Total votes: {total-votes}" color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #8b5cf6, radius: 8px {
+        text "Rock ({opt-a})" color: #ffffff
+        on click: set opt-a = opt-a + 1
+      }
+      rect width: 120px, height: 40px, color: #64748b, radius: 8px {
+        text "Jazz ({opt-b})" color: #ffffff
+        on click: set opt-b = opt-b + 1
+      }
+      rect width: 120px, height: 40px, color: #94a3b8, radius: 8px {
+        text "Electronic ({opt-c})" color: #ffffff
+        on click: set opt-c = opt-c + 1
+      }
+    }
+
+    column gap: 4px {
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Rock" font-size: 12px
+      }
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Jazz" font-size: 12px
+      }
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Electronic" font-size: 12px
+      }
+    }
+  }
+}

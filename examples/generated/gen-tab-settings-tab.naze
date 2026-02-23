@@ -1,0 +1,39 @@
+-- Settings tabs with general, security, and notifications
+app "App Settings" {
+  state tab = "general"
+
+  column padding: 20px, gap: 16px {
+    heading "App Settings"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #64748b, radius: 0px {
+        text "General" color: #ffffff
+        on click: set tab = "general"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Security" color: #334155
+        on click: set tab = "security"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Alerts" color: #334155
+        on click: set tab = "alerts"
+      }
+    }
+
+    match tab {
+      "general": column padding: 16px, gap: 8px {
+        text "General Settings" font-weight: bold
+        text "Language, timezone, and display preferences." color: #64748b
+      }
+      "security": column padding: 16px, gap: 8px {
+        text "Security Settings" font-weight: bold
+        text "Two-factor authentication and sessions." color: #64748b
+      }
+      "alerts": column padding: 16px, gap: 8px {
+        text "Notification Preferences" font-weight: bold
+        text "Email, push, and in-app alert settings." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+-- Event filter panel with type and date range
+app "Event Filters" {
+  state month = 0
+  state event-type = "all"
+  state results-count = 65
+
+  column padding: 20px, gap: 16px {
+    heading "Event Filters"
+    text "{results-count} results" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "Filters" font-weight: bold, font-size: 16px
+
+      text "Event Type" font-weight: bold, color: #374151, font-size: 14px
+      select bind: event-type {
+      option "All Events" value: "all"
+      option "Conference" value: "conference"
+      option "Workshop" value: "workshop"
+      option "Meetup" value: "meetup"
+    }
+
+      text "Month" font-weight: bold, color: #374151, font-size: 14px
+      input bind: month, placeholder: "Month (1-12)"
+    }
+
+    rect width: 120px, height: 36px, color: #ca8a04, radius: 4px {
+      text "Apply Filters" color: #ffffff
+      on click: set results-count = 15
+    }
+
+    rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+      text "Clear All"
+      on click: set month = 0
+    }
+  }
+}

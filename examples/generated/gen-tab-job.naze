@@ -1,0 +1,39 @@
+-- Job listing tabs with details, company, and apply
+app "Job Listing" {
+  state tab = "details"
+
+  column padding: 20px, gap: 16px {
+    heading "Job Listing"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #0891b2, radius: 0px {
+        text "Details" color: #ffffff
+        on click: set tab = "details"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Company" color: #334155
+        on click: set tab = "company"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Apply" color: #334155
+        on click: set tab = "apply"
+      }
+    }
+
+    match tab {
+      "details": column padding: 16px, gap: 8px {
+        text "Senior Developer" font-weight: bold
+        text "Remote, full-time, competitive salary." color: #64748b
+      }
+      "company": column padding: 16px, gap: 8px {
+        text "About the Company" font-weight: bold
+        text "A growing startup with 50 employees." color: #64748b
+      }
+      "apply": column padding: 16px, gap: 8px {
+        text "Application Form" font-weight: bold
+        text "Submit your resume and cover letter." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

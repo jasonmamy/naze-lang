@@ -1,0 +1,20 @@
+-- Inventory dashboard
+app "Inventory Manager" {
+  state items = [{name: "Blue Widget", sku: "BW-001", stock: "150"}, {name: "Red Gadget", sku: "RG-042", stock: "3"}, {name: "Green Tool", sku: "GT-017", stock: "45"}]
+  computed total-skus = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Inventory Manager"
+    text "{total-skus} SKUs tracked" color: #64748b
+
+    each item in items | sort-by name {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 12px {
+        column gap: 2px {
+          text "{item.name}" font-weight: bold
+          text "SKU: {item.sku}" color: #94a3b8, font-size: 12px
+        }
+        text "Stock: {item.stock}" color: #2563eb
+      }
+    }
+  }
+}

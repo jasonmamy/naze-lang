@@ -1,0 +1,15 @@
+-- Testimonial banner
+app "Testimonial" {
+  column {
+    rect width: 800px, height: 260px, color: #f8fafc {
+      column padding: 40px, gap: 16px {
+        text "What our customers say" color: #64748b, font-size: 14px
+        text "This product changed how our team works. We shipped 3x faster in the first month." color: #0f172a, font-size: 20px
+        row gap: 8px {
+          text "- Sarah Chen" font-weight: bold, color: #1e293b
+          text "VP of Engineering, Acme Corp" color: #64748b, font-size: 14px
+        }
+      }
+    }
+  }
+}

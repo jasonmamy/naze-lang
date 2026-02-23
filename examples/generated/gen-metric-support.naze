@@ -1,0 +1,30 @@
+-- Customer support performance dashboard
+app "Support Metrics" {
+  state open-tickets = 23
+  state resolved-today = 18
+  state avg-response = 4
+  state csat = 94
+
+  column padding: 24px, gap: 16px {
+    heading "Support Metrics" color: #0f172a
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #fef3c7, radius: 10px {
+        text "Open Tickets" color: #64748b, font-size: 13px
+        text "{open-tickets}" font-size: 28px, color: #d97706
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 10px {
+        text "Resolved Today" color: #64748b, font-size: 13px
+        text "{resolved-today}" font-size: 28px, color: #16a34a
+      }
+      rect padding: 16px, color: #eff6ff, radius: 10px {
+        text "Avg Response (h)" color: #64748b, font-size: 13px
+        text "{avg-response}" font-size: 28px, color: #2563eb
+      }
+      rect padding: 16px, color: #fce7f3, radius: 10px {
+        text "CSAT Score %" color: #64748b, font-size: 13px
+        text "{csat}" font-size: 28px, color: #db2777
+      }
+    }
+  }
+}

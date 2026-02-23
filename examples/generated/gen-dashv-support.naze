@@ -1,0 +1,31 @@
+-- Customer support dashboard with ticket metrics
+app "Support Dashboard" {
+  state open-tickets = 42
+  state resolved-today = 28
+  state avg-response = 15
+  computed resolution-rate = resolved-today * 100 / (open-tickets + resolved-today)
+
+  column padding: 24px, gap: 20px {
+    heading "Support Dashboard"
+    text "Support queue status" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #fef2f2, radius: 8px {
+        text "Open Tickets" color: #64748b, font-size: 12px
+        text "{open-tickets}" font-size: 28px, color: #dc2626
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Resolved Today" color: #64748b, font-size: 12px
+        text "{resolved-today}" font-size: 28px, color: #16a34a
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Avg Response (min)" color: #64748b, font-size: 12px
+        text "{avg-response}" font-size: 28px, color: #2563eb
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Resolution Rate %: {resolution-rate}" font-size: 18px, color: #dc2626
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # Phase 1: Proof of Life — Complete
 
+> **Note:** This document describes Phase 1 (completed). Stats below (84 tests, 69KB WASM, 7 crates) are historical — they reflect Phase 1 at completion. For current project status, see [ROADMAP.md](ROADMAP.md).
+
 Phase 1 established the end-to-end pipeline: `.naze` source → compile → WASM + HTML → colored rectangles and text in the browser.
 
 ## What Was Built

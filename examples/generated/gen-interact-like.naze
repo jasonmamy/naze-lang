@@ -1,0 +1,26 @@
+-- Like counter with toggle
+app "Like Button" {
+  state likes = 0
+  state status = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Like Button"
+    text "{likes}" font-size: 24px, color: #ef4444
+    text "{status}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #ef4444, radius: 8px {
+        text "Like" color: #ffffff
+        on click: set likes = likes + 1
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Dislike" color: #ffffff
+        on click: set status = "disliked"
+      }
+      rect width: 80px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set likes = 0
+      }
+    }
+  }
+}

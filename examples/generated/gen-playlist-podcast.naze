@@ -1,0 +1,25 @@
+-- Podcast playlist
+app "Podcast Episodes" {
+  state episodes = [{title: "Episode 42: The Future", desc: "We discuss what comes next", duration: "45 min"}, {title: "Episode 41: Deep Dive", desc: "Technical deep dive into systems", duration: "38 min"}, {title: "Episode 40: Interview", desc: "Guest interview with industry leaders", duration: "52 min"}]
+  computed ep-count = episodes | count
+
+  column padding: 20px, gap: 16px {
+    heading "Podcast Episodes"
+    text "{ep-count} episodes" color: #64748b
+
+    each ep in episodes {
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        row gap: 8px {
+          rect width: 48px, height: 48px, color: #8b5cf6, radius: 8px {
+            text "P" color: #ffffff, font-size: 20px
+          }
+          column gap: 4px {
+            text "{ep.title}" font-weight: bold
+            text "{ep.desc}" color: #64748b, font-size: 14px
+            text "{ep.duration}" color: #8b5cf6, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

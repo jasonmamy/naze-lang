@@ -1,0 +1,17 @@
+-- Contact list sorted by name
+app "Contacts" {
+  state items = [{name: "John", phone: "555-0100"}, {name: "Jane", phone: "555-0101"}, {name: "Jim", phone: "555-0102"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Contacts"
+    text "{total} contacts" color: #64748b
+
+    each contact in items | sort-by name {
+      row padding: 8px, color: #ecfdf5, radius: 4px, gap: 8px {
+        text "{contact.name}" font-weight: bold
+        text "{contact.phone}" color: #64748b
+      }
+    }
+  }
+}

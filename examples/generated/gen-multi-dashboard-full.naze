@@ -1,0 +1,51 @@
+-- Full dashboard
+app "Analytics" {
+  state search = ""
+  state view = "overview"
+  state visitors = 5200
+  state conversions = 340
+  computed conv-rate = conversions * 100 / visitors
+  state pages = [{url: "/home", views: 2400}, {url: "/about", views: 800}, {url: "/pricing", views: 1200}]
+  computed page-count = pages | count
+
+  column padding: 20px, gap: 16px {
+    heading "Analytics Dashboard"
+    input bind: search, placeholder: "Search pages..."
+
+    row gap: 8px {
+      rect width: 100px, height: 32px, color: #2563eb, radius: 4px {
+        text "Overview" color: #ffffff
+        on click: set view = "overview"
+      }
+      rect width: 80px, height: 32px, color: #8b5cf6, radius: 4px {
+        text "Pages" color: #ffffff
+        on click: set view = "pages"
+      }
+    }
+
+    match view {
+      "overview": column gap: 12px {
+        grid columns: 2, gap: 12px {
+          rect padding: 12px, color: #eff6ff, radius: 8px {
+            text "Visitors" color: #64748b, font-size: 12px
+            text "{visitors}" font-size: 24px, color: #2563eb
+          }
+          rect padding: 12px, color: #f0fdf4, radius: 8px {
+            text "Conversions" color: #64748b, font-size: 12px
+            text "{conversions}" font-size: 24px, color: #16a34a
+          }
+        }
+        text "Rate: {conv-rate}%" color: #2563eb
+      }
+      "pages": column gap: 8px {
+        each page in pages | sort-by views {
+          row padding: 8px, color: #f8fafc, radius: 4px, gap: 8px {
+            text "{page.url}" font-weight: bold
+            text "{page.views} views" color: #2563eb
+          }
+        }
+      }
+      _: text "Unknown"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+-- Flashcard deck with terms and definitions
+app "Study Flashcards" {
+  state items = [{term: "Algorithm", def: "Step-by-step procedure"}, {term: "Variable", def: "Named storage location"}, {term: "Function", def: "Reusable code block"}]
+  state current = 0
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Study Flashcards"
+    text "{current} of {total} reviewed" color: #f59e0b
+
+    each card in items {
+      rect padding: 12px, color: #fef3c7, radius: 8px {
+        column gap: 4px {
+          text "{card.term}" font-weight: bold
+          text "{card.def}" color: #64748b
+        }
+      }
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #f59e0b, radius: 8px {
+        text "Flip" color: #ffffff
+        on click: set current = current + 1
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set current = 0
+      }
+    }
+  }
+}

@@ -240,23 +240,50 @@ nazec build
 nazec check
 ```
 
-If there are errors, you'll see diagnostics with source snippets:
+If there are errors, you'll see diagnostics with error codes and fix suggestions:
 
 ```
-error: type mismatch for prop 'width' on 'rect': expected number, got text
+error[E002]: type mismatch for prop 'width' on 'rect': expected number, got text
   --> app.naze:5:5
     |
   5 |     rect width: "oops", color: #ff0000
     |     ^
+  = fix: Check the expected type and use the correct literal form
 ```
 
-Use `--format json` for machine-readable output:
+Use `--format json` for machine-readable output (includes `error_code` and `suggested_fix` fields):
 
 ```bash
 nazec check --format json
+# {"message":"type mismatch...","file":"app.naze","line":5,"column":5,
+#  "severity":"Error","error_code":"E002","suggested_fix":"Check the expected type..."}
 ```
 
-### 7. Add a reusable component
+### 7. Export project context for AI agents
+
+```bash
+nazec context
+```
+
+This outputs a JSON summary of the project's structure — components, server functions, state variables, data sources, routes, guards, models, and prompts — without requiring AI agents to parse `.naze` source files.
+
+```json
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "entry": "app.naze",
+  "components": [{ "name": "card", "import_path": "components/card", "params": [...] }],
+  "server_functions": [{ "name": "get_users", "params": [...] }],
+  "state": [{ "name": "count", "shared": false }],
+  "pages": [{ "path": "/dashboard", "params": [], "guard": "auth" }],
+  "models": [{ "name": "User", "fields": [...] }],
+  "prompts": [{ "name": "summarize", "provider": "openai" }]
+}
+```
+
+AI tools and IDE extensions can use this to understand a project's API surface without reading individual files.
+
+### 8. Add a reusable component
 
 Create `components/pill.naze`:
 
@@ -285,7 +312,7 @@ app "Pills" {
 
 Build and refresh — the component is inlined at compile time with prop values substituted. The three `pill` invocations become three `rect` elements with the colors and sizes filled in.
 
-### 8. Browse all examples
+### 9. Browse all examples
 
 The repository includes 18 example `.naze` files demonstrating various features. You can browse them interactively with the gallery command:
 
@@ -372,6 +399,7 @@ nazec new <name>        Create a new project
 nazec build             Compile to dist/ (WASM + HTML)
 nazec run               Preview in a native desktop window (Linux)
 nazec check             Type-check without building
+nazec context           Export project context as JSON for AI agents
 nazec parse <file>      Dump AST as JSON
 nazec gallery           Build and serve interactive example gallery
 nazec gallery --build   Build gallery only (no server)
@@ -412,6 +440,24 @@ cd playground && python3 -m http.server 4000
 ```
 
 `make playground` builds the compiler to WASM (`crates/naze-playground/`), copies it alongside the pre-built runtime WASM, and produces a self-contained `playground/` directory you can serve from any static file server.
+
+## AI Model Training
+
+Naze includes a pipeline for fine-tuning a local LLM to generate `.naze` code. The trained model runs via Ollama and integrates directly with the `nazec ai generate` command.
+
+```bash
+# Prerequisites: Python 3.10+, NVIDIA GPU (16GB+ VRAM), Ollama
+python3 -m venv ai/.venv && source ai/.venv/bin/activate
+pip install -r ai/requirements.txt
+
+# Run the full pipeline (export data → prepare → train → register with Ollama)
+bash ai/run_pipeline.sh
+
+# Use the trained model
+nazec ai generate --provider ollama --model naze-coder "Create a todo app"
+```
+
+See [ai/README.md](ai/README.md) for full setup instructions, VRAM requirements, and troubleshooting.
 
 ## Try the Toolkit
 

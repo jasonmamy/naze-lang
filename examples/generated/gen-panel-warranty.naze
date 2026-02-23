@@ -1,0 +1,27 @@
+-- Warranty information toggle
+app "Warranty Panel" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "Warranty Panel"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "Warranty Coverage" font-weight: bold
+          rect width: 70px, height: 28px, color: #6366f1, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "2-year limited warranty included." color: #334155
+          text "Covers manufacturing defects only." color: #64748b
+          text "Contact support for warranty claims." color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+-- Minimal input echo
+app "Echo" {
+  state msg = ""
+  column padding: 20px, gap: 12px {
+    input bind: msg, placeholder: "Type here..."
+    text "You typed: {msg}"
+  }
+}

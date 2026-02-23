@@ -1,0 +1,24 @@
+-- Profit margin calculator
+app "Profit" {
+  state revenue = 10000
+  state costs = 7000
+  computed profit = revenue - costs
+
+  column padding: 20px, gap: 16px {
+    heading "Profit"
+    text "Revenue: {revenue}" font-size: 18px
+    text "Costs: {costs}" color: #64748b
+    text "Profit: {profit}" font-size: 24px, color: #22c55e
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #22c55e, radius: 4px {
+        text "+" color: #ffffff
+        on click: set revenue = revenue + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set revenue = 10000
+      }
+    }
+  }
+}

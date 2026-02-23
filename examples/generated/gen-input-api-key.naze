@@ -1,0 +1,30 @@
+-- API key configuration
+app "API Key" {
+  state api-key = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "API Key"
+    text "Enter your API key" color: #64748b
+
+    input bind: api-key, placeholder: "sk-..."
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #1e293b, radius: 4px {
+        text "Save Key" color: #ffffff
+        on click: set submitted = true
+      }
+      rect width: 80px, height: 36px, color: #94a3b8, radius: 4px {
+        text "Clear" color: #ffffff
+        on click: set api-key = ""
+        on click: set submitted = false
+      }
+    }
+
+    if submitted {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Key saved: {api-key}" font-weight: bold, color: #1e293b
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+-- Metric rows with trend indicators
+app "KPI Tracker" {
+  state mrr = 42500
+  state churn = 2
+  state nps = 72
+
+  column padding: 24px, gap: 16px {
+    heading "Key Metrics"
+
+    column gap: 8px {
+      row padding: 14px, color: #f0fdf4, radius: 8px, gap: 16px {
+        column gap: 2px {
+          text "Monthly Revenue" color: #64748b, font-size: 13px
+          text "${mrr}" font-size: 24px, font-weight: bold, color: #166534
+        }
+        text "+8% vs last month" color: #16a34a, font-size: 12px
+      }
+      row padding: 14px, color: #fef2f2, radius: 8px, gap: 16px {
+        column gap: 2px {
+          text "Churn Rate" color: #64748b, font-size: 13px
+          text "{churn}%" font-size: 24px, font-weight: bold, color: #991b1b
+        }
+        text "-0.5% vs last month" color: #dc2626, font-size: 12px
+      }
+      row padding: 14px, color: #eff6ff, radius: 8px, gap: 16px {
+        column gap: 2px {
+          text "NPS Score" color: #64748b, font-size: 13px
+          text "{nps}" font-size: 24px, font-weight: bold, color: #1e40af
+        }
+        text "+3 vs last quarter" color: #2563eb, font-size: 12px
+      }
+    }
+  }
+}

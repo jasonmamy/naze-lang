@@ -1,0 +1,58 @@
+-- API access tier pricing
+app "API Pricing" {
+  state selected = "none"
+
+  column padding: 24px, gap: 16px {
+    heading "API Pricing" color: #0f172a
+    text "Scale as you grow" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Free" font-weight: bold, font-size: 18px
+          text "$0/mo" color: #f97316, font-size: 28px
+          text "Getting started" color: #64748b, font-size: 14px
+          separator
+          text "1K calls/day" font-size: 14px
+          text "Community support" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Free"
+          }
+        }
+      }
+      rect padding: 20px, color: #fff7ed, radius: 12px {
+        column gap: 8px {
+          text "Growth" font-weight: bold, font-size: 18px
+          text "$49/mo" color: #f97316, font-size: 28px
+          text "Production use" color: #64748b, font-size: 14px
+          separator
+          text "100K calls/day" font-size: 14px
+          text "Email support" font-size: 14px
+          rect width: 120px, height: 36px, color: #f97316, radius: 6px {
+            text "Choose" color: #ffffff
+            on click: set selected = "Growth"
+          }
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Scale" font-weight: bold, font-size: 18px
+          text "$199/mo" color: #f97316, font-size: 28px
+          text "High volume" color: #64748b, font-size: 14px
+          separator
+          text "Unlimited calls" font-size: 14px
+          text "Dedicated support" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Scale"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #f97316, font-weight: bold
+    }
+  }
+}

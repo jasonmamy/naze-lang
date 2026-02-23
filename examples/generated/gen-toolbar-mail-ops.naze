@@ -1,0 +1,44 @@
+-- Email action toolbar with message operations
+app "Email Toolbar" {
+  state active-tool = "compose"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #ffffff {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #2563eb, radius: 6px {
+          text "+" color: #ffffff, font-size: 14px
+          on click: set active-tool = "compose"
+        }
+        rect width: 36px, height: 36px, color: #16a34a, radius: 6px {
+          text "R" color: #ffffff, font-size: 14px
+          on click: set active-tool = "reply"
+        }
+        rect width: 36px, height: 36px, color: #0891b2, radius: 6px {
+          text "F" color: #ffffff, font-size: 14px
+          on click: set active-tool = "forward"
+        }
+        rect width: 36px, height: 36px, color: #f59e0b, radius: 6px {
+          text "*" color: #ffffff, font-size: 14px
+          on click: set active-tool = "star"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #ef4444, radius: 6px {
+          text "X" color: #ffffff, font-size: 14px
+          on click: set active-tool = "trash"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "compose": text "Compose a new email." color: #64748b
+        "reply": text "Reply to the current email." color: #64748b
+        "forward": text "Forward this email." color: #64748b
+        "star": text "Star this email." color: #64748b
+        "trash": text "Move email to trash." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

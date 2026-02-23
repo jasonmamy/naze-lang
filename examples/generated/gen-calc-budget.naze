@@ -1,0 +1,24 @@
+-- Budget tracker with balance
+app "Budget" {
+  state income = 5000
+  state expenses = 3200
+  computed balance = income - expenses
+
+  column padding: 20px, gap: 16px {
+    heading "Budget"
+    text "Income: {income}" font-size: 18px
+    text "Expenses: {expenses}" color: #64748b
+    text "Balance: {balance}" font-size: 24px, color: #2563eb
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "+" color: #ffffff
+        on click: set income = income + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set income = 5000
+      }
+    }
+  }
+}

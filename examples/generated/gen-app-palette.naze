@@ -1,0 +1,36 @@
+-- Color palette
+app "Palette" {
+  state selected = "blue"
+
+  column padding: 20px, gap: 16px {
+    heading "Color Palette"
+    text "Selected: {selected}" color: #64748b
+
+    grid columns: 4, gap: 8px {
+      rect width: 60px, height: 60px, color: #ef4444, radius: 8px {
+        on click: set selected = "red"
+      }
+      rect width: 60px, height: 60px, color: #f59e0b, radius: 8px {
+        on click: set selected = "yellow"
+      }
+      rect width: 60px, height: 60px, color: #22c55e, radius: 8px {
+        on click: set selected = "green"
+      }
+      rect width: 60px, height: 60px, color: #3b82f6, radius: 8px {
+        on click: set selected = "blue"
+      }
+      rect width: 60px, height: 60px, color: #8b5cf6, radius: 8px {
+        on click: set selected = "purple"
+      }
+      rect width: 60px, height: 60px, color: #ec4899, radius: 8px {
+        on click: set selected = "pink"
+      }
+      rect width: 60px, height: 60px, color: #14b8a6, radius: 8px {
+        on click: set selected = "teal"
+      }
+      rect width: 60px, height: 60px, color: #f97316, radius: 8px {
+        on click: set selected = "orange"
+      }
+    }
+  }
+}

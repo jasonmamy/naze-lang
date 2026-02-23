@@ -1,0 +1,31 @@
+-- Social media analytics with engagement metrics
+app "Social Insights" {
+  state impressions = 52000
+  state clicks = 3800
+  state new-followers = 215
+  computed ctr = clicks * 100 / impressions
+
+  column padding: 24px, gap: 20px {
+    heading "Social Insights"
+    text "This week's performance" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #fdf2f8, radius: 8px {
+        text "Impressions" color: #64748b, font-size: 12px
+        text "{impressions}" font-size: 28px, color: #be185d
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Link Clicks" color: #64748b, font-size: 12px
+        text "{clicks}" font-size: 28px, color: #2563eb
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "New Followers" color: #64748b, font-size: 12px
+        text "{new-followers}" font-size: 28px, color: #16a34a
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Click Rate %: {ctr}" font-size: 18px, color: #be185d
+    }
+  }
+}

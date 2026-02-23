@@ -1,0 +1,26 @@
+-- Brightness slider control
+app "Brightness" {
+  state brightness = 50
+  state auto = false
+
+  column padding: 20px, gap: 16px {
+    heading "Brightness"
+    text "{brightness}" font-size: 24px, color: #f97316
+    text "{auto}" color: #64748b
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #f97316, radius: 8px {
+        text "Brighter" color: #ffffff
+        on click: set brightness = brightness + 10
+      }
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Auto" color: #ffffff
+        on click: set auto = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set brightness = 50
+      }
+    }
+  }
+}

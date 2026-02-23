@@ -1,0 +1,6 @@
+-- A single colored rectangle with rounded corners
+app "Box" {
+  column padding: 20px {
+    rect width: 200px, height: 200px, color: #6366f1, radius: 16px
+  }
+}

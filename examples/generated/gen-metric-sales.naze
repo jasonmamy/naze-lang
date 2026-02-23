@@ -1,0 +1,30 @@
+-- Sales KPI dashboard with four metrics
+app "Sales Dashboard" {
+  state deals-closed = 47
+  state pipeline = 128
+  state avg-deal = 8500
+  state win-rate = 36
+
+  column padding: 24px, gap: 16px {
+    heading "Sales Dashboard" color: #0f172a
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #eff6ff, radius: 10px {
+        text "Deals Closed" color: #64748b, font-size: 13px
+        text "{deals-closed}" font-size: 28px, color: #1e40af
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 10px {
+        text "In Pipeline" color: #64748b, font-size: 13px
+        text "{pipeline}" font-size: 28px, color: #166534
+      }
+      rect padding: 16px, color: #fef3c7, radius: 10px {
+        text "Avg Deal Size" color: #64748b, font-size: 13px
+        text "{avg-deal}" font-size: 28px, color: #92400e
+      }
+      rect padding: 16px, color: #fce7f3, radius: 10px {
+        text "Win Rate %" color: #64748b, font-size: 13px
+        text "{win-rate}" font-size: 28px, color: #9d174d
+      }
+    }
+  }
+}

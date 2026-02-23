@@ -1,0 +1,27 @@
+-- Subscription plan chooser
+app "Plan Selector" {
+  state choice = "basic"
+
+  column padding: 20px, gap: 16px {
+    heading "Plan Selector"
+
+    select bind: choice {
+      option "Basic" value: "basic"
+      option "Pro" value: "pro"
+      option "Enterprise" value: "enterprise"
+    }
+
+    match choice {
+      "basic": rect padding: 16px, color: #f8fafc, radius: 8px {
+        text "Basic: 5 GB storage, email support" color: #64748b
+      }
+      "pro": rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Pro: 50 GB storage, priority support" color: #2563eb
+      }
+      "enterprise": rect padding: 16px, color: #faf5ff, radius: 8px {
+        text "Enterprise: unlimited, dedicated support" color: #7c3aed
+      }
+      _: text "Select an option" color: #94a3b8
+    }
+  }
+}

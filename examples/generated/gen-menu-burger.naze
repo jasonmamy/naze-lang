@@ -1,0 +1,40 @@
+-- Burger restaurant menu
+app "Burger Joint" {
+  state category = "Burgers"
+  state items = [{name: "Classic Smash", desc: "Double patty, cheese, pickles", price: "$12"}, {name: "Loaded Fries", desc: "Cheese, bacon, jalapenos", price: "$8"}, {name: "Vanilla Shake", desc: "Hand-spun ice cream", price: "$6"}]
+  computed total-items = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Burger Joint" color: #c2410c
+
+    row gap: 8px {
+      rect padding: 8px, color: #c2410c, radius: 4px {
+        text "Burgers" color: #ffffff, font-size: 13px
+        on click: set category = "Burgers"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Sides" font-size: 13px
+        on click: set category = "Sides"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Shakes" font-size: 13px
+        on click: set category = "Shakes"
+      }
+    }
+
+    text "{total-items} items on the menu" color: #94a3b8, font-size: 12px
+
+    each item in items {
+      rect padding: 12px, color: #fff7ed, radius: 8px {
+        row gap: 8px {
+          column gap: 2px {
+            text "{item.name}" font-weight: bold
+            text "{item.desc}" color: #64748b, font-size: 13px
+          }
+          spacer
+          text "{item.price}" font-weight: bold, color: #c2410c
+        }
+      }
+    }
+  }
+}

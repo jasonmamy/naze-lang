@@ -1,0 +1,55 @@
+-- Project creation wizard with name and settings
+app "New Project" {
+  state step = 1
+  state proj-name = ""
+  state proj-desc = ""
+  state visibility = ""
+
+  column padding: 24px, gap: 16px {
+    heading "New Project"
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "Project Name" font-weight: bold, font-size: 18px
+        text "Choose a name for your project" color: #64748b
+        input bind: proj-name, placeholder: "my-awesome-project"
+        rect width: 100px, height: 40px, color: #6366f1, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Description" font-weight: bold, font-size: 18px
+        text "Describe your project" color: #64748b
+        input bind: proj-desc, placeholder: "A brief description"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 1
+          }
+          rect width: 100px, height: 40px, color: #6366f1, radius: 8px {
+            text "Next" color: #ffffff
+            on click: set step = 3
+          }
+        }
+      }
+      3: column gap: 12px {
+        text "Visibility" font-weight: bold, font-size: 18px
+        text "Who can see this project?" color: #64748b
+        input bind: visibility, placeholder: "public or private"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 2
+          }
+          rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+            text "Create" color: #ffffff
+            on click: set step = 1
+          }
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

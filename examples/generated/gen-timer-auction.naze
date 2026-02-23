@@ -1,0 +1,25 @@
+-- Auction countdown timer
+app "Auction" {
+  state time-left = 120
+  state active = false
+
+  timer tick: every 1s {
+    set time-left = time-left - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Auction"
+    text "{time-left} seconds" font-size: 48px, color: #a855f7
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Start" color: #ffffff
+        on click: set active = true
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set time-left = 120
+      }
+    }
+  }
+}

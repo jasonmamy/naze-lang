@@ -1,0 +1,40 @@
+-- Blog feed with data and pages
+app "Blog" {
+  row padding: 16px, gap: 16px, color: #1e293b {
+    heading "My Blog" color: #ffffff, font-size: 18px
+    link "Home", to: "/"
+    link "About", to: "/about"
+  }
+
+  page "/" {
+    data posts: fetch "https://jsonplaceholder.typicode.com/posts?_limit=5"
+
+    column padding: 20px, gap: 12px {
+      heading "Latest Posts"
+
+      if posts.loading {
+        text "Loading posts..." color: #64748b
+      }
+
+      if posts.error {
+        text "Error loading posts" color: #dc2626
+      }
+
+      if posts.data {
+        each post in posts.data {
+          column padding: 16px, color: #f8fafc, radius: 8px, gap: 4px {
+            heading "{post.title}" font-size: 18px
+            text "{post.body}" color: #64748b, font-size: 14px
+          }
+        }
+      }
+    }
+  }
+
+  page "/about" {
+    column padding: 20px, gap: 12px {
+      heading "About"
+      text "A simple blog built with Naze."
+    }
+  }
+}

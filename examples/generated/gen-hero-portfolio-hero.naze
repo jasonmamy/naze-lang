@@ -1,0 +1,31 @@
+-- Creative portfolio hero section
+app "Portfolio Hero" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #fafafa {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Hello, I am Alex" font-size: 36px, color: #0f172a
+        text "Designer and developer crafting digital experiences." font-size: 18px, color: #64748b
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #0f172a, radius: 8px {
+            text "View Work" color: #ffffff, font-size: 16px
+            on click: navigate "/portfolio"
+          }
+          rect width: 140px, height: 48px, color: #e2e8f0, radius: 8px {
+            text "Contact Me" color: #0f172a, font-size: 16px
+            on click: navigate "/contact"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #f1f5f9 {
+      row padding: 12px, gap: 24px {
+        text "50+ projects" color: #64748b, font-size: 14px
+        text "8 years exp" color: #64748b, font-size: 14px
+        text "12 awards" color: #64748b, font-size: 14px
+      }
+    }
+  }
+}

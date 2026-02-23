@@ -1,0 +1,35 @@
+-- Data privacy information page
+app "Privacy FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Privacy FAQ" color: #0f172a
+    text "How we protect your data" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "What data do you collect?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "Only email and usage analytics." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Do you sell user data?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "No. We never sell personal data." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "How can I export my data?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "Use the Data Export option in settings." color: #475569
+    }
+  }
+}

@@ -1,0 +1,30 @@
+-- Coupon code entry form
+app "Coupon" {
+  state code = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Coupon"
+    text "Enter your coupon code" color: #64748b
+
+    input bind: code, placeholder: "SAVE20"
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #ef4444, radius: 4px {
+        text "Apply" color: #ffffff
+        on click: set submitted = true
+      }
+      rect width: 80px, height: 36px, color: #94a3b8, radius: 4px {
+        text "Clear" color: #ffffff
+        on click: set code = ""
+        on click: set submitted = false
+      }
+    }
+
+    if submitted {
+      rect padding: 12px, color: #fef2f2, radius: 8px {
+        text "Applied: {code}" font-weight: bold, color: #ef4444
+      }
+    }
+  }
+}

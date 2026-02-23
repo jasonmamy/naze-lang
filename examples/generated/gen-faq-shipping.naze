@@ -1,0 +1,35 @@
+-- Shipping frequently asked questions
+app "Shipping FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Shipping FAQ" color: #2563eb
+    text "Common shipping questions" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "How long does shipping take?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "Standard shipping takes 5-7 business days." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Do you ship internationally?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "Yes, we ship to over 50 countries." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Can I track my order?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "Yes, a tracking number is emailed after dispatch." color: #475569
+    }
+  }
+}

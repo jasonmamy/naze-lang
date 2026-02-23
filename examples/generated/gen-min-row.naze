@@ -1,0 +1,8 @@
+-- Minimal row
+app "Boxes" {
+  row padding: 16px, gap: 8px {
+    rect width: 60px, height: 60px, color: #ef4444, radius: 8px
+    rect width: 60px, height: 60px, color: #22c55e, radius: 8px
+    rect width: 60px, height: 60px, color: #3b82f6, radius: 8px
+  }
+}

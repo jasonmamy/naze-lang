@@ -1,0 +1,41 @@
+-- FAQ
+app "FAQ" {
+  state active = "none"
+
+  column padding: 20px, gap: 8px {
+    heading "Frequently Asked Questions"
+
+    rect padding: 12px, color: #f3f4f6, radius: 4px {
+      text "What is Naze?" font-weight: bold
+      on click: set active = "q1"
+    }
+
+    if active == "q1" {
+      rect padding: 12px, color: #eff6ff {
+        text "Naze is a declarative UI language that compiles to WASM."
+      }
+    }
+
+    rect padding: 12px, color: #f3f4f6, radius: 4px {
+      text "How does it work?" font-weight: bold
+      on click: set active = "q2"
+    }
+
+    if active == "q2" {
+      rect padding: 12px, color: #eff6ff {
+        text "It parses .naze files into an AST, compiles to IR, and renders via Canvas2D."
+      }
+    }
+
+    rect padding: 12px, color: #f3f4f6, radius: 4px {
+      text "Is it open source?" font-weight: bold
+      on click: set active = "q3"
+    }
+
+    if active == "q3" {
+      rect padding: 12px, color: #eff6ff {
+        text "Yes, Naze is fully open source."
+      }
+    }
+  }
+}

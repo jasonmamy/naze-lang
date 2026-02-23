@@ -1,0 +1,27 @@
+-- Privacy policy toggle
+app "Privacy Panel" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "Privacy Panel"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "Privacy Policy" font-weight: bold
+          rect width: 70px, height: 28px, color: #14b8a6, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "We collect minimal data for service operation." color: #334155
+          text "No data is sold to third parties." color: #64748b
+          text "You can request data deletion anytime." color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

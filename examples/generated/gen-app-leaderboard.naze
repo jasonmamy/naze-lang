@@ -1,0 +1,15 @@
+-- Leaderboard
+app "Leaderboard" {
+  state players = [{name: "Alice", score: "2450"}, {name: "Bob", score: "2100"}, {name: "Carol", score: "1950"}, {name: "Dan", score: "1800"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Leaderboard"
+
+    each player in players | sort-by score {
+      row padding: 12px, color: #fef3c7, radius: 4px, gap: 16px {
+        text "{player.name}" font-weight: bold
+        text "{player.score} pts" color: #92400e
+      }
+    }
+  }
+}

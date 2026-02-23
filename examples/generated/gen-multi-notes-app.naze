@@ -1,0 +1,38 @@
+-- Notes with storage
+app "Notes Pro" {
+  storage author: local "notes-author" default: "Me"
+  state view = "list"
+  state notes = [{title: "Meeting Notes", body: "Discuss roadmap", tag: "work"}, {title: "Shopping", body: "Buy milk", tag: "personal"}]
+  computed note-count = notes | count
+
+  column padding: 20px, gap: 16px {
+    heading "Notes by {author}"
+    text "{note-count} notes" color: #64748b
+
+    row gap: 8px {
+      rect width: 60px, height: 32px, color: #2563eb, radius: 4px {
+        text "List" color: #ffffff
+        on click: set view = "list"
+      }
+      rect width: 60px, height: 32px, color: #8b5cf6, radius: 4px {
+        text "Add" color: #ffffff
+        on click: set view = "add"
+      }
+    }
+
+    if view == "add" {
+      text "Add note form" color: #64748b
+    }
+
+    if view == "list" {
+      each note in notes | sort-by tag {
+        row padding: 12px, color: #f8fafc, radius: 8px, gap: 8px {
+          column gap: 2px {
+            text "{note.title}" font-weight: bold
+            text "{note.tag}" color: #8b5cf6, font-size: 10px
+          }
+        }
+      }
+    }
+  }
+}

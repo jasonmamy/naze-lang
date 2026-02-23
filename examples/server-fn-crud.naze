@@ -1,0 +1,50 @@
+-- Server functions for CRUD operations
+model users {
+  id number primary
+  name text
+  email text
+}
+
+server function list-users() {
+  find users order id desc
+}
+
+server function add-user(name: text, email: text) {
+  insert users {name: name, email: email}
+}
+
+server function remove-user(user-id: number) {
+  delete users where id == user-id
+}
+
+app "Users" {
+  state name = ""
+  state email = ""
+  data users: list-users()
+
+  column padding: 20px, gap: 16px {
+    heading "User Management"
+
+    column gap: 8px {
+      input bind: name, placeholder: "Name"
+      input bind: email, type: "email", placeholder: "Email"
+      rect width: 120px, height: 40px, color: #2563eb, radius: 8px {
+        text "Add User" color: #ffffff
+        on click: trigger users
+      }
+    }
+
+    if users.loading {
+      text "Loading..." color: #64748b
+    }
+
+    if users.data {
+      each user in users.data {
+        row padding: 8px, color: #f3f4f6, radius: 4px, gap: 8px {
+          text "{user.name}"
+          text "{user.email}" color: #64748b
+        }
+      }
+    }
+  }
+}

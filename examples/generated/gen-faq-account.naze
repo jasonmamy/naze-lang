@@ -1,0 +1,35 @@
+-- User account management questions
+app "Account FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Account FAQ" color: #8b5cf6
+    text "Account help" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "How do I reset my password?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "Click Forgot Password on the login page." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Can I change my username?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "Yes, go to Settings then Profile." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "How do I delete my account?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "Contact support to request deletion." color: #475569
+    }
+  }
+}

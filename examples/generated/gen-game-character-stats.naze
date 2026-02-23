@@ -1,0 +1,44 @@
+-- Character stats
+app "Character Sheet" {
+  state hp = 100
+  state mp = 50
+  state strength = 12
+  state agility = 8
+  state intel = 15
+  state points = 5
+
+  column padding: 20px, gap: 16px {
+    heading "Character Sheet"
+
+    row gap: 16px {
+      text "HP: {hp}" color: #dc2626, font-size: 18px
+      text "MP: {mp}" color: #2563eb, font-size: 18px
+    }
+
+    text "Points: {points}" color: #f59e0b
+
+    column gap: 8px {
+      row gap: 8px {
+        text "STR: {strength}" font-weight: bold
+        rect width: 40px, height: 28px, color: #dc2626, radius: 4px {
+          text "+" color: #ffffff
+          on click: set strength = strength + 1
+        }
+      }
+      row gap: 8px {
+        text "AGI: {agility}" font-weight: bold
+        rect width: 40px, height: 28px, color: #16a34a, radius: 4px {
+          text "+" color: #ffffff
+          on click: set agility = agility + 1
+        }
+      }
+      row gap: 8px {
+        text "INT: {intel}" font-weight: bold
+        rect width: 40px, height: 28px, color: #2563eb, radius: 4px {
+          text "+" color: #ffffff
+          on click: set intel = intel + 1
+        }
+      }
+    }
+  }
+}

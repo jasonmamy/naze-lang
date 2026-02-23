@@ -1,0 +1,31 @@
+-- Server monitoring dashboard with uptime and latency
+app "Monitoring" {
+  state uptime = 99
+  state latency = 45
+  state cpu-pct = 62
+  computed health-score = uptime - cpu-pct
+
+  column padding: 24px, gap: 20px {
+    heading "Monitoring"
+    text "Real-time metrics" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Uptime %" color: #64748b, font-size: 12px
+        text "{uptime}" font-size: 28px, color: #16a34a
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Latency (ms)" color: #64748b, font-size: 12px
+        text "{latency}" font-size: 28px, color: #2563eb
+      }
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        text "CPU %" color: #64748b, font-size: 12px
+        text "{cpu-pct}" font-size: 28px, color: #ea580c
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Health Score: {health-score}" font-size: 18px, color: #16a34a
+    }
+  }
+}

@@ -1,0 +1,28 @@
+-- Markdown editor
+app "Markdown Editor" {
+  state content = ""
+  state mode = "edit"
+
+  column padding: 20px, gap: 16px {
+    heading "Markdown Editor"
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+        text "Edit" color: #ffffff
+        on click: set mode = "edit"
+      }
+      rect width: 80px, height: 32px, color: #16a34a, radius: 4px {
+        text "Preview" color: #ffffff
+        on click: set mode = "preview"
+      }
+    }
+
+    match mode {
+      "edit": textarea bind: content, placeholder: "Write markdown..."
+      "preview": rect padding: 16px, color: #f8fafc, radius: 8px {
+        text "{content}" font-size: 16px
+      }
+      _: text "Unknown mode"
+    }
+  }
+}

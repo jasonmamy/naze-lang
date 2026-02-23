@@ -1,0 +1,43 @@
+-- Online teacher profile page
+app "Teacher Profile" {
+  state username = "prof_nina"
+  state bio = "Math teacher and tutor"
+  state followers = 1560
+  state following = 340
+  computed ratio = followers / following
+
+  column padding: 24px, gap: 16px {
+    heading "Teacher Profile"
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #6366f1, radius: 40px {
+        text "N" color: #ffffff, font-size: 32px
+      }
+      column gap: 4px {
+        text "{username}" font-size: 22px, font-weight: bold
+        text "{bio}" color: #64748b
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Followers" color: #64748b, font-size: 12px
+        text "{followers}" font-size: 20px, color: #4f46e5
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Following" color: #64748b, font-size: 12px
+        text "{following}" font-size: 20px, color: #4f46e5
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Ratio" color: #64748b, font-size: 12px
+        text "{ratio}" font-size: 20px, color: #4f46e5
+      }
+    }
+
+    separator
+
+    rect padding: 12px, color: #eef2ff, radius: 8px {
+      link "Courses" href: "https://udemy.com"
+    }
+  }
+}

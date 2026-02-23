@@ -1,0 +1,54 @@
+-- Event planning task board
+app "Event Board" {
+  state todo = [{title: "Book venue", tag: "logistics"}, {title: "Invite speakers", tag: "program"}]
+  state doing = [{title: "Print badges", tag: "materials"}]
+  state done = [{title: "Catering order", tag: "food"}]
+  computed todo-count = todo | count
+  computed doing-count = doing | count
+  computed done-count = done | count
+
+  column padding: 24px, gap: 16px {
+    heading "Event Board" color: #be185d
+
+    row gap: 16px {
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #f9a8d4, radius: 5px
+          text "To Do ({todo-count})" font-weight: bold, font-size: 14px
+        }
+        each card in todo {
+          rect padding: 12px, color: #fdf2f8, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #ec4899, radius: 5px
+          text "In Progress ({doing-count})" font-weight: bold, font-size: 14px
+        }
+        each card in doing {
+          rect padding: 12px, color: #fdf2f8, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #34d399, radius: 5px
+          text "Done ({done-count})" font-weight: bold, font-size: 14px
+        }
+        each card in done {
+          rect padding: 12px, color: #fdf2f8, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+    }
+  }
+}

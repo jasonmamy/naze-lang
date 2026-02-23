@@ -1,0 +1,39 @@
+-- Support center tabs with FAQ, tickets, and contact
+app "Support Center" {
+  state tab = "faq"
+
+  column padding: 20px, gap: 16px {
+    heading "Support Center"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #ec4899, radius: 0px {
+        text "FAQ" color: #ffffff
+        on click: set tab = "faq"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Tickets" color: #334155
+        on click: set tab = "tickets"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Contact" color: #334155
+        on click: set tab = "contact"
+      }
+    }
+
+    match tab {
+      "faq": column padding: 16px, gap: 8px {
+        text "Frequently Asked Questions" font-weight: bold
+        text "Browse common questions and answers." color: #64748b
+      }
+      "tickets": column padding: 16px, gap: 8px {
+        text "My Support Tickets" font-weight: bold
+        text "2 open tickets, 5 resolved." color: #64748b
+      }
+      "contact": column padding: 16px, gap: 8px {
+        text "Contact Us" font-weight: bold
+        text "Email support@example.com for help." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+-- Player stats
+app "Player Stats" {
+  state player = "Alex Johnson"
+  state games = 42
+  state goals = 18
+  state assists = 12
+  computed points-per-game = goals + assists
+
+  column padding: 20px, gap: 16px {
+    heading "{player}"
+    text "Season Statistics" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        text "{games}" font-size: 28px, color: #2563eb
+        text "Games" color: #64748b, font-size: 12px
+      }
+      rect padding: 12px, color: #ecfdf5, radius: 8px {
+        text "{goals}" font-size: 28px, color: #16a34a
+        text "Goals" color: #64748b, font-size: 12px
+      }
+      rect padding: 12px, color: #fef3c7, radius: 8px {
+        text "{assists}" font-size: 28px, color: #ca8a04
+        text "Assists" color: #64748b, font-size: 12px
+      }
+      rect padding: 12px, color: #faf5ff, radius: 8px {
+        text "{points-per-game}" font-size: 28px, color: #7c3aed
+        text "Total G+A" color: #64748b, font-size: 12px
+      }
+    }
+  }
+}

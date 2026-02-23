@@ -1,0 +1,30 @@
+-- Hotel review cards with guest feedback
+app "Hotel Reviews" {
+  state reviews = [{author: "Guest1", stars: "5", comment: "Spotless rooms"}, {author: "Guest2", stars: "4", comment: "Great location"}, {author: "Guest3", stars: "2", comment: "Noisy at night"}]
+  state rating-filter = "all"
+  computed total-reviews = reviews | count
+
+  column padding: 20px, gap: 16px {
+    heading "Hotel Reviews"
+    text "{total-reviews} reviews" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "All" color: #ffffff
+        on click: set rating-filter = "all"
+      }
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Top" color: #ffffff
+        on click: set rating-filter = "5"
+      }
+    }
+
+    each review in reviews {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        text "{review.author}" font-weight: bold
+        text "{review.stars}" color: #f59e0b
+        text "{review.comment}" color: #64748b
+      }
+    }
+  }
+}

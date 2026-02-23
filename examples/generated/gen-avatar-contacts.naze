@@ -1,0 +1,35 @@
+-- Favorite contacts avatar list
+app "Contacts" {
+  column padding: 24px, gap: 16px {
+    heading "Contacts"
+
+    row gap: 16px {
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #dc2626, radius: 24px {
+          text "RS" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Rosa S." font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #2563eb, radius: 24px {
+          text "TU" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Tom U." font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #7c3aed, radius: 24px {
+          text "VW" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Vera W." font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #059669, radius: 24px {
+          text "XY" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Xena Y." font-size: 12px, color: #64748b
+      }
+    }
+
+    text "Your favorite contacts" color: #94a3b8, font-size: 14px
+  }
+}

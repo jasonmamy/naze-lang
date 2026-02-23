@@ -1,0 +1,21 @@
+-- Book author bio card
+app "Author Card" {
+  state author = "Frank Herbert"
+
+  column padding: 20px, gap: 16px {
+    heading "Author Card"
+
+    rect width: 320px, color: #fefce8, radius: 12px, padding: 20px {
+      column gap: 8px {
+        text "{author}" font-size: 22px, font-weight: bold
+        text "Science Fiction Author" color: #64748b
+        separator
+        row gap: 12px {
+          text "Books: 23" color: #a16207
+          text "Awards: 7" color: #a16207
+        }
+        text "Best known for Dune" color: #94a3b8, font-size: 13px
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+-- Electronics product catalog
+app "Electronics" {
+  state items = [{name: "Laptop Pro", price: "$1299", brand: "TechCo"}, {name: "Wireless Earbuds", price: "$79", brand: "AudioMax"}, {name: "Smart Watch", price: "$349", brand: "TechCo"}, {name: "USB-C Hub", price: "$49", brand: "ConnectPlus"}]
+  computed item-count = items | count
+  state view = "grid"
+
+  column padding: 24px, gap: 16px {
+    heading "Electronics" color: #2563eb
+    text "{item-count} products" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #f8fafc, radius: 10px {
+          column gap: 6px {
+            text "{item.name}" font-weight: bold, font-size: 16px
+            text "{item.price}" color: #2563eb, font-size: 14px
+            text "{item.brand}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

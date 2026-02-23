@@ -1,0 +1,24 @@
+-- Bill splitting calculator
+app "Bill Split" {
+  state total-bill = 120
+  state people = 4
+  computed per-person = total-bill / people
+
+  column padding: 20px, gap: 16px {
+    heading "Bill Split"
+    text "Total: {total-bill}" font-size: 18px
+    text "People: {people}" color: #64748b
+    text "Each Pays: {per-person}" font-size: 24px, color: #d946ef
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #d946ef, radius: 4px {
+        text "+" color: #ffffff
+        on click: set total-bill = total-bill + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set total-bill = 120
+      }
+    }
+  }
+}

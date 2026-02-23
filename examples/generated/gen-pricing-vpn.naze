@@ -1,0 +1,58 @@
+-- VPN subscription pricing table
+app "VPN Plans" {
+  state selected = "none"
+
+  column padding: 24px, gap: 16px {
+    heading "VPN Plans" color: #0f172a
+    text "Browse privately and securely" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Monthly" font-weight: bold, font-size: 18px
+          text "$12/mo" color: #0ea5e9, font-size: 28px
+          text "Flexible plan" color: #64748b, font-size: 14px
+          separator
+          text "5 devices" font-size: 14px
+          text "50 servers" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Monthly"
+          }
+        }
+      }
+      rect padding: 20px, color: #f0f9ff, radius: 12px {
+        column gap: 8px {
+          text "Yearly" font-weight: bold, font-size: 18px
+          text "$5/mo" color: #0ea5e9, font-size: 28px
+          text "Best value" color: #64748b, font-size: 14px
+          separator
+          text "10 devices" font-size: 14px
+          text "200 servers" font-size: 14px
+          rect width: 120px, height: 36px, color: #0ea5e9, radius: 6px {
+            text "Choose" color: #ffffff
+            on click: set selected = "Yearly"
+          }
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Lifetime" font-weight: bold, font-size: 18px
+          text "$99" color: #0ea5e9, font-size: 28px
+          text "Pay once" color: #64748b, font-size: 14px
+          separator
+          text "Unlimited" font-size: 14px
+          text "All servers" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Lifetime"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #0ea5e9, font-weight: bold
+    }
+  }
+}

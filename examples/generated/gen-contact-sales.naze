@@ -1,0 +1,31 @@
+-- Sales department contacts
+app "Sales Team" {
+  column padding: 24px, gap: 16px {
+    heading "Sales Team" color: #f97316
+    text "Get in touch with sales" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        column gap: 4px {
+          text "North America" font-weight: bold
+          text "Enterprise Sales" color: #64748b, font-size: 14px
+          text "na@example.com" color: #f97316, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        column gap: 4px {
+          text "Europe" font-weight: bold
+          text "Regional Manager" color: #64748b, font-size: 14px
+          text "eu@example.com" color: #f97316, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        column gap: 4px {
+          text "Asia Pacific" font-weight: bold
+          text "Business Dev" color: #64748b, font-size: 14px
+          text "apac@example.com" color: #f97316, font-size: 14px
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+-- Appointment booking
+app "Book Appointment" {
+  state selected-slot = "none"
+  state booked = false
+
+  column padding: 20px, gap: 16px {
+    heading "Book Appointment"
+    text "Select a time slot" color: #64748b
+
+    column gap: 8px {
+      rect width: 200px, height: 40px, color: #ecfdf5, radius: 8px {
+        text "09:00 - Available"
+        on click: set selected-slot = "09:00"
+      }
+      rect width: 200px, height: 40px, color: #ecfdf5, radius: 8px {
+        text "11:00 - Available"
+        on click: set selected-slot = "11:00"
+      }
+      rect width: 200px, height: 40px, color: #fce7f3, radius: 8px {
+        text "13:00 - Taken" color: #9ca3af
+      }
+      rect width: 200px, height: 40px, color: #ecfdf5, radius: 8px {
+        text "15:00 - Available"
+        on click: set selected-slot = "15:00"
+      }
+    }
+
+    if selected-slot != "none" {
+      text "Selected: {selected-slot}" font-weight: bold, color: #2563eb
+      rect width: 140px, height: 40px, color: #2563eb, radius: 8px {
+        text "Confirm" color: #ffffff
+        on click: set booked = true
+      }
+    }
+
+    if booked {
+      text "Appointment booked!" color: #16a34a, font-size: 18px
+    }
+  }
+}

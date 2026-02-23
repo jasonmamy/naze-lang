@@ -1,0 +1,45 @@
+-- Tab navigation using pattern matching
+app "Tabs" {
+  state tab = "home"
+
+  column padding: 20px, gap: 16px {
+    heading "Tab Navigation"
+
+    row gap: 0px {
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 0px {
+        text "Home" color: #334155
+        on click: set tab = "home"
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 0px {
+        text "Profile" color: #334155
+        on click: set tab = "profile"
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 0px {
+        text "Settings" color: #334155
+        on click: set tab = "settings"
+      }
+    }
+
+    match tab {
+      "home": {
+        column padding: 16px, gap: 8px {
+          heading "Welcome Home" font-size: 20px
+          text "This is the home tab content."
+        }
+      }
+      "profile": {
+        column padding: 16px, gap: 8px {
+          heading "Your Profile" font-size: 20px
+          text "Edit your profile here."
+        }
+      }
+      "settings": {
+        column padding: 16px, gap: 8px {
+          heading "Settings" font-size: 20px
+          text "Manage your preferences."
+        }
+      }
+      _: text "Unknown tab"
+    }
+  }
+}

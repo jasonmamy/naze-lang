@@ -1,0 +1,46 @@
+-- Account settings with email and password
+app "Account Settings" {
+  state notif-email = true
+  state notif-push = true
+  state display-name = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Account Settings"
+    text "Manage your account" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "Email Notifications" font-weight: bold, font-size: 14px
+        checkbox bind: notif-email, label: "Receive email updates"
+      }
+
+      column gap: 4px {
+        text "Push Notifications" font-weight: bold, font-size: 14px
+        checkbox bind: notif-push, label: "Enable push alerts"
+      }
+
+      column gap: 4px {
+        text "Display Name" font-weight: bold, font-size: 14px
+        input bind: display-name, placeholder: "Display name"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Account settings saved!" color: #16a34a
+    }
+  }
+}

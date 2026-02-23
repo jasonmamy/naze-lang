@@ -1,0 +1,31 @@
+-- Marketing campaign performance dashboard
+app "Marketing Dashboard" {
+  state email-sent = 15000
+  state opened = 4200
+  state clicked-links = 890
+  computed open-rate = opened * 100 / email-sent
+
+  column padding: 24px, gap: 20px {
+    heading "Marketing Dashboard"
+    text "Campaign metrics" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Emails Sent" color: #64748b, font-size: 12px
+        text "{email-sent}" font-size: 28px, color: #2563eb
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Opened" color: #64748b, font-size: 12px
+        text "{opened}" font-size: 28px, color: #a16207
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Link Clicks" color: #64748b, font-size: 12px
+        text "{clicked-links}" font-size: 28px, color: #16a34a
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Open Rate %: {open-rate}" font-size: 18px, color: #2563eb
+    }
+  }
+}

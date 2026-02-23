@@ -1,0 +1,23 @@
+-- Toggle visibility
+app "Visibility" {
+  state visible = true
+
+  column padding: 20px, gap: 16px {
+    heading "Toggle Demo"
+
+    rect width: 120px, height: 40px, color: #6366f1, radius: 8px {
+      text "Toggle" color: #ffffff
+      on click: set visible = false
+    }
+
+    if visible {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "This content is visible!" color: #16a34a
+      }
+    }
+
+    if visible == false {
+      text "Content is hidden" color: #94a3b8
+    }
+  }
+}

@@ -1,0 +1,19 @@
+-- Course catalog
+app "Courses" {
+  state courses = [{title: "Intro CS", level: "beginner", enrolled: 120}, {title: "ML", level: "advanced", enrolled: 45}, {title: "Web Dev", level: "beginner", enrolled: 200}]
+  computed total = courses | count
+  computed total-enrolled = courses | map enrolled | sum
+
+  column padding: 20px, gap: 16px {
+    heading "Course Catalog"
+    text "{total} courses, {total-enrolled} enrolled" color: #64748b
+
+    each course in courses | sort-by enrolled {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 12px {
+        text "{course.title}" font-weight: bold
+        text "{course.level}" color: #8b5cf6, font-size: 12px
+        text "{course.enrolled} students" color: #64748b
+      }
+    }
+  }
+}

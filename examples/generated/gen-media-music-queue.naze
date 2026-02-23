@@ -1,0 +1,28 @@
+-- Music queue with tracks and artists
+app "Music Queue" {
+  state items = [{title: "Bohemian Rhapsody", artist: "Queen"}, {title: "Imagine", artist: "Lennon"}, {title: "Billie Jean", artist: "MJ"}, {title: "Stairway", artist: "Led Zeppelin"}]
+  state now-playing = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Music Queue"
+    text "{total} tracks" color: #64748b
+
+    if now-playing != "none" {
+      rect padding: 12px, color: #15803d, radius: 8px {
+        text "Now: {now-playing}" color: #ffffff, font-size: 18px
+      }
+    }
+
+    each track in items {
+      row padding: 12px, color: #ecfdf5, radius: 8px, gap: 12px {
+        text "{track.title}" font-weight: bold
+        text "{track.artist}" color: #64748b
+        rect width: 60px, height: 28px, color: #16a34a, radius: 4px {
+          text "Play" color: #ffffff
+          on click: set now-playing = "{track.title}"
+        }
+      }
+    }
+  }
+}

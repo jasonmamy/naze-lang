@@ -1,0 +1,31 @@
+-- Sales dashboard with pipeline and quota tracking
+app "Sales Pipeline" {
+  state pipeline = 285000
+  state closed = 142000
+  state quota = 200000
+  computed attainment = closed * 100 / quota
+
+  column padding: 24px, gap: 20px {
+    heading "Sales Pipeline"
+    text "Q1 Progress" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Pipeline ($)" color: #64748b, font-size: 12px
+        text "{pipeline}" font-size: 28px, color: #166534
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Closed ($)" color: #64748b, font-size: 12px
+        text "{closed}" font-size: 28px, color: #1e40af
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Quota ($)" color: #64748b, font-size: 12px
+        text "{quota}" font-size: 28px, color: #92400e
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Quota Attainment %: {attainment}" font-size: 18px, color: #166534
+    }
+  }
+}

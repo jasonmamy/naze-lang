@@ -1,0 +1,41 @@
+-- Foggy morning weather display
+app "Fog Alert" {
+  state temp = 15
+  state feels-like = 14
+  state humidity = 95
+  state wind = 6
+  state condition = "Dense Fog"
+
+  column padding: 24px, gap: 16px, color: #f8fafc {
+    heading "San Francisco Weather" color: #64748b
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #f1f5f9, radius: 12px {
+        text "FOG" font-size: 36px
+      }
+      column gap: 4px {
+        text "{temp}C" font-size: 48px, font-weight: bold, color: #64748b
+        text "{condition}" color: #64748b, font-size: 16px
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Feels Like" color: #64748b, font-size: 11px
+        text "{feels-like}C" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Humidity" color: #64748b, font-size: 11px
+        text "{humidity}%" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Wind" color: #64748b, font-size: 11px
+        text "{wind} km/h" font-size: 18px
+      }
+    }
+
+    separator
+
+    text "Forecast: Fog burns off by noon, sunny afternoon" color: #94a3b8, font-size: 13px
+  }
+}

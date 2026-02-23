@@ -1,0 +1,29 @@
+-- Bookmarks
+app "Bookmarks" {
+  state url = ""
+  state bookmarks = ["https://example.com", "https://github.com"]
+  computed count = bookmarks | count
+
+  column padding: 20px, gap: 16px {
+    heading "Bookmarks"
+    text "{count} saved" color: #64748b
+
+    row gap: 8px {
+      input bind: url, placeholder: "Add URL..."
+      rect width: 80px, height: 40px, color: #2563eb, radius: 8px {
+        text "Save" color: #ffffff
+        on click: append url to bookmarks
+      }
+    }
+
+    each bm in bookmarks {
+      row padding: 8px, color: #f3f4f6, radius: 4px, gap: 8px {
+        text "{bm}" color: #2563eb
+        rect width: 60px, height: 28px, color: #ef4444, radius: 4px {
+          text "Del" color: #ffffff
+          on click: remove bm from bookmarks
+        }
+      }
+    }
+  }
+}

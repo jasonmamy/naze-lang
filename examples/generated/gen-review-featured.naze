@@ -1,0 +1,33 @@
+-- Featured review
+app "Featured Review" {
+  state featured-author = "Sarah M."
+  state featured-rating = 5
+  state featured-text = "This product changed my workflow completely. Highly recommend!"
+
+  column padding: 20px, gap: 16px {
+    heading "Featured Review"
+
+    rect padding: 20px, color: #fefce8, radius: 12px {
+      row gap: 8px {
+        rect width: 48px, height: 48px, color: #f59e0b, radius: 24px {
+          text "S" color: #ffffff, font-size: 20px
+        }
+        column gap: 4px {
+          text "{featured-author}" font-weight: bold, font-size: 18px
+          text "{featured-rating} / 5 stars" color: #f59e0b
+        }
+      }
+      text "{featured-text}" color: #374151, font-size: 16px
+    }
+
+    text "Was this review helpful?" color: #64748b
+    row gap: 8px {
+      rect width: 60px, height: 32px, color: #e2e8f0, radius: 4px {
+        text "Yes"
+      }
+      rect width: 60px, height: 32px, color: #e2e8f0, radius: 4px {
+        text "No"
+      }
+    }
+  }
+}

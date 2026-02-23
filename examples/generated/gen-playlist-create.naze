@@ -1,0 +1,22 @@
+-- Create playlist
+app "New Playlist" {
+  state playlist-name = ""
+  state track-to-add = ""
+  state created = false
+
+  column padding: 20px, gap: 16px {
+    heading "Create Playlist"
+
+    input bind: playlist-name, placeholder: "Playlist name"
+    input bind: track-to-add, placeholder: "Add a track..."
+
+    rect width: 140px, height: 40px, color: #16a34a, radius: 8px {
+      text "Create Playlist" color: #ffffff
+      on click: set created = true
+    }
+
+    if created {
+      text "Playlist created!" color: #16a34a, font-size: 18px
+    }
+  }
+}

@@ -1,0 +1,26 @@
+-- Follower list with join dates
+app "Followers" {
+  state items = [{name: "Grace", since: "Jan 2024"}, {name: "Hank", since: "Mar 2024"}, {name: "Ivy", since: "Jun 2024"}]
+  state new-entry = ""
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Followers"
+    text "{total} followers" color: #64748b
+
+    row gap: 8px {
+      input bind: new-entry, placeholder: "Search users..."
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Add" color: #ffffff
+        on click: append new-entry to items
+      }
+    }
+
+    each f in items {
+      row padding: 12px, color: #ecfdf5, radius: 8px, gap: 8px {
+        text "{f.name}" font-weight: bold
+        text "{f.since}" color: #64748b
+      }
+    }
+  }
+}

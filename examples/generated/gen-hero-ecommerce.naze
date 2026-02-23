@@ -1,0 +1,31 @@
+-- E-commerce store hero with seasonal sale
+app "Shop Hero" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #fef2f2 {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Spring Sale: 40 Percent Off" font-size: 36px, color: #991b1b
+        text "Limited time offer on all premium collections." font-size: 18px, color: #dc2626
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #dc2626, radius: 8px {
+            text "Shop Now" color: #ffffff, font-size: 16px
+            on click: navigate "/sale"
+          }
+          rect width: 140px, height: 48px, color: #fecaca, radius: 8px {
+            text "View Catalog" color: #991b1b, font-size: 16px
+            on click: navigate "/catalog"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #fee2e2 {
+      row padding: 12px, gap: 24px {
+        text "Free shipping" color: #b91c1c, font-size: 14px
+        text "Easy returns" color: #b91c1c, font-size: 14px
+        text "Secure pay" color: #b91c1c, font-size: 14px
+      }
+    }
+  }
+}

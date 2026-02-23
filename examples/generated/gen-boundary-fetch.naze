@@ -1,0 +1,23 @@
+-- Error boundary around data
+app "Safe Fetch" {
+  data posts: fetch "/api/posts"
+
+  column padding: 20px, gap: 16px {
+    heading "Posts"
+
+    boundary {
+      if posts.loading {
+        text "Loading posts..." color: #64748b
+      }
+
+      if posts.data {
+        each post in posts.data {
+          text "{post.title}"
+        }
+      }
+    } catch {
+      text "Something went wrong" color: #dc2626
+      text "Please try again later" color: #64748b
+    }
+  }
+}

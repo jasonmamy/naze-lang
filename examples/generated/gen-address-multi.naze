@@ -1,0 +1,24 @@
+-- Address book
+app "My Addresses" {
+  state addresses = [{label: "Home", addr: "456 Oak Street, Portland OR"}, {label: "Work", addr: "789 Tech Blvd, Seattle WA"}, {label: "Mom", addr: "321 Maple Ave, Denver CO"}]
+  state selected = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "My Addresses"
+
+    each a in addresses {
+      rect padding: 12px, color: #f8fafc, radius: 8px {
+        text "{a.label}" font-weight: bold, color: #2563eb
+        text "{a.addr}" color: #374151
+        rect width: 80px, height: 32px, color: #e2e8f0, radius: 4px {
+          text "Select"
+          on click: set selected = a.label
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a, font-weight: bold
+    }
+  }
+}

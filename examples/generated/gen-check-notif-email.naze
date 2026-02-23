@@ -1,0 +1,31 @@
+-- Email notification preferences
+app "Email Notifications" {
+  state marketing = true
+  state updates = true
+  state weekly-digest = false
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Email Notifications"
+    text "Choose which emails to receive" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: marketing, label: "Marketing emails"
+        checkbox bind: updates, label: "Product updates"
+        checkbox bind: weekly-digest, label: "Weekly digest"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

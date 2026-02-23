@@ -1,0 +1,24 @@
+-- Habit tracker
+app "Habits" {
+  state habits = [{name: "Exercise", streak: "5"}, {name: "Reading", streak: "12"}, {name: "Meditate", streak: "3"}]
+  state new-habit = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Daily Habits"
+
+    row gap: 8px {
+      input bind: new-habit, placeholder: "New habit..."
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Add" color: #ffffff
+        on click: set new-habit = ""
+      }
+    }
+
+    each habit in habits {
+      row padding: 12px, color: #f0fdf4, radius: 8px, gap: 12px {
+        text "{habit.name}" font-weight: bold
+        text "{habit.streak} day streak" color: #16a34a
+      }
+    }
+  }
+}

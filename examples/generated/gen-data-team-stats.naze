@@ -1,0 +1,22 @@
+-- Team statistics comparison grid
+app "Team Performance" {
+  state items = [{name: "Engineering", value: "94%", detail: "Sprint completion"}, {name: "Design", value: "87%", detail: "On-time delivery"}, {name: "Marketing", value: "112%", detail: "Lead target"}, {name: "Sales", value: "98%", detail: "Quota attainment"}]
+  computed total = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Team Performance"
+    text "{total} teams" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each team in items | sort-by name {
+        rect padding: 14px, color: #ecfdf5, radius: 8px {
+          column gap: 4px {
+            text "{team.name}" font-weight: bold, font-size: 15px
+            text "{team.value}" color: #166534, font-size: 22px
+            text "{team.detail}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+-- Event countdown schedule
+app "Upcoming Events" {
+  state events = [{name: "Conference", days: "12", location: "NYC"}, {name: "Workshop", days: "25", location: "London"}, {name: "Hackathon", days: "40", location: "Berlin"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Upcoming Events"
+
+    each evt in events | sort-by days {
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        row gap: 12px {
+          rect width: 60px, height: 60px, color: #6366f1, radius: 8px {
+            text "{evt.days}" color: #ffffff, font-size: 24px
+          }
+          column gap: 4px {
+            text "{evt.name}" font-weight: bold, font-size: 18px
+            text "{evt.location}" color: #64748b
+            text "{evt.days} days away" color: #6366f1
+          }
+        }
+      }
+    }
+  }
+}

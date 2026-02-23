@@ -1,0 +1,58 @@
+-- Email marketing plan pricing
+app "Email Service" {
+  state selected = "none"
+
+  column padding: 24px, gap: 16px {
+    heading "Email Service" color: #0f172a
+    text "Reach your audience" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Lite" font-weight: bold, font-size: 18px
+          text "$10/mo" color: #ec4899, font-size: 28px
+          text "Small lists" color: #64748b, font-size: 14px
+          separator
+          text "500 subscribers" font-size: 14px
+          text "Basic templates" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Lite"
+          }
+        }
+      }
+      rect padding: 20px, color: #fdf2f8, radius: 12px {
+        column gap: 8px {
+          text "Standard" font-weight: bold, font-size: 18px
+          text "$30/mo" color: #ec4899, font-size: 28px
+          text "Growing lists" color: #64748b, font-size: 14px
+          separator
+          text "5K subscribers" font-size: 14px
+          text "A/B testing" font-size: 14px
+          rect width: 120px, height: 36px, color: #ec4899, radius: 6px {
+            text "Choose" color: #ffffff
+            on click: set selected = "Standard"
+          }
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Premium" font-weight: bold, font-size: 18px
+          text "$75/mo" color: #ec4899, font-size: 28px
+          text "Large lists" color: #64748b, font-size: 14px
+          separator
+          text "50K subscribers" font-size: 14px
+          text "Advanced analytics" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Premium"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #ec4899, font-weight: bold
+    }
+  }
+}

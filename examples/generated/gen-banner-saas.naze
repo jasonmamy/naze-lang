@@ -1,0 +1,14 @@
+-- SaaS product hero section
+app "SaaS Hero" {
+  column {
+    rect width: 800px, height: 280px, color: #1e40af, radius: 0px {
+      column padding: 40px, gap: 12px {
+        text "Automate your workflow" color: #ffffff, font-size: 32px, font-weight: bold
+        text "Save hours every week with smart automation." color: #bfdbfe, font-size: 16px
+        rect width: 160px, height: 44px, color: #ffffff, radius: 8px {
+          text "Start Free Trial" color: #1e40af
+        }
+      }
+    }
+  }
+}

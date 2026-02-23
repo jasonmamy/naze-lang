@@ -1,0 +1,26 @@
+-- Donation amount selector
+app "Donate" {
+  state amount = 10
+  state donated = false
+
+  column padding: 20px, gap: 16px {
+    heading "Donate"
+    text "{amount}" font-size: 24px, color: #22c55e
+    text "{donated}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #22c55e, radius: 8px {
+        text "Add $5" color: #ffffff
+        on click: set amount = amount + 5
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Donate" color: #ffffff
+        on click: set donated = true
+      }
+      rect width: 80px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set amount = 10
+      }
+    }
+  }
+}

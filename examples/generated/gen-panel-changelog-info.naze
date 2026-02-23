@@ -1,0 +1,27 @@
+-- Version changelog toggle
+app "Changelog" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "Changelog"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "Version 2.1 Changes" font-weight: bold
+          rect width: 70px, height: 28px, color: #06b6d4, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "Added dark mode support." color: #334155
+          text "Fixed navigation bug on mobile." color: #64748b
+          text "Performance improvements: 30% faster rendering." color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

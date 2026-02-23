@@ -1,0 +1,19 @@
+-- Empty friends or connections list state
+app "No Connections" {
+  column padding: 40px, gap: 20px {
+    spacer height: 40px
+
+    rect width: 80px, height: 80px, color: #fef2f2, radius: 40px {
+      text "&" font-size: 32px, color: #ef4444
+    }
+
+    heading "No Connections Yet" font-size: 22px, color: #1e293b
+    text "Find people to connect with." color: #64748b, font-size: 16px
+    text "Search by name or browse suggestions." color: #94a3b8, font-size: 14px
+
+    rect width: 160px, height: 44px, color: #ef4444, radius: 8px {
+      text "Find People" color: #ffffff, font-size: 15px
+      on click: navigate "/discover"
+    }
+  }
+}

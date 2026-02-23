@@ -1,0 +1,48 @@
+-- E-commerce shipping FAQ accordion
+app "Shipping FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Shipping FAQ"
+
+    rect padding: 12px, color: #fef2f2, radius: 8px {
+      text "How long does shipping take?" font-weight: bold, color: #991b1b
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #fee2e2 {
+        text "Standard shipping is 3 to 5 business days." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fef2f2, radius: 8px {
+      text "Do you ship internationally?" font-weight: bold, color: #991b1b
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #fee2e2 {
+        text "Yes, to over 50 countries worldwide." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fef2f2, radius: 8px {
+      text "How do I track my order?" font-weight: bold, color: #991b1b
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #fee2e2 {
+        text "A tracking link is emailed after dispatch." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fef2f2, radius: 8px {
+      text "What if my order is damaged?" font-weight: bold, color: #991b1b
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #fee2e2 {
+        text "Contact us within 48 hours for a replacement." color: #475569
+      }
+    }
+  }
+}

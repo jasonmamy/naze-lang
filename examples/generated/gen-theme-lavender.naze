@@ -1,0 +1,26 @@
+-- Lavender purple color scheme
+theme lavender {
+  colors {
+    primary: #7b2cbf
+    secondary: #9d4edd
+    bg: #f3e8ff
+    text-color: #3c096c
+    accent: #c77dff
+  }
+}
+
+app "Lavender Theme" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Lavender Theme" color: theme.colors.text-color
+
+    rect padding: 16px, color: theme.colors.primary, radius: 8px {
+      text "Primary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.secondary, radius: 8px {
+      text "Secondary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.accent, radius: 8px {
+      text "Accent" color: #ffffff
+    }
+  }
+}

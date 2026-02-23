@@ -1,0 +1,28 @@
+-- Business and finance news ticker
+app "Business News" {
+  state articles = [{headline: "Markets Rally on Rate Decision", source: "Bloomberg", time: "30m ago"}, {headline: "Startup Raises $500M Series D", source: "Reuters", time: "2h ago"}, {headline: "Quarterly Earnings Beat Estimates", source: "CNBC", time: "4h ago"}]
+  state section = "markets"
+
+  column padding: 20px, gap: 16px {
+    heading "Business News"
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #ca8a04, radius: 4px {
+        text "Markets" color: #ffffff, font-size: 12px
+        on click: set section = "markets"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Deals" color: #ffffff, font-size: 12px
+        on click: set section = "deals"
+      }
+    }
+
+    each article in articles {
+      rect padding: 12px, color: #fefce8, radius: 8px {
+        text "{article.headline}" font-weight: bold, font-size: 16px
+        text "{article.source}" color: #64748b
+        text "{article.time}" color: #ca8a04, font-size: 12px
+      }
+    }
+  }
+}

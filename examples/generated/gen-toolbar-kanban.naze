@@ -1,0 +1,44 @@
+-- Kanban board toolbar with task actions
+app "Kanban Toolbar" {
+  state active-tool = "add-task"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #f5f3ff {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #7c3aed, radius: 6px {
+          text "+" color: #ffffff, font-size: 14px
+          on click: set active-tool = "add-task"
+        }
+        rect width: 36px, height: 36px, color: #2563eb, radius: 6px {
+          text "=" color: #ffffff, font-size: 14px
+          on click: set active-tool = "filter-tasks"
+        }
+        rect width: 36px, height: 36px, color: #16a34a, radius: 6px {
+          text "M" color: #ffffff, font-size: 14px
+          on click: set active-tool = "move"
+        }
+        rect width: 36px, height: 36px, color: #f59e0b, radius: 6px {
+          text "!" color: #ffffff, font-size: 14px
+          on click: set active-tool = "priority"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #ef4444, radius: 6px {
+          text "X" color: #ffffff, font-size: 14px
+          on click: set active-tool = "archive-task"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "add-task": text "Add a new task card." color: #64748b
+        "filter-tasks": text "Filter visible tasks." color: #64748b
+        "move": text "Move task between columns." color: #64748b
+        "priority": text "Set task priority." color: #64748b
+        "archive-task": text "Archive the selected task." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+-- Tournament bracket
+app "Tournament Bracket" {
+  state round = "Quarter Finals"
+  state matches = [{pair: "Alpha vs Beta", winner: "TBD"}, {pair: "Gamma vs Delta", winner: "TBD"}, {pair: "Epsilon vs Zeta", winner: "TBD"}, {pair: "Eta vs Theta", winner: "TBD"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Tournament Bracket"
+    text "{round}" font-size: 18px, color: #6366f1
+
+    each m in matches {
+      rect padding: 12px, color: #f8fafc, radius: 8px {
+        text "{m.pair}" font-weight: bold
+        text "Winner: {m.winner}" color: #64748b
+      }
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #6366f1, radius: 4px {
+        text "Semi Finals" color: #ffffff, font-size: 12px
+        on click: set round = "Semi Finals"
+      }
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Finals" color: #ffffff, font-size: 12px
+        on click: set round = "Finals"
+      }
+    }
+  }
+}

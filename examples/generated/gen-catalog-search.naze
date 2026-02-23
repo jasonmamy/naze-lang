@@ -1,0 +1,19 @@
+-- Searchable product catalog
+app "Search Catalog" {
+  state search = ""
+  state products = [{name: "Laptop", sku: "LP-001"}, {name: "Monitor", sku: "MN-002"}, {name: "Keyboard", sku: "KB-003"}, {name: "Mouse", sku: "MS-004"}, {name: "Webcam", sku: "WC-005"}]
+  computed total = products | count
+
+  column padding: 24px, gap: 16px {
+    heading "Product Search" color: #0f172a
+    input bind: search, placeholder: "Search products..."
+    text "{total} products in catalog" color: #64748b
+
+    each prod in products | sort-by name {
+      row padding: 10px, color: #f1f5f9, radius: 6px, gap: 12px {
+        text "{prod.name}" font-weight: bold
+        text "{prod.sku}" color: #94a3b8, font-size: 12px
+      }
+    }
+  }
+}

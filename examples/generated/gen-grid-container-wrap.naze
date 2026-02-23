@@ -1,0 +1,19 @@
+-- Contained grid
+app "Centered Grid" {
+  container max-width: 800px, padding: 20px {
+    column gap: 16px {
+      heading "Contained Grid Layout"
+      grid columns: 3, gap: 12px {
+        rect padding: 16px, color: #eff6ff, radius: 8px {
+          text "Feature 1" font-weight: bold
+        }
+        rect padding: 16px, color: #f0fdf4, radius: 8px {
+          text "Feature 2" font-weight: bold
+        }
+        rect padding: 16px, color: #fef3c7, radius: 8px {
+          text "Feature 3" font-weight: bold
+        }
+      }
+    }
+  }
+}

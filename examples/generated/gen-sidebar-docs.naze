@@ -1,0 +1,40 @@
+-- Documentation sidebar with topic navigation
+app "Documentation" {
+  state active-page = "intro"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #f8fafc {
+      column padding: 16px, gap: 4px {
+        text "Docs" font-weight: bold, font-size: 18px, color: #2563eb
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Introduction" color: #334155
+          on click: set active-page = "intro"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Quick Start" color: #334155
+          on click: set active-page = "quickstart"
+        }
+        rect padding: 10px, radius: 6px {
+          text "API Reference" color: #334155
+          on click: set active-page = "api"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Examples" color: #334155
+          on click: set active-page = "examples"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "intro": heading "Introduction"
+        "quickstart": heading "Quick Start"
+        "api": heading "API Reference"
+        "examples": heading "Examples"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

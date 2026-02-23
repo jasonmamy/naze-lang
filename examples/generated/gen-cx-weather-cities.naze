@@ -1,0 +1,21 @@
+-- Weather for cities
+app "Weather" {
+  state selected = "london"
+  state cities = [{name: "London", temp: "12", condition: "Cloudy"}, {name: "Tokyo", temp: "22", condition: "Sunny"}, {name: "New York", temp: "8", condition: "Rainy"}, {name: "Sydney", temp: "28", condition: "Clear"}]
+  computed city-count = cities | count
+
+  column padding: 20px, gap: 16px {
+    heading "World Weather"
+    text "{city-count} cities tracked" color: #64748b
+
+    each city in cities | sort-by name {
+      row padding: 12px, color: #f0f9ff, radius: 8px, gap: 12px {
+        column gap: 4px {
+          text "{city.name}" font-weight: bold, font-size: 18px
+          text "{city.condition}" color: #64748b
+        }
+        text "{city.temp}C" font-size: 28px, color: #0ea5e9
+      }
+    }
+  }
+}

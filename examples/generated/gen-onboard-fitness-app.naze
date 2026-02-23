@@ -1,0 +1,54 @@
+-- Fitness app welcome flow
+app "Fitness Onboard" {
+  state step = 1
+  state name = ""
+  state agreed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Fitness Onboard" color: #16a34a
+
+    row gap: 8px {
+      rect width: 32px, height: 32px, color: #16a34a, radius: 16px {
+        text "1" color: #ffffff, font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "2" font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "3" font-size: 14px
+      }
+    }
+
+    match step {
+      1: column gap: 12px {
+        text "Welcome to FitTrack" font-size: 20px, font-weight: bold
+        text "Your personal fitness companion awaits." color: #64748b
+        rect width: 140px, height: 40px, color: #16a34a, radius: 8px {
+          text "Get Started" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Set Your Goal" font-size: 20px, font-weight: bold
+        text "What should we call you?" color: #64748b
+        input bind: name, placeholder: "Your name"
+        rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 3
+        }
+      }
+      3: column gap: 12px {
+        text "Health Disclaimer" font-size: 20px, font-weight: bold
+        text "Please acknowledge our health notice." color: #64748b
+        checkbox bind: agreed, label: "I understand the health disclaimer"
+        rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+          text "Complete" color: #ffffff
+          on click: set step = 1
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

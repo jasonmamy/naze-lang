@@ -1,0 +1,19 @@
+-- Sales aggregation
+app "Sales Report" {
+  state sales = [{rep: "Alice", amount: 12000, region: "north"}, {rep: "Bob", amount: 8500, region: "south"}, {rep: "Carol", amount: 15000, region: "north"}]
+  computed rep-count = sales | count
+  computed total-amount = sales | map amount | sum
+
+  column padding: 20px, gap: 16px {
+    heading "Sales Report"
+    text "{rep-count} reps, Total: ${total-amount}" color: #16a34a
+
+    each sale in sales | sort-by amount {
+      row padding: 8px, color: #f0fdf4, radius: 4px, gap: 12px {
+        text "{sale.rep}" font-weight: bold
+        text "${sale.amount}" color: #2563eb
+        text "{sale.region}" color: #94a3b8
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+-- Video playlist
+app "Watch Later" {
+  state videos = [{title: "Learn Rust in 10 Min", channel: "Code Academy", views: "1.2M"}, {title: "Building a Compiler", channel: "Low Level", views: "890K"}, {title: "UI Design Tips", channel: "Design Hub", views: "2.1M"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Watch Later"
+
+    each vid in videos {
+      row padding: 8px, color: #f8fafc, radius: 8px, gap: 12px {
+        rect width: 120px, height: 68px, color: #1e293b, radius: 4px {
+          text "VIDEO" color: #94a3b8, font-size: 12px
+        }
+        column gap: 4px {
+          text "{vid.title}" font-weight: bold
+          text "{vid.channel}" color: #64748b, font-size: 14px
+          text "{vid.views} views" color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

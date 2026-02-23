@@ -1,0 +1,28 @@
+-- Guided tour reservation
+app "Tour Booking" {
+  state guest-name = ""
+  state tour-date = ""
+  state group-size = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Tour Booking" color: #f59e0b
+    text "Reserve a tour" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: tour-date, placeholder: "Tour date"
+    input bind: group-size, placeholder: "Group size"
+
+    rect width: 140px, height: 44px, color: #f59e0b, radius: 8px {
+      text "Reserve Tour" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Tour reserved!" color: #64748b
+      }
+    }
+  }
+}

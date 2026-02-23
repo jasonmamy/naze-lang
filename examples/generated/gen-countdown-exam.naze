@@ -1,0 +1,28 @@
+-- Exam countdown with minutes remaining
+app "Exam Timer" {
+  state exam-min = 45
+  state event-name = "Final Examination"
+
+  timer tick: every 1min {
+    set exam-min = exam-min - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Exam Timer"
+    text "{event-name}" color: #64748b
+
+    rect padding: 24px, color: #eff6ff, radius: 12px {
+      text "{exam-min}" font-size: 64px, color: #1d4ed8
+      text "minutes remaining" color: #1d4ed8
+    }
+
+    if exam-min == 0 {
+      text "Time is up!" font-size: 20px, color: #16a34a, font-weight: bold
+    }
+
+    rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+      text "Reset" color: #ffffff
+      on click: set exam-min = 45
+    }
+  }
+}

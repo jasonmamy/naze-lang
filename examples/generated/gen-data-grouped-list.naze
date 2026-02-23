@@ -1,0 +1,31 @@
+-- Grouped list with sections
+app "File Browser" {
+  state documents = [{name: "Report.pdf", size: "2.4 MB"}, {name: "Invoice.pdf", size: "1.1 MB"}]
+  state images = [{name: "Photo.jpg", size: "4.8 MB"}, {name: "Logo.png", size: "0.3 MB"}]
+  computed doc-count = documents | count
+  computed img-count = images | count
+
+  column padding: 20px, gap: 16px {
+    heading "Files"
+
+    column gap: 4px {
+      text "Documents ({doc-count})" font-weight: bold, color: #2563eb, font-size: 14px
+      each doc in documents | sort-by name {
+        row padding: 8px, color: #eff6ff, radius: 4px, gap: 12px {
+          text "{doc.name}"
+          text "{doc.size}" color: #64748b, font-size: 12px
+        }
+      }
+    }
+
+    column gap: 4px {
+      text "Images ({img-count})" font-weight: bold, color: #7c3aed, font-size: 14px
+      each img in images | sort-by name {
+        row padding: 8px, color: #faf5ff, radius: 4px, gap: 12px {
+          text "{img.name}"
+          text "{img.size}" color: #64748b, font-size: 12px
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+-- Contact form with name and message
+app "Contact Us" {
+  state name = ""
+  state message = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Contact Us"
+
+    input bind: name, placeholder: "Your Name"
+    input bind: message, placeholder: "Message"
+
+    rect width: 120px, height: 40px, color: #8b5cf6, radius: 8px {
+      text "Send" color: #ffffff
+      on click: set submitted = true
+    }
+
+    if submitted {
+      text "Message sent!" color: #16a34a
+    }
+  }
+}

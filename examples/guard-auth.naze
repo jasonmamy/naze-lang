@@ -1,0 +1,34 @@
+-- Authentication guard
+app "Protected App" {
+  shared state logged-in = false
+
+  guard auth
+    check logged-in redirect "/login"
+
+  row padding: 16px, color: #1e293b {
+    heading "App" color: #ffffff, font-size: 18px
+    link "Dashboard", to: "/dashboard"
+    link "Login", to: "/login"
+  }
+
+  page "/login" {
+    column padding: 20px, gap: 16px {
+      heading "Login"
+      rect width: 120px, height: 40px, color: #2563eb, radius: 8px {
+        text "Log In" color: #ffffff
+        on click: set logged-in = true
+      }
+    }
+  }
+
+  page "/dashboard" guard: auth {
+    column padding: 20px, gap: 16px {
+      heading "Dashboard"
+      text "Welcome! You are logged in."
+      rect width: 120px, height: 40px, color: #dc2626, radius: 8px {
+        text "Log Out" color: #ffffff
+        on click: set logged-in = false
+      }
+    }
+  }
+}

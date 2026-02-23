@@ -1,0 +1,22 @@
+-- Feedback form with topic and comment
+app "Feedback" {
+  state topic = ""
+  state comment = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Feedback"
+
+    input bind: topic, placeholder: "Topic"
+    input bind: comment, placeholder: "Your feedback"
+
+    rect width: 120px, height: 40px, color: #f59e0b, radius: 8px {
+      text "Submit" color: #ffffff
+      on click: set submitted = true
+    }
+
+    if submitted {
+      text "Thanks for feedback!" color: #16a34a
+    }
+  }
+}

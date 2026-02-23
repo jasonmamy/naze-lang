@@ -1,0 +1,31 @@
+-- Music streaming platform hero section
+app "Music Hero" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #18181b {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Your Music, Your Way" font-size: 36px, color: #f472b6
+        text "Stream millions of songs ad-free." font-size: 18px, color: #a1a1aa
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #ec4899, radius: 8px {
+            text "Start Listening" color: #ffffff, font-size: 16px
+            on click: navigate "/listen"
+          }
+          rect width: 140px, height: 48px, color: #27272a, radius: 8px {
+            text "View Plans" color: #f472b6, font-size: 16px
+            on click: navigate "/pricing"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #27272a {
+      row padding: 12px, gap: 24px {
+        text "80M+ songs" color: #a1a1aa, font-size: 14px
+        text "No ads" color: #a1a1aa, font-size: 14px
+        text "Hi-fi audio" color: #a1a1aa, font-size: 14px
+      }
+    }
+  }
+}

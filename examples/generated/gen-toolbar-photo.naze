@@ -1,0 +1,44 @@
+-- Photo editing toolbar with adjustment tools
+app "Photo Editor" {
+  state active-tool = "crop"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #18181b {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #a78bfa, radius: 6px {
+          text "C" color: #ffffff, font-size: 14px
+          on click: set active-tool = "crop"
+        }
+        rect width: 36px, height: 36px, color: #38bdf8, radius: 6px {
+          text "R" color: #ffffff, font-size: 14px
+          on click: set active-tool = "rotate"
+        }
+        rect width: 36px, height: 36px, color: #fbbf24, radius: 6px {
+          text "*" color: #ffffff, font-size: 14px
+          on click: set active-tool = "brightness"
+        }
+        rect width: 36px, height: 36px, color: #f87171, radius: 6px {
+          text "~" color: #ffffff, font-size: 14px
+          on click: set active-tool = "filter"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #4ade80, radius: 6px {
+          text "S" color: #ffffff, font-size: 14px
+          on click: set active-tool = "save-photo"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "crop": text "Crop the image to a region." color: #64748b
+        "rotate": text "Rotate the image 90 degrees." color: #64748b
+        "brightness": text "Adjust image brightness." color: #64748b
+        "filter": text "Apply a photo filter." color: #64748b
+        "save-photo": text "Save edited photo." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

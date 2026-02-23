@@ -1,0 +1,13 @@
+-- Simple single-line footer
+app "Simple Footer" {
+  column {
+    spacer height: 100px
+    heading "My Website" font-size: 24px
+    text "Main content goes here" color: #64748b
+    spacer height: 100px
+
+    rect width: 800px, height: 60px, color: #f1f5f9 {
+      text "2025 MyCompany. All rights reserved." color: #64748b, font-size: 13px
+    }
+  }
+}

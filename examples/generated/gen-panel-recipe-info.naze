@@ -1,0 +1,27 @@
+-- Recipe details toggle
+app "Recipe Info" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "Recipe Info"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "Cooking Instructions" font-weight: bold
+          rect width: 70px, height: 28px, color: #ef4444, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "Preheat oven to 180C (350F)." color: #334155
+          text "Mix ingredients and bake for 25 minutes." color: #64748b
+          text "Serves 4 people. Prep time: 15 min." color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

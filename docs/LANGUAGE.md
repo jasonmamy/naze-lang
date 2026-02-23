@@ -2,7 +2,7 @@
 
 Naze is a declarative UI language designed to replace HTML/CSS/JS. It compiles `.naze` source files into a custom binary IR (`app_data.bin`), which is deserialized and rendered via Canvas2D in the browser (WASM) or via tiny-skia on the desktop (native). Naze bypasses the DOM entirely.
 
-The language is AI-native: there is one canonical form per concept, the grammar is small (~100 rules), and every feature is designed for low token cost and constrained LLM decoding. For the long-term architecture vision, see [PROTOTYPE.md](PROTOTYPE.md).
+The language is AI-native: there is one canonical form per concept, the grammar is compact (~150 rules), and every feature is designed for low token cost and constrained LLM decoding. For the long-term architecture vision, see [PROTOTYPE.md](PROTOTYPE.md).
 
 ---
 

@@ -1,0 +1,20 @@
+-- Device geolocation
+app "Location" {
+  data coords: device "geolocation"
+
+  column padding: 20px, gap: 16px {
+    heading "My Location"
+
+    if coords.loading {
+      text "Getting location..." color: #64748b
+    }
+
+    if coords.data {
+      text "Location acquired" color: #16a34a
+    }
+
+    if coords.error {
+      text "Location unavailable" color: #dc2626
+    }
+  }
+}

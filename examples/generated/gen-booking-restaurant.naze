@@ -1,0 +1,28 @@
+-- Restaurant table booking
+app "Table Reservation" {
+  state guest-name = ""
+  state party-size = ""
+  state time-slot = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Table Reservation" color: #16a34a
+    text "Book a table" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: party-size, placeholder: "Party size"
+    input bind: time-slot, placeholder: "Preferred time"
+
+    rect width: 140px, height: 44px, color: #16a34a, radius: 8px {
+      text "Book Table" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Table reserved!" color: #64748b
+      }
+    }
+  }
+}

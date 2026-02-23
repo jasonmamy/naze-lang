@@ -29,3 +29,10 @@ Thumbs.db
 playground/*.wasm
 playground/naze_playground.js
 playground/naze_runtime.js
+
+# AI training pipeline (generated data, model artifacts, venv)
+ai/.venv/
+ai/data/*.jsonl
+ai/data/naze-coder-lora/
+ai/data/naze-coder-gguf/
+ai/llama.cpp/

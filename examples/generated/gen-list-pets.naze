@@ -1,0 +1,17 @@
+-- Pet registry sorted by name
+app "Pets" {
+  state items = [{name: "Max", species: "dog"}, {name: "Luna", species: "cat"}, {name: "Buddy", species: "dog"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Pets"
+    text "{total} pets" color: #64748b
+
+    each pet in items | sort-by name {
+      row padding: 8px, color: #ecfeff, radius: 4px, gap: 8px {
+        text "{pet.name}" font-weight: bold
+        text "{pet.species}" color: #64748b
+      }
+    }
+  }
+}

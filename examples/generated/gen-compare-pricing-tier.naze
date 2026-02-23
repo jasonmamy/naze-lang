@@ -1,0 +1,45 @@
+-- Three-tier pricing
+app "Pricing" {
+  state selected-plan = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Choose Your Plan"
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        text "Starter" font-weight: bold
+        text "$0/mo" font-size: 24px, color: #64748b
+        text "1 project"
+        text "500MB storage"
+        rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+          text "Free" color: #ffffff
+          on click: set selected-plan = "starter"
+        }
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Growth" font-weight: bold
+        text "$19/mo" font-size: 24px, color: #2563eb
+        text "10 projects"
+        text "50GB storage"
+        rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+          text "Start" color: #ffffff
+          on click: set selected-plan = "growth"
+        }
+      }
+      rect padding: 16px, color: #fefce8, radius: 8px {
+        text "Enterprise" font-weight: bold
+        text "$99/mo" font-size: 24px, color: #ca8a04
+        text "Unlimited projects"
+        text "1TB storage"
+        rect width: 80px, height: 32px, color: #ca8a04, radius: 4px {
+          text "Contact" color: #ffffff
+          on click: set selected-plan = "enterprise"
+        }
+      }
+    }
+
+    if selected-plan != "none" {
+      text "Selected: {selected-plan}" color: #2563eb, font-weight: bold
+    }
+  }
+}

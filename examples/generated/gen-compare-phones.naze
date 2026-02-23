@@ -1,0 +1,40 @@
+-- Compare phone specifications side by side
+app "Phone Comparison" {
+  state selected = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Phone Comparison"
+    text "Which phone is right for you?" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #fefce8, radius: 8px {
+        text "Phone X" font-weight: bold, font-size: 18px
+        text "$999" color: #64748b
+        separator
+        text "6.1 inch display"
+        text "128GB Storage"
+        text "12MP Camera"
+        rect width: 100px, height: 32px, color: #7c3aed, radius: 4px {
+          text "Select" color: #ffffff
+          on click: set selected = "Phone X"
+        }
+      }
+      rect padding: 16px, color: #faf5ff, radius: 8px {
+        text "Phone Y" font-weight: bold, font-size: 18px
+        text "$799" color: #64748b
+        separator
+        text "6.5 inch display"
+        text "256GB Storage"
+        text "48MP Camera"
+        rect width: 100px, height: 32px, color: #7c3aed, radius: 4px {
+          text "Select" color: #ffffff
+          on click: set selected = "Phone Y"
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #7c3aed, font-weight: bold
+    }
+  }
+}

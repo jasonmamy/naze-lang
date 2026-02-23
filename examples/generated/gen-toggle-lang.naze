@@ -1,0 +1,30 @@
+-- Language selector with English, Spanish, and French
+app "Language" {
+  state lang = "en"
+
+  column padding: 20px, gap: 16px {
+    heading "Language"
+
+    match lang {
+      "en": text "Hello, World!" font-size: 20px
+      "es": text "Hola, Mundo!" font-size: 20px
+      "fr": text "Bonjour, le Monde!" font-size: 20px
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #3b82f6, radius: 4px {
+        text "en" color: #ffffff
+        on click: set lang = "en"
+      }
+      rect width: 100px, height: 36px, color: #ef4444, radius: 4px {
+        text "es" color: #ffffff
+        on click: set lang = "es"
+      }
+      rect width: 100px, height: 36px, color: #1d4ed8, radius: 4px {
+        text "fr" color: #ffffff
+        on click: set lang = "fr"
+      }
+    }
+  }
+}

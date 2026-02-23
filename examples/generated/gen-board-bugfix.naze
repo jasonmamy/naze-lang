@@ -1,0 +1,54 @@
+-- Bug tracking kanban board
+app "Bug Tracker" {
+  state todo = [{title: "Login crash", tag: "critical"}, {title: "UI overlap", tag: "cosmetic"}]
+  state doing = [{title: "Memory leak", tag: "performance"}]
+  state done = [{title: "Typo fix", tag: "docs"}]
+  computed todo-count = todo | count
+  computed doing-count = doing | count
+  computed done-count = done | count
+
+  column padding: 24px, gap: 16px {
+    heading "Bug Tracker" color: #dc2626
+
+    row gap: 16px {
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #fca5a5, radius: 5px
+          text "To Do ({todo-count})" font-weight: bold, font-size: 14px
+        }
+        each card in todo {
+          rect padding: 12px, color: #fef2f2, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #ef4444, radius: 5px
+          text "In Progress ({doing-count})" font-weight: bold, font-size: 14px
+        }
+        each card in doing {
+          rect padding: 12px, color: #fef2f2, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #22c55e, radius: 5px
+          text "Done ({done-count})" font-weight: bold, font-size: 14px
+        }
+        each card in done {
+          rect padding: 12px, color: #fef2f2, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+    }
+  }
+}

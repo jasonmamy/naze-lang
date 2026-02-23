@@ -1,0 +1,26 @@
+-- Comment section with replies
+app "Comments" {
+  state items = [{user: "Dave", text: "Great article!"}, {user: "Eve", text: "Very helpful, thanks"}, {user: "Frank", text: "I have a question..."}]
+  state new-entry = ""
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Comments"
+    text "{total} comments" color: #64748b
+
+    row gap: 8px {
+      input bind: new-entry, placeholder: "Add a comment..."
+      rect width: 80px, height: 40px, color: #6366f1, radius: 8px {
+        text "Reply" color: #ffffff
+        on click: append new-entry to items
+      }
+    }
+
+    each cmt in items {
+      row padding: 12px, color: #f0f9ff, radius: 8px, gap: 8px {
+        text "{cmt.user}" font-weight: bold
+        text "{cmt.text}" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+-- Stock portfolio dashboard
+app "Portfolio" {
+  state total-value = 48500
+  state daily-change = 250
+  state positions = 8
+  state return-pct = 14
+
+  column padding: 20px, gap: 16px {
+    heading "Portfolio"
+
+    grid columns: 2, gap: 16px {
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Total Value" color: #64748b, font-size: 14px
+        text "{total-value}" font-size: 28px
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Daily +/-" color: #64748b, font-size: 14px
+        text "{daily-change}" font-size: 28px
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Positions" color: #64748b, font-size: 14px
+        text "{positions}" font-size: 28px
+      }
+      rect padding: 16px, color: #fce7f3, radius: 8px {
+        text "Return %" color: #64748b, font-size: 14px
+        text "{return-pct}" font-size: 28px
+      }
+    }
+  }
+}

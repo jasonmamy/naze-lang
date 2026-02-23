@@ -1,0 +1,40 @@
+-- Email client sidebar with folder navigation
+app "Email Client" {
+  state active-page = "inbox"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #fafafa {
+      column padding: 16px, gap: 4px {
+        text "Mail" font-weight: bold, font-size: 18px, color: #dc2626
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Inbox" color: #374151
+          on click: set active-page = "inbox"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Sent" color: #374151
+          on click: set active-page = "sent"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Drafts" color: #374151
+          on click: set active-page = "drafts"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Trash" color: #374151
+          on click: set active-page = "trash"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "inbox": heading "Inbox"
+        "sent": heading "Sent"
+        "drafts": heading "Drafts"
+        "trash": heading "Trash"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

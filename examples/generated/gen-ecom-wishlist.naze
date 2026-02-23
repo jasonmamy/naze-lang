@@ -1,0 +1,30 @@
+-- Wishlist with saved items and prices
+app "My Wishlist" {
+  state items = [{name: "Headphones", price: "$199"}, {name: "Tablet", price: "$449"}, {name: "Speaker", price: "$89"}]
+  state selected = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "My Wishlist"
+    text "{total} saved items" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each wish in items | sort-by name {
+        rect padding: 16px, color: #fdf2f8, radius: 8px {
+          column gap: 4px {
+            text "{wish.name}" font-weight: bold
+            text "{wish.price}" color: #ec4899
+          }
+          rect width: 80px, height: 32px, color: #ec4899, radius: 4px {
+            text "Buy" color: #ffffff
+            on click: set selected = "{wish.name}"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a
+    }
+  }
+}

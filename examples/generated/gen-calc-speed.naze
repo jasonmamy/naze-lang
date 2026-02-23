@@ -1,0 +1,24 @@
+-- Speed calculator from distance and time
+app "Speed" {
+  state distance = 100
+  state time-taken = 2
+  computed speed = distance / time-taken
+
+  column padding: 20px, gap: 16px {
+    heading "Speed"
+    text "Distance: {distance}" font-size: 18px
+    text "Time: {time-taken}" color: #64748b
+    text "Speed: {speed}" font-size: 24px, color: #6366f1
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #6366f1, radius: 4px {
+        text "+" color: #ffffff
+        on click: set distance = distance + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set distance = 100
+      }
+    }
+  }
+}

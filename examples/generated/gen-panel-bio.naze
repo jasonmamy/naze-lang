@@ -1,0 +1,27 @@
+-- Expandable biography panel
+app "Bio Panel" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "Bio Panel"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "About the Author" font-weight: bold
+          rect width: 70px, height: 28px, color: #8b5cf6, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "Software engineer with 10 years experience." color: #334155
+          text "Specializes in language design and compilers." color: #64748b
+          text "Based in San Francisco, CA." color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

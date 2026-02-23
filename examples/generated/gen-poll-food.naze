@@ -1,0 +1,40 @@
+-- Favorite cuisine voting poll
+app "Food Poll" {
+  state opt-a = 20
+  state opt-b = 15
+  state opt-c = 10
+  computed total-votes = opt-a + opt-b + opt-c
+
+  column padding: 24px, gap: 16px {
+    heading "Food Poll" color: #ef4444
+    text "Best cuisine?" font-size: 18px
+    text "Total votes: {total-votes}" color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #ef4444, radius: 8px {
+        text "Italian ({opt-a})" color: #ffffff
+        on click: set opt-a = opt-a + 1
+      }
+      rect width: 120px, height: 40px, color: #64748b, radius: 8px {
+        text "Japanese ({opt-b})" color: #ffffff
+        on click: set opt-b = opt-b + 1
+      }
+      rect width: 120px, height: 40px, color: #94a3b8, radius: 8px {
+        text "Mexican ({opt-c})" color: #ffffff
+        on click: set opt-c = opt-c + 1
+      }
+    }
+
+    column gap: 4px {
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Italian" font-size: 12px
+      }
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Japanese" font-size: 12px
+      }
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Mexican" font-size: 12px
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+-- Informational toast notification
+app "Info Banner" {
+  state show-toast = false
+  state action-done = false
+
+  column padding: 24px, gap: 16px {
+    heading "Info Banner"
+    text "Check for updates regularly." color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #2563eb, radius: 8px {
+        text "Check" color: #ffffff
+        on click: set show-toast = true
+        on click: set action-done = true
+      }
+    }
+
+    if show-toast {
+      rect width: 340px, height: 48px, color: #eff6ff, radius: 8px {
+        row padding: 12px, gap: 12px {
+          text "[i]" font-size: 16px
+          text "A new version is available." color: #1e40af, font-size: 14px
+          spacer
+          rect width: 24px, height: 24px, radius: 4px {
+            text "x" color: #1e40af, font-size: 12px
+            on click: set show-toast = false
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+-- Recipe shopping list
+app "Shopping List" {
+  state items = [{ingredient: "Flour", qty: "2 cups", checked: "no"}, {ingredient: "Sugar", qty: "1 cup", checked: "no"}, {ingredient: "Butter", qty: "100g", checked: "no"}, {ingredient: "Eggs", qty: "3", checked: "no"}, {ingredient: "Milk", qty: "250ml", checked: "no"}]
+  computed total-items = items | count
+
+  column padding: 20px, gap: 12px {
+    heading "Shopping List"
+    text "{total-items} items needed" color: #64748b
+
+    each item in items {
+      row padding: 10px, color: #f8fafc, radius: 8px, gap: 8px {
+        checkbox bind: item.checked, label: "{item.ingredient}"
+        text "{item.qty}" color: #64748b
+      }
+    }
+  }
+}

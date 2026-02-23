@@ -1,0 +1,41 @@
+-- Star rating
+app "Rating" {
+  state rating = 3
+
+  column padding: 20px, gap: 16px {
+    heading "Rate this product"
+    text "Rating: {rating} / 5" font-size: 18px
+
+    row gap: 4px {
+      rect width: 40px, height: 40px, color: #fbbf24, radius: 4px {
+        text "1" color: #ffffff
+        on click: set rating = 1
+      }
+      rect width: 40px, height: 40px, color: #fbbf24, radius: 4px {
+        text "2" color: #ffffff
+        on click: set rating = 2
+      }
+      rect width: 40px, height: 40px, color: #fbbf24, radius: 4px {
+        text "3" color: #ffffff
+        on click: set rating = 3
+      }
+      rect width: 40px, height: 40px, color: #d1d5db, radius: 4px {
+        text "4" color: #ffffff
+        on click: set rating = 4
+      }
+      rect width: 40px, height: 40px, color: #d1d5db, radius: 4px {
+        text "5" color: #ffffff
+        on click: set rating = 5
+      }
+    }
+
+    match rating {
+      1: text "Poor" color: #ef4444
+      2: text "Fair" color: #f97316
+      3: text "Good" color: #eab308
+      4: text "Great" color: #22c55e
+      5: text "Excellent" color: #16a34a
+      _: text "Rate us!" color: #64748b
+    }
+  }
+}

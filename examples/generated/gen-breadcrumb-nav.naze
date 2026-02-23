@@ -1,0 +1,37 @@
+-- Breadcrumb nav
+app "Breadcrumbs" {
+  state section = "home"
+
+  column padding: 20px, gap: 16px {
+    row gap: 4px {
+      text "Home" color: #2563eb
+      text ">" color: #94a3b8
+      text "{section}" color: #334155, font-weight: bold
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #eff6ff, radius: 4px {
+        text "Products" color: #2563eb
+        on click: set section = "products"
+      }
+      rect width: 80px, height: 32px, color: #eff6ff, radius: 4px {
+        text "About" color: #2563eb
+        on click: set section = "about"
+      }
+      rect width: 80px, height: 32px, color: #eff6ff, radius: 4px {
+        text "Contact" color: #2563eb
+        on click: set section = "contact"
+      }
+    }
+
+    match section {
+      "home": text "Welcome to our store" font-size: 18px
+      "products": text "Browse our catalog" font-size: 18px
+      "about": text "Learn about us" font-size: 18px
+      "contact": text "Get in touch" font-size: 18px
+      _: text "Page not found" color: #ef4444
+    }
+  }
+}

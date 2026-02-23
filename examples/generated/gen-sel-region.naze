@@ -1,0 +1,27 @@
+-- Region selector for content
+app "Region" {
+  state choice = "us"
+
+  column padding: 20px, gap: 16px {
+    heading "Region"
+
+    select bind: choice {
+      option "US" value: "us"
+      option "EU" value: "eu"
+      option "Asia" value: "asia"
+    }
+
+    match choice {
+      "us": rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "United States region selected" color: #1d4ed8
+      }
+      "eu": rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "European Union region selected" color: #059669
+      }
+      "asia": rect padding: 16px, color: #fef2f2, radius: 8px {
+        text "Asia Pacific region selected" color: #dc2626
+      }
+      _: text "Select an option" color: #94a3b8
+    }
+  }
+}

@@ -1,0 +1,29 @@
+-- Four-column metrics
+app "Metrics 4x" {
+  state a = 1250
+  state b = 340
+  state c = 89
+  state d = 42
+
+  column padding: 20px, gap: 16px {
+    heading "Key Metrics"
+    grid columns: 4, gap: 12px {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        text "Users" color: #64748b, font-size: 11px
+        text "{a}" font-size: 20px, color: #2563eb
+      }
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        text "Sales" color: #64748b, font-size: 11px
+        text "{b}" font-size: 20px, color: #16a34a
+      }
+      rect padding: 12px, color: #fef3c7, radius: 8px {
+        text "Tasks" color: #64748b, font-size: 11px
+        text "{c}" font-size: 20px, color: #f59e0b
+      }
+      rect padding: 12px, color: #fce7f3, radius: 8px {
+        text "Errors" color: #64748b, font-size: 11px
+        text "{d}" font-size: 20px, color: #ef4444
+      }
+    }
+  }
+}

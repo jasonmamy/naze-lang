@@ -1,0 +1,43 @@
+-- Event planner
+app "Event Planner" {
+  state rsvp-count = 45
+  state max-capacity = 100
+  state tab = "schedule"
+  computed spots-left = max-capacity - rsvp-count
+  state schedule = [{time: "9 AM", session: "Registration"}, {time: "10 AM", session: "Keynote"}, {time: "12 PM", session: "Lunch"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Annual Meetup"
+    row gap: 16px {
+      text "RSVPs: {rsvp-count}" color: #2563eb
+      text "Spots left: {spots-left}" color: #16a34a
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+        text "Schedule" color: #ffffff
+        on click: set tab = "schedule"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Venue" color: #ffffff
+        on click: set tab = "venue"
+      }
+    }
+
+    match tab {
+      "schedule": column gap: 8px {
+        each item in schedule {
+          row padding: 8px, color: #f0f9ff, radius: 4px, gap: 12px {
+            text "{item.time}" font-weight: bold, color: #2563eb
+            text "{item.session}" color: #374151
+          }
+        }
+      }
+      "venue": column gap: 8px {
+        text "Venue: Convention Center" font-weight: bold
+        text "Capacity: {max-capacity}" color: #64748b
+      }
+      _: text "Unknown"
+    }
+  }
+}

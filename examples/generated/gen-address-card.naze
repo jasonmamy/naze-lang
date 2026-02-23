@@ -1,0 +1,19 @@
+-- Address card
+app "Contact Card" {
+  state name = "Acme Corp"
+  state street = "123 Innovation Drive"
+  state city = "San Francisco"
+  state state-abbr = "CA"
+  state zip = "94105"
+
+  column padding: 20px, gap: 16px {
+    heading "Contact Card"
+
+    rect padding: 20px, color: #f8fafc, radius: 12px {
+      text "{name}" font-weight: bold, font-size: 20px
+      separator
+      text "{street}" color: #374151
+      text "{city}, {state-abbr} {zip}" color: #374151
+    }
+  }
+}

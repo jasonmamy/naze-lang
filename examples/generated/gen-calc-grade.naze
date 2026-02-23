@@ -1,0 +1,24 @@
+-- Weighted grade calculator
+app "Grade" {
+  state exam = 85
+  state homework = 90
+  computed final-grade = exam * 60 / 100 + homework * 40 / 100
+
+  column padding: 20px, gap: 16px {
+    heading "Grade"
+    text "Exam: {exam}" font-size: 18px
+    text "Homework: {homework}" color: #64748b
+    text "Final: {final-grade}" font-size: 24px, color: #14b8a6
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #14b8a6, radius: 4px {
+        text "+" color: #ffffff
+        on click: set exam = exam + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set exam = 85
+      }
+    }
+  }
+}

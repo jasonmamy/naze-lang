@@ -1,0 +1,31 @@
+-- Reaction counter
+app "Reactions" {
+  state likes = 0
+  state hearts = 0
+  state laughs = 0
+  computed total-reactions = likes + hearts + laughs
+
+  column padding: 20px, gap: 16px {
+    heading "Post Reactions"
+    text "{total-reactions} total reactions" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "This is a sample post that people can react to." font-size: 16px
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #2563eb, radius: 8px {
+        text "Like ({likes})" color: #ffffff
+        on click: set likes = likes + 1
+      }
+      rect width: 80px, height: 40px, color: #ec4899, radius: 8px {
+        text "Love ({hearts})" color: #ffffff
+        on click: set hearts = hearts + 1
+      }
+      rect width: 80px, height: 40px, color: #f59e0b, radius: 8px {
+        text "Haha ({laughs})" color: #ffffff
+        on click: set laughs = laughs + 1
+      }
+    }
+  }
+}

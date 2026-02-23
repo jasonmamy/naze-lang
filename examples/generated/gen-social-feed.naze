@@ -1,0 +1,26 @@
+-- Social media feed with posts and authors
+app "Social Feed" {
+  state items = [{author: "Alice", body: "Just shipped a new feature!"}, {author: "Bob", body: "Great weather today"}, {author: "Carol", body: "Reading a new book"}]
+  state new-entry = ""
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Social Feed"
+    text "{total} posts" color: #64748b
+
+    row gap: 8px {
+      input bind: new-entry, placeholder: "What is on your mind?"
+      rect width: 80px, height: 40px, color: #2563eb, radius: 8px {
+        text "Post" color: #ffffff
+        on click: append new-entry to items
+      }
+    }
+
+    each post in items {
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 8px {
+        text "{post.author}" font-weight: bold
+        text "{post.body}" color: #64748b
+      }
+    }
+  }
+}

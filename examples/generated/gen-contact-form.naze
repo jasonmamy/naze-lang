@@ -1,0 +1,34 @@
+-- Contact page with form and info
+app "Contact Us" {
+  state sender = ""
+  state subject = ""
+  state body = ""
+  state sent = false
+
+  column padding: 24px, gap: 16px {
+    heading "Get in Touch" color: #1e293b
+
+    row gap: 24px {
+      column gap: 12px {
+        text "Send a Message" font-weight: bold
+        input bind: sender, placeholder: "Your email"
+        input bind: subject, placeholder: "Subject"
+        input bind: body, placeholder: "Message"
+        rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+          text "Send" color: #ffffff
+          on click: set sent = true
+        }
+        if sent {
+          text "Message sent!" color: #16a34a
+        }
+      }
+      column gap: 8px {
+        text "Company Info" font-weight: bold
+        text "Acme Inc." color: #475569
+        text "123 Main Street" color: #64748b
+        text "hello@acme.com" color: #2563eb
+        text "+1 800-555-0100" color: #64748b
+      }
+    }
+  }
+}

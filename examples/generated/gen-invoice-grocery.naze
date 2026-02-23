@@ -1,0 +1,57 @@
+-- Grocery store receipt
+app "Grocery Receipt" {
+  state item1-qty = 2
+  state item2-qty = 3
+  state item1-price = 6
+  state item2-price = 4
+  state tax-rate = 5
+  computed subtotal = item1-qty * item1-price + item2-qty * item2-price
+  computed tax = subtotal * tax-rate / 100
+  computed total = subtotal + tax
+
+  column padding: 24px, gap: 16px {
+    heading "Grocery Receipt" color: #15803d
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        text "Fresh Market" font-size: 18px, font-weight: bold
+        text "22 Oak Avenue" color: #64748b, font-size: 13px
+        separator
+        text "Invoice #FM-7750" color: #94a3b8, font-size: 12px
+      }
+    }
+
+    column gap: 4px {
+      row gap: 8px {
+        text "Organic Eggs" font-weight: bold
+        spacer
+        text "{item1-qty} x ${item1-price}" color: #64748b
+      }
+      row gap: 8px {
+        text "Bread Loaf" font-weight: bold
+        spacer
+        text "{item2-qty} x ${item2-price}" color: #64748b
+      }
+    }
+
+    separator
+
+    column gap: 4px {
+      row gap: 8px {
+        text "Subtotal" color: #64748b
+        spacer
+        text "${subtotal}"
+      }
+      row gap: 8px {
+        text "Tax ({tax-rate}%)" color: #64748b
+        spacer
+        text "${tax}"
+      }
+      row gap: 8px {
+        text "Total" font-weight: bold, font-size: 18px
+        spacer
+        text "${total}" font-weight: bold, font-size: 18px, color: #15803d
+      }
+    }
+  }
+}

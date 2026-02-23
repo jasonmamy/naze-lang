@@ -1,0 +1,25 @@
+-- Photo gallery from API
+app "Photos" {
+  data photos: fetch "/api/photos"
+
+  column padding: 20px, gap: 16px {
+    heading "Photos"
+
+    if photos.loading {
+      text "Loading photos..." color: #64748b
+    }
+
+    if photos.error {
+      text "Failed to load photos" color: #dc2626
+    }
+
+    if photos.data {
+      text "photos loaded successfully" color: #16a34a
+      each photo in photos.data {
+        row padding: 8px, color: #fdf2f8, radius: 4px {
+          text "{photo.title}"
+        }
+      }
+    }
+  }
+}

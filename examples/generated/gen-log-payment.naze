@@ -1,0 +1,18 @@
+-- Payment transaction log
+app "Payment History" {
+  state entries = [{time: "Jan 1", action: "Subscription renewed", user: "$29.00"}, {time: "Dec 1", action: "Subscription renewed", user: "$29.00"}, {time: "Nov 15", action: "Plan upgraded", user: "$49.00"}, {time: "Nov 1", action: "Initial payment", user: "$29.00"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Payment History" color: #f59e0b
+    text "{total-entries} transactions" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #fefce8, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #f59e0b, font-size: 12px
+      }
+    }
+  }
+}

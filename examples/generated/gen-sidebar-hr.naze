@@ -1,0 +1,40 @@
+-- HR portal sidebar with department navigation
+app "HR Portal" {
+  state active-page = "employees"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #fce7f3 {
+      column padding: 16px, gap: 4px {
+        text "HR Hub" font-weight: bold, font-size: 18px, color: #be185d
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Employees" color: #9d174d
+          on click: set active-page = "employees"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Payroll" color: #9d174d
+          on click: set active-page = "payroll"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Leave" color: #9d174d
+          on click: set active-page = "leave"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Reviews" color: #9d174d
+          on click: set active-page = "reviews"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "employees": heading "Employees"
+        "payroll": heading "Payroll"
+        "leave": heading "Leave"
+        "reviews": heading "Reviews"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

@@ -1,0 +1,30 @@
+-- Sidebar + main grid
+app "Sidebar Layout" {
+  state section = "home"
+
+  row gap: 0px {
+    column width: 200px, padding: 16px, gap: 8px, color: #f8fafc {
+      text "Navigation" font-weight: bold
+      rect padding: 8px, color: #eff6ff, radius: 4px {
+        text "Home"
+        on click: set section = "home"
+      }
+      rect padding: 8px, color: #eff6ff, radius: 4px {
+        text "Products"
+        on click: set section = "products"
+      }
+    }
+
+    column padding: 20px, gap: 16px {
+      heading "Content Area"
+      grid columns: 2, gap: 12px {
+        rect padding: 16px, color: #f8fafc, radius: 8px {
+          text "Panel 1" font-weight: bold
+        }
+        rect padding: 16px, color: #f8fafc, radius: 8px {
+          text "Panel 2" font-weight: bold
+        }
+      }
+    }
+  }
+}

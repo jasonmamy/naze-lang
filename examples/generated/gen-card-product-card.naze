@@ -1,0 +1,21 @@
+-- E-commerce product card with price
+app "Product Card" {
+  state product-name = "Wireless Headphones"
+
+  column padding: 20px, gap: 16px {
+    heading "Product Card"
+
+    rect width: 320px, color: #eff6ff, radius: 12px, padding: 20px {
+      column gap: 8px {
+        text "{product-name}" font-size: 22px, font-weight: bold
+        text "$79.99" color: #64748b
+        separator
+        row gap: 12px {
+          text "Rating: 4.8" color: #1d4ed8
+          text "Reviews: 2.3k" color: #1d4ed8
+        }
+        text "Free shipping over $50" color: #94a3b8, font-size: 13px
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+-- Online course FAQ accordion
+app "Course FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Course FAQ"
+
+    rect padding: 12px, color: #fdf4ff, radius: 8px {
+      text "Who is this course for?" font-weight: bold, color: #86198f
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #fae8ff {
+        text "Beginners and intermediate learners." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fdf4ff, radius: 8px {
+      text "How long is the course?" font-weight: bold, color: #86198f
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #fae8ff {
+        text "12 weeks, 4 to 6 hours per week." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fdf4ff, radius: 8px {
+      text "Do I get a certificate?" font-weight: bold, color: #86198f
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #fae8ff {
+        text "Yes, a certificate upon completion." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fdf4ff, radius: 8px {
+      text "Is there mentoring?" font-weight: bold, color: #86198f
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #fae8ff {
+        text "Weekly live Q and A sessions with instructors." color: #475569
+      }
+    }
+  }
+}

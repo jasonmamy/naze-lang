@@ -1,0 +1,9 @@
+-- Minimal computed
+app "Double" {
+  state x = 5
+  computed doubled = x * 2
+  column padding: 20px, gap: 8px {
+    text "Value: {x}" font-size: 20px
+    text "Doubled: {doubled}" color: #2563eb, font-size: 20px
+  }
+}

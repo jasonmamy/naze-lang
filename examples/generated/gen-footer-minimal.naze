@@ -1,0 +1,33 @@
+-- Clean minimal website footer
+app "Minimal Footer" {
+  column {
+    spacer height: 40px
+
+    rect width: 800px, color: #f8fafc {
+      column padding: 32px, gap: 16px {
+        row gap: 48px {
+          column gap: 6px {
+            text "Links" font-weight: bold, color: #0f172a
+            text "Home" color: #64748b, font-size: 14px
+            text "About" color: #64748b, font-size: 14px
+            text "Contact" color: #64748b, font-size: 14px
+          }
+          column gap: 6px {
+            text "Legal" font-weight: bold, color: #0f172a
+            text "Privacy" color: #64748b, font-size: 14px
+            text "Terms" color: #64748b, font-size: 14px
+            text "Cookies" color: #64748b, font-size: 14px
+          }
+          column gap: 6px {
+            text "Social" font-weight: bold, color: #0f172a
+            text "Twitter" color: #64748b, font-size: 14px
+            text "GitHub" color: #64748b, font-size: 14px
+            text "LinkedIn" color: #64748b, font-size: 14px
+          }
+        }
+        separator
+        text "Made with Naze" color: #64748b, font-size: 12px
+      }
+    }
+  }
+}

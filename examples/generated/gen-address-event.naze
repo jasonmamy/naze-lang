@@ -1,0 +1,26 @@
+-- Event venue location form
+app "Event Venue" {
+  state venue-name = ""
+  state venue-address = ""
+  state capacity = ""
+  state contact = ""
+  state saved = false
+
+  column padding: 20px, gap: 12px {
+    heading "Event Venue"
+
+    input bind: venue-name, placeholder: "Venue Name"
+    input bind: venue-address, placeholder: "Venue Address"
+    input bind: capacity, placeholder: "Capacity"
+    input bind: contact, placeholder: "Contact Person"
+
+    rect width: 120px, height: 40px, color: #a21caf, radius: 8px {
+      text "Add Venue" color: #ffffff
+      on click: set saved = true
+    }
+
+    if saved {
+      text "Venue added!" color: #16a34a
+    }
+  }
+}

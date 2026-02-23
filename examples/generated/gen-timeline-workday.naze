@@ -1,0 +1,24 @@
+-- Daily work activity timeline
+app "Daily Log" {
+  state events = [{time: "9:00 AM", title: "Standup", detail: "Team sync meeting"}, {time: "10:30 AM", title: "Code Review", detail: "Reviewed 3 pull requests"}, {time: "2:00 PM", title: "Deploy", detail: "v2.1 pushed to staging"}, {time: "4:30 PM", title: "Retro", detail: "Sprint retrospective"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Daily Log" color: #4f46e5
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #6366f1, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

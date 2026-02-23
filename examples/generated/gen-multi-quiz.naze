@@ -1,0 +1,44 @@
+-- Quiz app
+app "Quiz" {
+  state step = 1
+  state score = 0
+  state finished = false
+  computed percent = score * 50
+
+  column padding: 20px, gap: 16px {
+    heading "Knowledge Quiz"
+    text "Score: {score}/2 ({percent}%)" color: #2563eb
+
+    if finished == false {
+      match step {
+        1: column gap: 12px {
+          text "Q1: Naze compiles to..." font-weight: bold
+          rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+            text "WASM" color: #ffffff
+            on click: set score = score + 1
+          }
+          rect width: 80px, height: 36px, color: #64748b, radius: 4px {
+            text "Next" color: #ffffff
+            on click: set step = 2
+          }
+        }
+        2: column gap: 12px {
+          text "Q2: Naze renders via..." font-weight: bold
+          rect width: 100px, height: 36px, color: #2563eb, radius: 4px {
+            text "Canvas2D" color: #ffffff
+            on click: set score = score + 1
+          }
+          rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+            text "See Results" color: #ffffff
+            on click: set finished = true
+          }
+        }
+        _: text "Complete"
+      }
+    }
+
+    if finished {
+      text "Final Score: {score}/2 ({percent}%)" font-size: 24px, color: #16a34a
+    }
+  }
+}

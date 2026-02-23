@@ -1,0 +1,26 @@
+-- Activity feed with user actions
+app "Activity Stream" {
+  state items = [{user: "Kim", action: "pushed to main"}, {user: "Leo", action: "opened PR #42"}, {user: "Mia", action: "closed issue #17"}]
+  state new-entry = ""
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Activity Stream"
+    text "{total} events" color: #64748b
+
+    row gap: 8px {
+      input bind: new-entry, placeholder: "Log activity..."
+      rect width: 80px, height: 40px, color: #8b5cf6, radius: 8px {
+        text "Log" color: #ffffff
+        on click: append new-entry to items
+      }
+    }
+
+    each evt in items {
+      row padding: 12px, color: #faf5ff, radius: 8px, gap: 8px {
+        text "{evt.user}" font-weight: bold
+        text "{evt.action}" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+-- Billing and payment questions
+app "Billing FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Billing FAQ" color: #16a34a
+    text "Payment-related questions" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "What payment methods do you accept?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "We accept Visa, Mastercard, and PayPal." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Can I change my plan?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "Yes, upgrade or downgrade anytime from settings." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "When am I billed?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "Billing occurs on the 1st of each month." color: #475569
+    }
+  }
+}

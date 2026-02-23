@@ -1,0 +1,48 @@
+-- Investment platform FAQ accordion
+app "Investment FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Investment FAQ"
+
+    rect padding: 12px, color: #f5f3ff, radius: 8px {
+      text "What is the minimum investment?" font-weight: bold, color: #5b21b6
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #ede9fe {
+        text "You can start with as little as $10." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f5f3ff, radius: 8px {
+      text "How are returns calculated?" font-weight: bold, color: #5b21b6
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #ede9fe {
+        text "Based on market performance, updated daily." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f5f3ff, radius: 8px {
+      text "Are there any fees?" font-weight: bold, color: #5b21b6
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #ede9fe {
+        text "0.5 percent annual management fee, no hidden costs." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f5f3ff, radius: 8px {
+      text "Can I withdraw anytime?" font-weight: bold, color: #5b21b6
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #ede9fe {
+        text "Yes, withdrawals are processed within 24 hours." color: #475569
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+-- Flip clock countdown
+app "Flip Clock" {
+  state hours = 2
+  state minutes = 30
+  state seconds = 0
+
+  timer tick: every 1s {
+    set seconds = seconds - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Countdown Clock"
+
+    row gap: 8px {
+      rect width: 80px, height: 80px, color: #1e293b, radius: 8px {
+        text "{hours}" color: #ffffff, font-size: 36px
+        text "HRS" color: #94a3b8, font-size: 10px
+      }
+      text ":" font-size: 36px, color: #64748b
+      rect width: 80px, height: 80px, color: #1e293b, radius: 8px {
+        text "{minutes}" color: #ffffff, font-size: 36px
+        text "MIN" color: #94a3b8, font-size: 10px
+      }
+      text ":" font-size: 36px, color: #64748b
+      rect width: 80px, height: 80px, color: #1e293b, radius: 8px {
+        text "{seconds}" color: #ffffff, font-size: 36px
+        text "SEC" color: #94a3b8, font-size: 10px
+      }
+    }
+  }
+}

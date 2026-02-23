@@ -1,0 +1,25 @@
+-- Upcoming events from API
+app "Events" {
+  data events: fetch "/api/events"
+
+  column padding: 20px, gap: 16px {
+    heading "Events"
+
+    if events.loading {
+      text "Loading events..." color: #64748b
+    }
+
+    if events.error {
+      text "Failed to load events" color: #dc2626
+    }
+
+    if events.data {
+      text "events loaded successfully" color: #16a34a
+      each evt in events.data {
+        row padding: 8px, color: #ecfeff, radius: 4px {
+          text "{evt.title}"
+        }
+      }
+    }
+  }
+}

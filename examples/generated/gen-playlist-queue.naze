@@ -1,0 +1,24 @@
+-- Playlist queue
+app "Up Next" {
+  state now-playing = "Bohemian Rhapsody"
+  state queue = [{title: "Imagine", artist: "John Lennon"}, {title: "Yesterday", artist: "The Beatles"}, {title: "Purple Rain", artist: "Prince"}]
+  computed queue-size = queue | count
+
+  column padding: 20px, gap: 16px {
+    heading "Up Next"
+
+    rect padding: 16px, color: #6366f1, radius: 12px {
+      text "Now Playing" color: #c7d2fe, font-size: 12px
+      text "{now-playing}" color: #ffffff, font-size: 20px, font-weight: bold
+    }
+
+    text "{queue-size} tracks in queue" color: #64748b
+
+    each track in queue {
+      row padding: 10px, color: #f8fafc, radius: 8px, gap: 8px {
+        text "{track.title}" font-weight: bold
+        text "{track.artist}" color: #64748b
+      }
+    }
+  }
+}

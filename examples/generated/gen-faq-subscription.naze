@@ -1,0 +1,35 @@
+-- Subscription plan questions
+app "Subscription FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Subscription FAQ" color: #ec4899
+    text "Plan details" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Can I cancel anytime?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "Yes, cancel with no fees from your dashboard." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Is there a student discount?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "Yes, students get 50% off." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Do you offer annual billing?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "Yes, save 20% with annual plans." color: #475569
+    }
+  }
+}

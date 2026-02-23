@@ -1,0 +1,28 @@
+-- Spa treatment reservation
+app "Spa Booking" {
+  state guest-name = ""
+  state treatment = ""
+  state duration = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Spa Booking" color: #ec4899
+    text "Book a treatment" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: treatment, placeholder: "Treatment type"
+    input bind: duration, placeholder: "Duration (minutes)"
+
+    rect width: 140px, height: 44px, color: #ec4899, radius: 8px {
+      text "Book Spa" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Spa session booked!" color: #64748b
+      }
+    }
+  }
+}

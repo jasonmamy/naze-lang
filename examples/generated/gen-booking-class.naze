@@ -1,0 +1,34 @@
+-- Fitness class booking
+app "Class Booking" {
+  state student = ""
+  state class-time = ""
+  state signed-up = false
+
+  state classes = [{name: "Yoga", instructor: "Sarah", spots: "5"}, {name: "Pilates", instructor: "Mike", spots: "3"}, {name: "HIIT", instructor: "Jess", spots: "8"}]
+
+  column padding: 24px, gap: 16px {
+    heading "Book a Class" color: #7c3aed
+
+    each cls in classes {
+      row padding: 12px, color: #f5f3ff, radius: 8px, gap: 12px {
+        text "{cls.name}" font-weight: bold
+        text "with {cls.instructor}" color: #64748b
+        text "{cls.spots} spots" color: #7c3aed
+      }
+    }
+
+    separator
+
+    input bind: student, placeholder: "Your name"
+    input bind: class-time, placeholder: "Preferred time"
+
+    rect width: 120px, height: 40px, color: #7c3aed, radius: 8px {
+      text "Sign Up" color: #ffffff
+      on click: set signed-up = true
+    }
+
+    if signed-up {
+      text "You are signed up, {student}!" color: #16a34a
+    }
+  }
+}

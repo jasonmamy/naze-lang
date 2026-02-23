@@ -1,0 +1,26 @@
+-- Scheduled maintenance page with status
+app "Maintenance" {
+  state action-taken = false
+
+  column padding: 40px, gap: 16px {
+    rect width: 100px, height: 100px, color: #faf5ff, radius: 50px {
+      text "~" font-size: 40px, color: #7c3aed
+    }
+
+    heading "Under Maintenance" font-size: 22px
+    text "We are performing scheduled maintenance. Back shortly!" color: #64748b
+
+    if action-taken == false {
+      rect width: 140px, height: 44px, color: #7c3aed, radius: 8px {
+        text "Check Status" color: #ffffff
+        on click: set action-taken = true
+      }
+    }
+
+    if action-taken {
+      text "Checking..." color: #16a34a
+    }
+
+    text "Expected downtime: 30 minutes" color: #94a3b8, font-size: 13px
+  }
+}

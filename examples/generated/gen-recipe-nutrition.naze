@@ -1,0 +1,35 @@
+-- Recipe with nutrition
+app "Healthy Bowl" {
+  state calories = 450
+  state protein = 32
+  state carbs = 48
+  state fat = 14
+
+  column padding: 20px, gap: 16px {
+    heading "Healthy Bowl"
+    text "Grain bowl with chicken and veggies" color: #64748b
+
+    rect padding: 16px, color: #f0fdf4, radius: 8px {
+      text "Nutrition Facts" font-weight: bold, font-size: 18px
+      separator
+      row gap: 16px {
+        column gap: 4px {
+          text "{calories}" font-size: 24px, color: #16a34a
+          text "Calories" color: #64748b, font-size: 12px
+        }
+        column gap: 4px {
+          text "{protein}g" font-size: 24px, color: #2563eb
+          text "Protein" color: #64748b, font-size: 12px
+        }
+        column gap: 4px {
+          text "{carbs}g" font-size: 24px, color: #f59e0b
+          text "Carbs" color: #64748b, font-size: 12px
+        }
+        column gap: 4px {
+          text "{fat}g" font-size: 24px, color: #ef4444
+          text "Fat" color: #64748b, font-size: 12px
+        }
+      }
+    }
+  }
+}

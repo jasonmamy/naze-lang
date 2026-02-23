@@ -1,0 +1,37 @@
+-- Playlist controls
+app "Player Controls" {
+  state mode = "normal"
+  state volume = 80
+  state track-pos = 0
+
+  timer progress: every 1s {
+    set track-pos = track-pos + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Player Controls"
+    text "Position: {track-pos}s" font-size: 18px, color: #64748b
+    text "Volume: {volume}%" color: #64748b
+
+    match mode {
+      "shuffle": text "Shuffle Mode" color: #16a34a, font-weight: bold
+      "repeat": text "Repeat Mode" color: #f59e0b, font-weight: bold
+      _: text "Normal Mode" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "Shuffle" color: #ffffff, font-size: 12px
+        on click: set mode = "shuffle"
+      }
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Repeat" color: #ffffff, font-size: 12px
+        on click: set mode = "repeat"
+      }
+      rect width: 80px, height: 36px, color: #64748b, radius: 4px {
+        text "Normal" color: #ffffff, font-size: 12px
+        on click: set mode = "normal"
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+-- Font size adjuster
+app "Font Size" {
+  state size = 16
+  state unit = "px"
+
+  column padding: 20px, gap: 16px {
+    heading "Font Size"
+    text "{size}" font-size: 24px, color: #8b5cf6
+    text "{unit}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #8b5cf6, radius: 8px {
+        text "Bigger" color: #ffffff
+        on click: set size = size + 2
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Smaller" color: #ffffff
+        on click: set unit = "px"
+      }
+      rect width: 80px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set size = 16
+      }
+    }
+  }
+}

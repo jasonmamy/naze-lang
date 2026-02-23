@@ -1,0 +1,14 @@
+-- Startup hero banner with CTA button
+app "Startup Landing" {
+  column {
+    rect width: 800px, height: 320px, color: #0f172a, radius: 0px {
+      column padding: 48px, gap: 12px {
+        text "Build the future, today" color: #ffffff, font-size: 36px, font-weight: bold
+        text "The platform for modern teams to ship faster." color: #94a3b8, font-size: 16px
+        rect width: 140px, height: 44px, color: #3b82f6, radius: 8px {
+          text "Get Started" color: #ffffff
+        }
+      }
+    }
+  }
+}

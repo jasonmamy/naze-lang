@@ -1,0 +1,30 @@
+-- Difficulty picker for easy, normal, and hard modes
+app "Difficulty" {
+  state difficulty = "normal"
+
+  column padding: 20px, gap: 16px {
+    heading "Difficulty"
+
+    match difficulty {
+      "easy": text "Easy mode" color: #16a34a, font-size: 20px
+      "normal": text "Normal mode" color: #2563eb, font-size: 20px
+      "hard": text "Hard mode" color: #dc2626, font-size: 20px
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #16a34a, radius: 4px {
+        text "easy" color: #ffffff
+        on click: set difficulty = "easy"
+      }
+      rect width: 100px, height: 36px, color: #2563eb, radius: 4px {
+        text "normal" color: #ffffff
+        on click: set difficulty = "normal"
+      }
+      rect width: 100px, height: 36px, color: #dc2626, radius: 4px {
+        text "hard" color: #ffffff
+        on click: set difficulty = "hard"
+      }
+    }
+  }
+}

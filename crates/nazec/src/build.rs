@@ -147,16 +147,16 @@ pub fn run(
     let (env_vars, missing_env) = crate::manifest::resolve_env_vars(manifest, &dotenv);
     if !missing_env.is_empty() {
         for name in &missing_env {
-            diag.print_all(&[CompileError {
-                message: format!(
+            diag.print_all(&[CompileError::new(
+                format!(
                     "required environment variable '{}' is not set (declare in [env] section of naze.toml)",
                     name
                 ),
-                file: "naze.toml".to_string(),
-                line: 0,
-                column: 0,
-                severity: Severity::Error,
-            }]);
+                "naze.toml".to_string(),
+                0,
+                0,
+                Severity::Error,
+            )]);
         }
         return Err("missing required environment variables".into());
     }
@@ -276,13 +276,13 @@ pub fn run_incremental(
     let (env_vars, missing_env) = crate::manifest::resolve_env_vars(manifest, &dotenv);
     if !missing_env.is_empty() {
         for name in &missing_env {
-            diag.print_all(&[CompileError {
-                message: format!("required environment variable '{}' is not set", name),
-                file: "naze.toml".to_string(),
-                line: 0,
-                column: 0,
-                severity: Severity::Error,
-            }]);
+            diag.print_all(&[CompileError::new(
+                format!("required environment variable '{}' is not set", name),
+                "naze.toml".to_string(),
+                0,
+                0,
+                Severity::Error,
+            )]);
         }
         return Err("missing required environment variables".into());
     }

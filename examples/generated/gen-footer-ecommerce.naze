@@ -1,0 +1,33 @@
+-- E-commerce store footer
+app "Shop Footer" {
+  column {
+    spacer height: 40px
+
+    rect width: 800px, color: #fafaf9 {
+      column padding: 32px, gap: 16px {
+        row gap: 48px {
+          column gap: 6px {
+            text "Shop" font-weight: bold, color: #1c1917
+            text "New Arrivals" color: #78716c, font-size: 14px
+            text "Best Sellers" color: #78716c, font-size: 14px
+            text "Sale" color: #78716c, font-size: 14px
+          }
+          column gap: 6px {
+            text "Help" font-weight: bold, color: #1c1917
+            text "Shipping" color: #78716c, font-size: 14px
+            text "Returns" color: #78716c, font-size: 14px
+            text "Size Guide" color: #78716c, font-size: 14px
+          }
+          column gap: 6px {
+            text "About" font-weight: bold, color: #1c1917
+            text "Our Story" color: #78716c, font-size: 14px
+            text "Sustainability" color: #78716c, font-size: 14px
+            text "Stores" color: #78716c, font-size: 14px
+          }
+        }
+        separator
+        text "2025 ShopCo. Free shipping on orders over $50." color: #78716c, font-size: 12px
+      }
+    }
+  }
+}

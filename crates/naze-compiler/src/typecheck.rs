@@ -576,15 +576,14 @@ fn check_nodes(
                     .iter()
                     .any(|a| matches!(a.pattern, MatchPattern::Wildcard));
                 if !has_wildcard {
-                    errors.push(CompileError {
-                        message:
-                            "match expression should have a wildcard '_' arm for exhaustiveness"
-                                .to_string(),
-                        file: span.file.clone(),
-                        line: span.line,
-                        column: span.col,
-                        severity: Severity::Warning,
-                    });
+                    errors.push(CompileError::new(
+                        "match expression should have a wildcard '_' arm for exhaustiveness"
+                            .to_string(),
+                        span.file.clone(),
+                        span.line,
+                        span.col,
+                        Severity::Warning,
+                    ).with_fix("E008", "Add a '_ { ... }' catch-all arm to the match"));
                 }
                 for arm in arms {
                     check_nodes(
@@ -636,30 +635,30 @@ fn check_handler_accessibility(
 
     // Elements that act as buttons should have role: "button"
     if matches!(element, "rect" | "row" | "column" | "stack") && !has_role {
-        errors.push(CompileError {
-            message: format!(
+        errors.push(CompileError::new(
+            format!(
                 "clickable {} should have 'role' prop (e.g., role: \"button\") for screen readers",
                 element
             ),
-            file: span.file.clone(),
-            line: span.line,
-            column: span.col,
-            severity: Severity::Warning,
-        });
+            span.file.clone(),
+            span.line,
+            span.col,
+            Severity::Warning,
+        ));
     }
 
     // Clickable elements without visible text need a label
     if !has_text && !has_label && !matches!(element, "text" | "heading" | "link") {
-        errors.push(CompileError {
-            message: format!(
+        errors.push(CompileError::new(
+            format!(
                 "clickable {} without text should have 'label' prop for screen readers",
                 element
             ),
-            file: span.file.clone(),
-            line: span.line,
-            column: span.col,
-            severity: Severity::Warning,
-        });
+            span.file.clone(),
+            span.line,
+            span.col,
+            Severity::Warning,
+        ));
     }
 }
 
@@ -675,21 +674,21 @@ fn check_handler(
     match &handler.action {
         Action::Set { target, expr, span } => {
             if computed_names.contains(target) {
-                errors.push(CompileError {
-                    message: format!("cannot set '{}': computed values are read-only", target),
-                    file: span.file.clone(),
-                    line: span.line,
-                    column: span.col,
-                    severity: Severity::Error,
-                });
+                errors.push(CompileError::new(
+                    format!("cannot set '{}': computed values are read-only", target),
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ));
             } else if !state_names.contains(target) {
-                errors.push(CompileError {
-                    message: format!("cannot set '{}': not a declared state variable", target),
-                    file: span.file.clone(),
-                    line: span.line,
-                    column: span.col,
-                    severity: Severity::Error,
-                });
+                errors.push(CompileError::new(
+                    format!("cannot set '{}': not a declared state variable", target),
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ));
             }
             check_expression(expr, state_names, &handler.span, errors);
         }
@@ -700,13 +699,13 @@ fn check_handler(
         }
         Action::Trigger { data_name, span } => {
             if !data_names.contains(data_name) {
-                errors.push(CompileError {
-                    message: format!("cannot trigger '{}': not a declared data source", data_name),
-                    file: span.file.clone(),
-                    line: span.line,
-                    column: span.col,
-                    severity: Severity::Error,
-                });
+                errors.push(CompileError::new(
+                    format!("cannot trigger '{}': not a declared data source", data_name),
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ));
             }
         }
         Action::Copy { expr, .. } => {
@@ -758,13 +757,13 @@ fn check_expression_inner(
             // Inside pipeline stages, bare identifiers may refer to item fields
             // rather than state variables, so skip strict validation there
             if !in_pipeline_stage && !state_names.contains(name) {
-                errors.push(CompileError {
-                    message: format!("unknown state variable '{}' in expression", name),
-                    file: span.file.clone(),
-                    line: span.line,
-                    column: span.col,
-                    severity: Severity::Error,
-                });
+                errors.push(CompileError::new(
+                    format!("unknown state variable '{}' in expression", name),
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ));
             }
         }
         Expression::BinOp { left, right, .. } => {
@@ -794,39 +793,38 @@ fn check_expression_inner(
                                 PipelineFn::GroupBy => "group-by",
                                 _ => unreachable!(),
                             };
-                            errors.push(CompileError {
-                                message: format!(
+                            errors.push(CompileError::new(
+                                format!(
                                     "pipeline function '{}' requires an argument",
                                     fn_name
                                 ),
-                                file: span.file.clone(),
-                                line: span.line,
-                                column: span.col,
-                                severity: Severity::Error,
-                            });
+                                span.file.clone(),
+                                span.line,
+                                span.col,
+                                Severity::Error,
+                            ));
                         }
                     }
                     PipelineFn::Reduce => {
                         if stage.argument.is_none() {
-                            errors.push(CompileError {
-                                message:
-                                    "pipeline function 'reduce' requires an accumulator expression"
-                                        .to_string(),
-                                file: span.file.clone(),
-                                line: span.line,
-                                column: span.col,
-                                severity: Severity::Error,
-                            });
+                            errors.push(CompileError::new(
+                                "pipeline function 'reduce' requires an accumulator expression"
+                                    .to_string(),
+                                span.file.clone(),
+                                span.line,
+                                span.col,
+                                Severity::Error,
+                            ));
                         }
                         if stage.argument2.is_none() {
-                            errors.push(CompileError {
-                                message: "pipeline function 'reduce' requires an initial value"
+                            errors.push(CompileError::new(
+                                "pipeline function 'reduce' requires an initial value"
                                     .to_string(),
-                                file: span.file.clone(),
-                                line: span.line,
-                                column: span.col,
-                                severity: Severity::Error,
-                            });
+                                span.file.clone(),
+                                span.line,
+                                span.col,
+                                Severity::Error,
+                            ));
                         }
                     }
                     PipelineFn::Sum | PipelineFn::Count | PipelineFn::Flatten => {
@@ -869,16 +867,16 @@ fn check_component_call(
     for prop in props {
         if prop.key == "__text" {
             // Text content shorthand — components don't accept this
-            errors.push(CompileError {
-                message: format!(
+            errors.push(CompileError::new(
+                format!(
                     "component '{}' does not accept inline text content",
                     comp.name
                 ),
-                file: call_span.file.clone(),
-                line: call_span.line,
-                column: call_span.col,
-                severity: Severity::Error,
-            });
+                call_span.file.clone(),
+                call_span.line,
+                call_span.col,
+                Severity::Error,
+            ));
             continue;
         }
 
@@ -888,24 +886,24 @@ fn check_component_call(
                 if !matches!(&prop.value, Value::Ref(_))
                     && !value_matches_type(&prop.value, &param.ty)
                 {
-                    errors.push(CompileError {
-                        message: format!(
+                    errors.push(CompileError::new(
+                        format!(
                             "type mismatch for prop '{}' on component '{}': expected {}, got {}",
                             prop.key,
                             comp.name,
                             type_name(&param.ty),
                             value_type_name(&prop.value),
                         ),
-                        file: call_span.file.clone(),
-                        line: call_span.line,
-                        column: call_span.col,
-                        severity: Severity::Error,
-                    });
+                        call_span.file.clone(),
+                        call_span.line,
+                        call_span.col,
+                        Severity::Error,
+                    ).with_fix("E002", "Check the expected type and use the correct literal form"));
                 }
             }
             None => {
-                errors.push(CompileError {
-                    message: format!(
+                errors.push(CompileError::new(
+                    format!(
                         "unknown prop '{}' on component '{}'. Available: {}",
                         prop.key,
                         comp.name,
@@ -915,11 +913,11 @@ fn check_component_call(
                             .collect::<Vec<_>>()
                             .join(", "),
                     ),
-                    file: call_span.file.clone(),
-                    line: call_span.line,
-                    column: call_span.col,
-                    severity: Severity::Error,
-                });
+                    call_span.file.clone(),
+                    call_span.line,
+                    call_span.col,
+                    Severity::Error,
+                ));
             }
         }
     }
@@ -929,16 +927,16 @@ fn check_component_call(
         if param.default.is_none() {
             let provided = props.iter().any(|p| p.key == param.name);
             if !provided {
-                errors.push(CompileError {
-                    message: format!(
+                errors.push(CompileError::new(
+                    format!(
                         "missing required prop '{}' on component '{}'",
                         param.name, comp.name
                     ),
-                    file: call_span.file.clone(),
-                    line: call_span.line,
-                    column: call_span.col,
-                    severity: Severity::Error,
-                });
+                    call_span.file.clone(),
+                    call_span.line,
+                    call_span.col,
+                    Severity::Error,
+                ).with_fix("E007", "Add the missing prop to your element or component invocation"));
             }
         }
     }
@@ -947,16 +945,16 @@ fn check_component_call(
     let has_slots = has_slot_in_tree(&comp.children);
 
     if !call_children.is_empty() && !has_slots {
-        errors.push(CompileError {
-            message: format!(
+        errors.push(CompileError::new(
+            format!(
                 "component '{}' does not declare any slots and cannot accept children",
                 comp.name
             ),
-            file: call_span.file.clone(),
-            line: call_span.line,
-            column: call_span.col,
-            severity: Severity::Error,
-        });
+            call_span.file.clone(),
+            call_span.line,
+            call_span.col,
+            Severity::Error,
+        ));
     }
 
     if has_slots {
@@ -964,13 +962,13 @@ fn check_component_call(
         for child in call_children {
             if let Node::Fill { name, span, .. } = child {
                 if !declared_slots.contains(name.as_str()) {
-                    errors.push(CompileError {
-                        message: format!("component '{}' has no slot named '{}'", comp.name, name),
-                        file: span.file.clone(),
-                        line: span.line,
-                        column: span.col,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        format!("component '{}' has no slot named '{}'", comp.name, name),
+                        span.file.clone(),
+                        span.line,
+                        span.col,
+                        Severity::Error,
+                    ));
                 }
             }
         }
@@ -1007,42 +1005,42 @@ fn check_accessibility_props(
     if element == "image" && !has_label {
         let has_alt = props.iter().any(|p| p.key == "alt");
         if !has_alt {
-            errors.push(CompileError {
-                message: "image element should have 'alt' or 'label' prop for accessibility"
+            errors.push(CompileError::new(
+                "image element should have 'alt' or 'label' prop for accessibility"
                     .to_string(),
-                file: span.file.clone(),
-                line: span.line,
-                column: span.col,
-                severity: Severity::Warning,
-            });
+                span.file.clone(),
+                span.line,
+                span.col,
+                Severity::Warning,
+            ));
         }
     }
 
     // Interactive rect elements (with click handlers) should have a role
     if element == "rect" && is_interactive && !has_role {
-        errors.push(CompileError {
-            message: "interactive rect element should have 'role' prop (e.g., role: \"button\") for accessibility".to_string(),
-            file: span.file.clone(),
-            line: span.line,
-            column: span.col,
-            severity: Severity::Warning,
-        });
+        errors.push(CompileError::new(
+            "interactive rect element should have 'role' prop (e.g., role: \"button\") for accessibility".to_string(),
+            span.file.clone(),
+            span.line,
+            span.col,
+            Severity::Warning,
+        ));
     }
 
     // Interactive elements without visible text should have a label
     if needs_label && is_interactive && !has_label && !has_text {
         // Form inputs often have placeholder or visible context, so only warn for truly unlabeled elements
         if !matches!(element, "input" | "select") || !props.iter().any(|p| p.key == "placeholder") {
-            errors.push(CompileError {
-                message: format!(
+            errors.push(CompileError::new(
+                format!(
                     "{} element should have 'label' prop for accessibility (screen reader support)",
                     element
                 ),
-                file: span.file.clone(),
-                line: span.line,
-                column: span.col,
-                severity: Severity::Warning,
-            });
+                span.file.clone(),
+                span.line,
+                span.col,
+                Severity::Warning,
+            ));
         }
     }
 
@@ -1052,25 +1050,25 @@ fn check_accessibility_props(
             .iter()
             .any(|p| p.key == "focus-trap" && matches!(p.value, Value::Bool(true)));
         if has_focus_trap && !has_role {
-            errors.push(CompileError {
-                message: "overlay with focus-trap should have 'role' prop (e.g., role: \"dialog\") for accessibility".to_string(),
-                file: span.file.clone(),
-                line: span.line,
-                column: span.col,
-                severity: Severity::Warning,
-            });
+            errors.push(CompileError::new(
+                "overlay with focus-trap should have 'role' prop (e.g., role: \"dialog\") for accessibility".to_string(),
+                span.file.clone(),
+                span.line,
+                span.col,
+                Severity::Warning,
+            ));
         }
     }
 
     // Draggable elements should have a role
     if has_handlers && !has_role {
-        errors.push(CompileError {
-            message: "draggable element should have 'role' prop for accessibility".to_string(),
-            file: span.file.clone(),
-            line: span.line,
-            column: span.col,
-            severity: Severity::Warning,
-        });
+        errors.push(CompileError::new(
+            "draggable element should have 'role' prop for accessibility".to_string(),
+            span.file.clone(),
+            span.line,
+            span.col,
+            Severity::Warning,
+        ));
     }
 }
 
@@ -1101,16 +1099,16 @@ fn check_builtin_props(
                     // Not a known param — could be a forward reference or error.
                     // For Phase 1, only warn if we're inside a component body.
                     if !in_scope_params.is_empty() {
-                        errors.push(CompileError {
-                            message: format!(
+                        errors.push(CompileError::new(
+                            format!(
                                 "unknown reference '{}' on element '{}': not a component parameter",
                                 name, element
                             ),
-                            file: span.file.clone(),
-                            line: span.line,
-                            column: span.col,
-                            severity: Severity::Warning,
-                        });
+                            span.file.clone(),
+                            span.line,
+                            span.col,
+                            Severity::Warning,
+                        ).with_fix("E004", "Declare with 'state NAME = default_value' or check spelling"));
                     }
                 }
             }
@@ -1124,19 +1122,19 @@ fn check_builtin_props(
 
         if let Some(expected) = builtin_prop_type(element, &prop.key) {
             if !value_matches(&prop.value, expected) {
-                errors.push(CompileError {
-                    message: format!(
+                errors.push(CompileError::new(
+                    format!(
                         "type mismatch for prop '{}' on '{}': expected {}, got {}",
                         prop.key,
                         element,
                         expected_name(expected),
                         value_type_name(&prop.value),
                     ),
-                    file: span.file.clone(),
-                    line: span.line,
-                    column: span.col,
-                    severity: Severity::Error,
-                });
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ).with_fix("E002", "Check the expected type and use the correct literal form"));
             }
         }
         // Unknown props on builtins are silently ignored for Phase 1 — the set will grow.
@@ -1299,30 +1297,30 @@ fn validate_server_data_refs(
             } => {
                 if let Some(&expected) = server_fns.get(func_name) {
                     if args.len() != expected {
-                        errors.push(CompileError {
-                            message: format!(
+                        errors.push(CompileError::new(
+                            format!(
                                 "server function '{}' expects {} argument(s) but got {}",
                                 func_name,
                                 expected,
                                 args.len()
                             ),
-                            file: span.file.clone(),
-                            line: span.line,
-                            column: span.col,
-                            severity: Severity::Error,
-                        });
+                            span.file.clone(),
+                            span.line,
+                            span.col,
+                            Severity::Error,
+                        ));
                     }
                 } else {
-                    errors.push(CompileError {
-                        message: format!(
+                    errors.push(CompileError::new(
+                        format!(
                             "unknown server function '{}' — declare it with `server function {}`",
                             func_name, func_name
                         ),
-                        file: span.file.clone(),
-                        line: span.line,
-                        column: span.col,
-                        severity: Severity::Error,
-                    });
+                        span.file.clone(),
+                        span.line,
+                        span.col,
+                        Severity::Error,
+                    ).with_fix("E005", "Define with 'server function NAME() { ... }' at top level"));
                 }
             }
             Node::App { children, .. } | Node::Page { children, .. } => {
@@ -1396,16 +1394,16 @@ fn check_wasm_calls_in_expr(
                 let function = &name[dot + 1..];
                 if let Some(exports) = export_map.get(module) {
                     if !exports.contains(function) {
-                        errors.push(CompileError {
-                            message: format!(
+                        errors.push(CompileError::new(
+                            format!(
                                 "WASM module '{}' does not export function '{}'",
                                 module, function
                             ),
-                            severity: Severity::Error,
-                            file: String::new(),
-                            line: 0,
-                            column: 0,
-                        });
+                            String::new(),
+                            0,
+                            0,
+                            Severity::Error,
+                        ));
                     }
                 }
             }

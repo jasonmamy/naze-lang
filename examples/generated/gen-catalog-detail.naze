@@ -1,0 +1,25 @@
+-- Catalog with detail page
+app "Shop" {
+  state items = [{name: "Alpha Widget", desc: "Premium quality"}, {name: "Beta Gadget", desc: "Best value"}, {name: "Gamma Tool", desc: "Professional grade"}]
+
+  column padding: 24px, gap: 16px {
+    heading "Our Products" color: #1e293b
+    text "Browse our collection" color: #64748b
+
+    each item in items {
+      rect padding: 16px, color: #f8fafc, radius: 10px {
+        text "{item.name}" font-weight: bold, font-size: 18px
+        text "{item.desc}" color: #64748b
+        link "View details", to: "/product"
+      }
+    }
+  }
+}
+
+page "/product" {
+  column padding: 24px, gap: 16px {
+    heading "Product Details" color: #1e293b
+    text "Detailed product information goes here" color: #475569
+    link "Back to catalog", to: "/"
+  }
+}

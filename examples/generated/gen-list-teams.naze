@@ -1,0 +1,17 @@
+-- Team roster sorted by department
+app "Teams" {
+  state items = [{name: "Alpha", dept: "engineering"}, {name: "Beta", dept: "design"}, {name: "Gamma", dept: "marketing"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Teams"
+    text "{total} teams" color: #64748b
+
+    each team in items | sort-by dept {
+      row padding: 8px, color: #f1f5f9, radius: 4px, gap: 8px {
+        text "{team.name}" font-weight: bold
+        text "{team.dept}" color: #64748b
+      }
+    }
+  }
+}

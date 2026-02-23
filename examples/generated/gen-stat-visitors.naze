@@ -1,0 +1,29 @@
+-- Website visitor statistics
+app "Site Stats" {
+  state visitors = 1420
+  state bounces = 310
+
+  column padding: 20px, gap: 16px {
+    heading "Site Stats"
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Visitors" color: #64748b, font-size: 12px
+        text "{visitors}" font-size: 24px, color: #2563eb
+      }
+      rect padding: 16px, color: #fef2f2, radius: 8px {
+        text "Bounces" color: #64748b, font-size: 12px
+        text "{bounces}" font-size: 24px, color: #ef4444
+      }
+    }
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+        text "+1" color: #ffffff
+        on click: set visitors = visitors + 1
+      }
+      rect width: 80px, height: 32px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set visitors = 1420
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+-- Wedding planning timeline
+app "Wedding Plan" {
+  state events = [{time: "12 months", title: "Venue", detail: "Booked reception hall"}, {time: "9 months", title: "Vendors", detail: "Caterer and DJ confirmed"}, {time: "6 months", title: "Invites", detail: "Save the dates sent"}, {time: "1 month", title: "Final", detail: "Rehearsal and fitting"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Wedding Plan" color: #db2777
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #ec4899, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

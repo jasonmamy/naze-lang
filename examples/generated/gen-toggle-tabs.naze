@@ -1,0 +1,30 @@
+-- Tab navigation with content switching
+app "Tabs" {
+  state tab = "home"
+
+  column padding: 20px, gap: 16px {
+    heading "Tabs"
+
+    match tab {
+      "home": text "Welcome home" font-size: 18px
+      "settings": text "App settings" font-size: 18px
+      "help": text "Help & FAQ" font-size: 18px
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #2563eb, radius: 4px {
+        text "home" color: #ffffff
+        on click: set tab = "home"
+      }
+      rect width: 100px, height: 36px, color: #16a34a, radius: 4px {
+        text "settings" color: #ffffff
+        on click: set tab = "settings"
+      }
+      rect width: 100px, height: 36px, color: #f59e0b, radius: 4px {
+        text "help" color: #ffffff
+        on click: set tab = "help"
+      }
+    }
+  }
+}

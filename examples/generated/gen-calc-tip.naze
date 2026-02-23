@@ -1,0 +1,24 @@
+-- Tip calculator with bill and rate
+app "Tip Calculator" {
+  state bill = 50
+  state rate = 15
+  computed tip = bill * rate / 100
+
+  column padding: 20px, gap: 16px {
+    heading "Tip Calculator"
+    text "Bill: {bill}" font-size: 18px
+    text "Tip Rate: {rate}" color: #64748b
+    text "Tip: {tip}" font-size: 24px, color: #f59e0b
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "+" color: #ffffff
+        on click: set bill = bill + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set bill = 50
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+-- File manager sidebar with directory tree
+app "File Manager" {
+  state active-page = "documents"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #f1f5f9 {
+      column padding: 16px, gap: 4px {
+        text "Files" font-weight: bold, font-size: 18px, color: #1e293b
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Documents" color: #475569
+          on click: set active-page = "documents"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Images" color: #475569
+          on click: set active-page = "images"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Downloads" color: #475569
+          on click: set active-page = "downloads"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Shared" color: #475569
+          on click: set active-page = "shared"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "documents": heading "Documents"
+        "images": heading "Images"
+        "downloads": heading "Downloads"
+        "shared": heading "Shared"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

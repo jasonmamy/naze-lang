@@ -1,0 +1,30 @@
+-- Server function with update
+model tasks {
+  id number primary
+  title text
+  done bool default false
+}
+
+server function complete-task(task-id: number) {
+  update tasks set {done: true} where id == task-id
+}
+
+server function list-tasks() {
+  find tasks order id desc
+}
+
+app "Tasks" {
+  data tasks: list-tasks()
+
+  column padding: 20px, gap: 16px {
+    heading "Task List"
+
+    if tasks.data {
+      each task in tasks.data {
+        row padding: 8px, color: #f3f4f6, radius: 4px {
+          text "{task.title}"
+        }
+      }
+    }
+  }
+}

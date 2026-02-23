@@ -1,0 +1,19 @@
+-- Changelog
+app "Changelog" {
+  state entries = [{version: "2.1.0", date: "2024-01-15", note: "Added dark mode"}, {version: "2.0.0", date: "2024-01-01", note: "Major redesign"}, {version: "1.5.0", date: "2023-12-15", note: "Performance improvements"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Changelog"
+
+    each entry in entries {
+      column padding: 12px, gap: 4px {
+        row gap: 8px {
+          text "v{entry.version}" font-weight: bold, color: #2563eb
+          text "{entry.date}" color: #94a3b8
+        }
+        text "{entry.note}" color: #374151
+        separator
+      }
+    }
+  }
+}

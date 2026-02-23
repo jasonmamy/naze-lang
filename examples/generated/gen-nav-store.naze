@@ -1,0 +1,34 @@
+-- Online store with products, cart, and account
+app "Store" {
+  column padding: 20px, gap: 16px {
+    heading "Store"
+    text "Welcome to our store"
+    link "Products", to: "/products"
+    link "Cart", to: "/cart"
+    link "Account", to: "/account"
+  }
+}
+
+page "/products" {
+  column padding: 20px {
+    heading "Products"
+    text "Browse our catalog"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/cart" {
+  column padding: 20px {
+    heading "Shopping Cart"
+    text "Your cart items"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/account" {
+  column padding: 20px {
+    heading "My Account"
+    text "Account settings"
+    link "Back to Home", to: "/"
+  }
+}

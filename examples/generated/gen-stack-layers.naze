@@ -1,0 +1,10 @@
+-- Layered card with stack layout
+app "Layered Card" {
+  stack {
+    rect width: 300px, height: 200px, color: #3b82f6, radius: 12px
+    column padding: 16px {
+      heading "Featured" color: #ffffff, font-size: 24px
+      text "Overlaid on colored background" color: #ffffff
+    }
+  }
+}

@@ -1,0 +1,28 @@
+-- Hair salon booking
+app "Salon Appointment" {
+  state guest-name = ""
+  state service = ""
+  state stylist-pref = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Salon Appointment" color: #d946ef
+    text "Book a haircut" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: service, placeholder: "Service type"
+    input bind: stylist-pref, placeholder: "Preferred stylist"
+
+    rect width: 140px, height: 44px, color: #d946ef, radius: 8px {
+      text "Book Salon" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Salon appointment set!" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+-- Document approval workflow
+app "Approval Status" {
+  state status = "pending"
+
+  column padding: 20px, gap: 16px {
+    heading "Approval Status"
+
+    row gap: 8px {
+      rect width: 80px, height: 28px, color: #f59e0b, radius: 12px {
+        text "pending" color: #ffffff, font-size: 12px
+        on click: set status = "pending"
+      }
+      rect width: 80px, height: 28px, color: #16a34a, radius: 12px {
+        text "approved" color: #ffffff, font-size: 12px
+        on click: set status = "approved"
+      }
+      rect width: 80px, height: 28px, color: #ef4444, radius: 12px {
+        text "rejected" color: #ffffff, font-size: 12px
+        on click: set status = "rejected"
+      }
+    }
+
+    text "Current: {status}" font-size: 18px, font-weight: bold
+  }
+}

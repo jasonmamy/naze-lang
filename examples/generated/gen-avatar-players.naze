@@ -1,0 +1,35 @@
+-- Multiplayer game lobby player avatars
+app "Game Lobby" {
+  column padding: 24px, gap: 16px {
+    heading "Game Lobby"
+
+    row gap: 16px {
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #ef4444, radius: 24px {
+          text "P1" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Player 1" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #3b82f6, radius: 24px {
+          text "P2" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Player 2" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #eab308, radius: 24px {
+          text "P3" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Player 3" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #22c55e, radius: 24px {
+          text "P4" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Player 4" font-size: 12px, color: #64748b
+      }
+    }
+
+    text "4 of 4 players ready" color: #94a3b8, font-size: 14px
+  }
+}

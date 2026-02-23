@@ -1,0 +1,24 @@
+-- Filtered student stats
+app "Class Stats" {
+  state students = [{name: "Alice", grade: 92}, {name: "Bob", grade: 67}, {name: "Carol", grade: 85}, {name: "Dan", grade: 45}, {name: "Eve", grade: 78}]
+  computed total = students | count
+  computed passing = students | filter grade > 60 | count
+  computed honors = students | filter grade > 85 | count
+
+  column padding: 20px, gap: 16px {
+    heading "Class Statistics"
+    row gap: 16px {
+      text "Total: {total}" color: #64748b
+      text "Passing: {passing}" color: #16a34a
+      text "Honors: {honors}" color: #2563eb
+    }
+
+    text "Top Students:" font-weight: bold
+    each s in students | sort-by grade | take 3 {
+      row padding: 8px, color: #f0fdf4, radius: 4px, gap: 8px {
+        text "{s.name}" font-weight: bold
+        text "{s.grade}" color: #16a34a
+      }
+    }
+  }
+}

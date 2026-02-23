@@ -1,0 +1,27 @@
+-- Currency display selector
+app "Currency" {
+  state choice = "usd"
+
+  column padding: 20px, gap: 16px {
+    heading "Currency"
+
+    select bind: choice {
+      option "USD" value: "usd"
+      option "EUR" value: "eur"
+      option "GBP" value: "gbp"
+    }
+
+    match choice {
+      "usd": rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Prices shown in US Dollars" color: #059669
+      }
+      "eur": rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Prices shown in Euros" color: #2563eb
+      }
+      "gbp": rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Prices shown in British Pounds" color: #d97706
+      }
+      _: text "Select an option" color: #94a3b8
+    }
+  }
+}

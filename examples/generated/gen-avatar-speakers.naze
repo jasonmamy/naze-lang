@@ -1,0 +1,35 @@
+-- Conference speaker avatars
+app "Speakers" {
+  column padding: 24px, gap: 16px {
+    heading "Speakers"
+
+    row gap: 16px {
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #1e293b, radius: 24px {
+          text "DR" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Dr. Reid" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #0369a1, radius: 24px {
+          text "PL" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Prof. Lin" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #b91c1c, radius: 24px {
+          text "MC" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Dr. Cruz" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #4338ca, radius: 24px {
+          text "AK" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Prof. Kim" font-size: 12px, color: #64748b
+      }
+    }
+
+    text "Featured speakers at DevConf 2026" color: #94a3b8, font-size: 14px
+  }
+}

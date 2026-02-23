@@ -1,0 +1,30 @@
+-- Football game scoreboard with touchdowns
+app "Football Score" {
+  state eagles-pts = 0
+  state chiefs-pts = 0
+  state period = "1st Quarter"
+
+  column padding: 20px, gap: 16px {
+    heading "Football Score"
+    text "{period}" color: #64748b
+
+    grid columns: 2, gap: 16px {
+      rect padding: 20px, color: #065f46, radius: 8px {
+        text "Eagles" color: #ffffff, font-weight: bold
+        text "{eagles-pts}" color: #ffffff, font-size: 48px
+        rect width: 80px, height: 32px, color: #ffffff, radius: 4px {
+          text "+7"
+          on click: set eagles-pts = eagles-pts + 7
+        }
+      }
+      rect padding: 20px, color: #b91c1c, radius: 8px {
+        text "Chiefs" color: #ffffff, font-weight: bold
+        text "{chiefs-pts}" color: #ffffff, font-size: 48px
+        rect width: 80px, height: 32px, color: #ffffff, radius: 4px {
+          text "+7"
+          on click: set chiefs-pts = chiefs-pts + 7
+        }
+      }
+    }
+  }
+}

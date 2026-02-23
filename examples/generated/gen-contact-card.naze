@@ -1,0 +1,15 @@
+-- Digital business card
+app "Business Card" {
+  column padding: 32px, gap: 12px {
+    rect padding: 24px, color: #0f172a, radius: 16px {
+      column gap: 8px {
+        text "Alex Rivera" color: #ffffff, font-size: 28px, font-weight: bold
+        text "Senior Engineer" color: #94a3b8, font-size: 16px
+        separator
+        text "alex@example.com" color: #60a5fa, font-size: 14px
+        text "+1 555-0199" color: #94a3b8, font-size: 14px
+        text "github.com/arivera" color: #94a3b8, font-size: 14px
+      }
+    }
+  }
+}

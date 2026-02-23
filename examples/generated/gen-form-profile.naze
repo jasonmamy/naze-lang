@@ -1,0 +1,22 @@
+-- Profile edit form with name and location
+app "Edit Profile" {
+  state name = ""
+  state location = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Edit Profile"
+
+    input bind: name, placeholder: "Display Name"
+    input bind: location, placeholder: "Location"
+
+    rect width: 120px, height: 40px, color: #6366f1, radius: 8px {
+      text "Update" color: #ffffff
+      on click: set submitted = true
+    }
+
+    if submitted {
+      text "Profile updated!" color: #16a34a
+    }
+  }
+}

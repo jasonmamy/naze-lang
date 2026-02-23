@@ -1,0 +1,28 @@
+-- Flash sale countdown with urgency
+app "Flash Sale" {
+  state sale-time = 300
+  state event-name = "Flash Sale Ends Soon"
+
+  timer tick: every 1s {
+    set sale-time = sale-time - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Flash Sale"
+    text "{event-name}" color: #64748b
+
+    rect padding: 24px, color: #fef2f2, radius: 12px {
+      text "{sale-time}" font-size: 64px, color: #dc2626
+      text "seconds left to save" color: #dc2626
+    }
+
+    if sale-time == 0 {
+      text "Sale has ended!" font-size: 20px, color: #16a34a, font-weight: bold
+    }
+
+    rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+      text "Reset" color: #ffffff
+      on click: set sale-time = 300
+    }
+  }
+}

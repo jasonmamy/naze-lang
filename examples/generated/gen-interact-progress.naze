@@ -1,0 +1,26 @@
+-- Progress tracker with increment
+app "Progress" {
+  state done = 0
+  state total-items = 10
+
+  column padding: 20px, gap: 16px {
+    heading "Progress"
+    text "{done}" font-size: 24px, color: #14b8a6
+    text "{total-items}" color: #64748b
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #14b8a6, radius: 8px {
+        text "Complete" color: #ffffff
+        on click: set done = done + 1
+      }
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Skip" color: #ffffff
+        on click: set total-items = total-items
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set done = 0
+      }
+    }
+  }
+}

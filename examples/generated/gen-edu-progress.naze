@@ -1,0 +1,31 @@
+-- Learning progress with module status
+app "Learning Progress" {
+  state items = [{module: "Basics", status: "Complete"}, {module: "Intermediate", status: "In Progress"}, {module: "Advanced", status: "Locked"}]
+  state current = 0
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Learning Progress"
+    text "{current} of {total} done" color: #0ea5e9
+
+    each mod in items {
+      rect padding: 12px, color: #f0f9ff, radius: 8px {
+        column gap: 4px {
+          text "{mod.module}" font-weight: bold
+          text "{mod.status}" color: #64748b
+        }
+      }
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #0ea5e9, radius: 8px {
+        text "Start Next" color: #ffffff
+        on click: set current = current + 1
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set current = 0
+      }
+    }
+  }
+}

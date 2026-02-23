@@ -1,0 +1,30 @@
+-- Health metrics dashboard
+app "Health" {
+  state heart-rate = 72
+  state sleep-hrs = 7
+  state water-ml = 2000
+  state weight-kg = 68
+
+  column padding: 20px, gap: 16px {
+    heading "Health"
+
+    grid columns: 2, gap: 16px {
+      rect padding: 16px, color: #fce7f3, radius: 8px {
+        text "Heart Rate" color: #64748b, font-size: 14px
+        text "{heart-rate}" font-size: 28px
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Sleep Hours" color: #64748b, font-size: 14px
+        text "{sleep-hrs}" font-size: 28px
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Water (ml)" color: #64748b, font-size: 14px
+        text "{water-ml}" font-size: 28px
+      }
+      rect padding: 16px, color: #fefce8, radius: 8px {
+        text "Weight (kg)" color: #64748b, font-size: 14px
+        text "{weight-kg}" font-size: 28px
+      }
+    }
+  }
+}

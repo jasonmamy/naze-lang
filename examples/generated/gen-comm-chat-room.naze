@@ -1,0 +1,30 @@
+-- Chat room
+app "Chat Room" {
+  state message = ""
+  state messages = [{user: "Alice", text: "Hey everyone!"}, {user: "Bob", text: "Hi Alice!"}, {user: "Carol", text: "What are we working on?"}]
+  computed msg-count = messages | count
+
+  column padding: 20px, gap: 16px {
+    heading "Chat Room"
+    text "{msg-count} messages" color: #64748b
+
+    scroll height: 250px {
+      column gap: 4px {
+        each msg in messages {
+          row padding: 8px, color: #f3f4f6, radius: 8px, gap: 8px {
+            text "{msg.user}:" font-weight: bold, color: #2563eb
+            text "{msg.text}"
+          }
+        }
+      }
+    }
+
+    row gap: 8px {
+      input bind: message, placeholder: "Type a message..."
+      rect width: 80px, height: 40px, color: #2563eb, radius: 8px {
+        text "Send" color: #ffffff
+        on click: append message to messages
+      }
+    }
+  }
+}

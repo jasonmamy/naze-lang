@@ -1,0 +1,36 @@
+-- Playlist mood filter tags
+app "Mood Tags" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Mood Tags"
+    text "Set the mood" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #e0f2fe, radius: 12px {
+        text "Chill" color: #0369a1, font-size: 13px
+        on click: set selected-tag = "Chill"
+      }
+      rect padding: 8px, color: #fef2f2, radius: 12px {
+        text "Energetic" color: #dc2626, font-size: 13px
+        on click: set selected-tag = "Energetic"
+      }
+      rect padding: 8px, color: #f0fdf4, radius: 12px {
+        text "Focus" color: #166534, font-size: 13px
+        on click: set selected-tag = "Focus"
+      }
+      rect padding: 8px, color: #fef3c7, radius: 12px {
+        text "Happy" color: #b45309, font-size: 13px
+        on click: set selected-tag = "Happy"
+      }
+      rect padding: 8px, color: #f5f3ff, radius: 12px {
+        text "Melancholy" color: #7c3aed, font-size: 13px
+        on click: set selected-tag = "Melancholy"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # Phase 4: Ecosystem & External Integration
 
+**Status:** Complete. All milestones delivered. Deferred items (edge compilation, streaming SSR, build cache) tracked in Phase 6 and Future.
+
 **Goal:** Enable production deployment with server rendering, package ecosystem, SEO, and AI integration. Target: Naze apps discoverable by search engines, community contributing shared components, at least 3 non-trivial public Naze apps.
 
 **Architecture shift:** Phase 3 completed the client-side language. Phase 4 adds server-side capabilities (Tier 2 WASM imports, Tier 3 server functions, SSR/SSG), a package ecosystem, and AI tooling. The compiler gains new backends (HTML renderer, server binary, edge WASM) and the CLI gains package management commands.

@@ -1,0 +1,39 @@
+-- Contact form with validation
+app "Contact" {
+  state name = ""
+  state email = ""
+  state message = ""
+  state submitted = false
+
+  column padding: 20px, gap: 12px {
+    heading "Contact Us"
+
+    text "Name"
+    input bind: name, placeholder: "Your name", validate: { required: true, min-length: 2 }
+    if name_error {
+      text "{name_error}" color: #dc2626
+    }
+
+    text "Email"
+    input bind: email, type: "email", placeholder: "your@email.com", validate: { required: true }
+    if email_error {
+      text "{email_error}" color: #dc2626
+    }
+
+    text "Message"
+    textarea bind: message, placeholder: "Write your message...", rows: 4
+
+    if name_valid {
+      if email_valid {
+        rect width: 120px, height: 40px, color: #2563eb, radius: 8px {
+          text "Send" color: #ffffff
+          on click: set submitted = true
+        }
+      }
+    }
+
+    if submitted {
+      text "Thank you, {name}! We will reply to {email} soon." color: #16a34a
+    }
+  }
+}

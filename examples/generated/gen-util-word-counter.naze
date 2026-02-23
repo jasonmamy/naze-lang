@@ -1,0 +1,37 @@
+-- Word counter
+app "Word Counter" {
+  state content = ""
+  state words = 0
+  state lines = 0
+
+  column padding: 20px, gap: 16px {
+    heading "Word Counter"
+    textarea bind: content, placeholder: "Paste your text here..."
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        column gap: 4px {
+          text "Words" color: #64748b, font-size: 12px
+          text "{words}" font-size: 24px, color: #2563eb
+        }
+      }
+      rect padding: 12px, color: #ecfdf5, radius: 8px {
+        column gap: 4px {
+          text "Lines" color: #64748b, font-size: 12px
+          text "{lines}" font-size: 24px, color: #16a34a
+        }
+      }
+      rect padding: 12px, color: #faf5ff, radius: 8px {
+        column gap: 4px {
+          text "Chars" color: #64748b, font-size: 12px
+          text "0" font-size: 24px, color: #8b5cf6
+        }
+      }
+    }
+
+    rect width: 100px, height: 36px, color: #2563eb, radius: 8px {
+      text "Analyze" color: #ffffff
+      on click: set words = words + 1
+    }
+  }
+}

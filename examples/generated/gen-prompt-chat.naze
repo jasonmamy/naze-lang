@@ -1,0 +1,28 @@
+-- Chat with Ollama
+app "Chat" {
+  state message = ""
+  state reply = ""
+
+  prompt chat-bot: from ollama {
+    system: "You are a helpful assistant."
+    user: "{message}"
+    model: "llama3"
+    max-tokens: 500
+    temperature: 0.7
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Chat Assistant"
+    input bind: message, placeholder: "Ask a question..."
+    rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+      text "Send" color: #ffffff
+      on click: trigger chat-bot
+    }
+
+    if reply {
+      rect padding: 12px, color: #f0f9ff, radius: 8px {
+        text "{reply}"
+      }
+    }
+  }
+}

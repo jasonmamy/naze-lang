@@ -1,0 +1,29 @@
+-- Inventory stock levels
+app "Stock Stats" {
+  state in-stock = 340
+  state low-stock = 12
+
+  column padding: 20px, gap: 16px {
+    heading "Stock Stats"
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "In Stock" color: #64748b, font-size: 12px
+        text "{in-stock}" font-size: 24px, color: #16a34a
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Low Stock" color: #64748b, font-size: 12px
+        text "{low-stock}" font-size: 24px, color: #d97706
+      }
+    }
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #16a34a, radius: 4px {
+        text "+1" color: #ffffff
+        on click: set in-stock = in-stock + 1
+      }
+      rect width: 80px, height: 32px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set in-stock = 340
+      }
+    }
+  }
+}

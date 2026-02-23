@@ -1,0 +1,31 @@
+-- Week over week comparison
+app "Weekly Comparison" {
+  state this-week = 1250
+  state last-week = 980
+  computed growth = this-week - last-week
+
+  column padding: 24px, gap: 16px {
+    heading "Performance Comparison" color: #1e293b
+
+    row gap: 16px {
+      rect padding: 20px, color: #f0fdf4, radius: 10px {
+        column gap: 4px {
+          text "This Week" color: #64748b, font-size: 13px
+          text "{this-week}" font-size: 32px, color: #16a34a, font-weight: bold
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 10px {
+        column gap: 4px {
+          text "Last Week" color: #64748b, font-size: 13px
+          text "{last-week}" font-size: 32px, color: #475569
+        }
+      }
+      rect padding: 20px, color: #eff6ff, radius: 10px {
+        column gap: 4px {
+          text "Growth" color: #64748b, font-size: 13px
+          text "+{growth}" font-size: 32px, color: #2563eb, font-weight: bold
+        }
+      }
+    }
+  }
+}

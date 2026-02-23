@@ -1,0 +1,32 @@
+-- Task metrics
+app "Task Metrics" {
+  state tasks = [{title: "Fix bug", priority: "critical", hours: 4}, {title: "Add tests", priority: "high", hours: 8}, {title: "Update docs", priority: "low", hours: 2}]
+  computed total = tasks | count
+  computed total-hours = tasks | map hours | sum
+  computed critical = tasks | filter priority == "critical" | count
+
+  column padding: 20px, gap: 16px {
+    heading "Sprint Metrics"
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        text "Tasks" color: #64748b, font-size: 12px
+        text "{total}" font-size: 24px, color: #2563eb
+      }
+      rect padding: 12px, color: #fef2f2, radius: 8px {
+        text "Critical" color: #64748b, font-size: 12px
+        text "{critical}" font-size: 24px, color: #ef4444
+      }
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        text "Hours" color: #64748b, font-size: 12px
+        text "{total-hours}" font-size: 24px, color: #16a34a
+      }
+    }
+
+    each task in tasks | sort-by priority {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 8px {
+        text "{task.title}" font-weight: bold
+        text "{task.priority}" color: #ef4444, font-size: 12px
+      }
+    }
+  }
+}

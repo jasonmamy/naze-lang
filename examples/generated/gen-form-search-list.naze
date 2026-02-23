@@ -1,0 +1,20 @@
+-- Search form with sorted list
+app "Fruit Search" {
+  state query = ""
+  state items = [{name: "Apple", kind: "fruit"}, {name: "Banana", kind: "fruit"}, {name: "Carrot", kind: "vegetable"}]
+
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Search & Filter"
+    input bind: query, placeholder: "Type to search..."
+    text "{total} items" color: #64748b
+
+    each item in items | sort-by name {
+      row padding: 8px, color: #f3f4f6, radius: 4px, gap: 8px {
+        text "{item.name}" font-weight: bold
+        text "{item.kind}" color: #64748b
+      }
+    }
+  }
+}

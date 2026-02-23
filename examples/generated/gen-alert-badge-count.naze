@@ -1,0 +1,31 @@
+-- Notification badges on nav
+app "Badge Counter" {
+  state inbox-count = 12
+  state alerts-count = 3
+  state tasks-count = 7
+
+  column padding: 24px, gap: 16px {
+    heading "Navigation"
+
+    column gap: 8px {
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 12px {
+        text "Inbox" font-weight: bold
+        rect width: 28px, height: 28px, color: #ef4444, radius: 14px {
+          text "{inbox-count}" color: #ffffff, font-size: 12px
+        }
+      }
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 12px {
+        text "Alerts" font-weight: bold
+        rect width: 28px, height: 28px, color: #f59e0b, radius: 14px {
+          text "{alerts-count}" color: #ffffff, font-size: 12px
+        }
+      }
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 12px {
+        text "Tasks" font-weight: bold
+        rect width: 28px, height: 28px, color: #2563eb, radius: 14px {
+          text "{tasks-count}" color: #ffffff, font-size: 12px
+        }
+      }
+    }
+  }
+}

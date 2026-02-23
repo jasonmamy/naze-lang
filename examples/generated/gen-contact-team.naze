@@ -1,0 +1,31 @@
+-- Team directory with roles and contact info
+app "Our Team" {
+  column padding: 24px, gap: 16px {
+    heading "Our Team" color: #2563eb
+    text "Meet the team" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        column gap: 4px {
+          text "Alice Chen" font-weight: bold
+          text "CEO" color: #64748b, font-size: 14px
+          text "alice@example.com" color: #2563eb, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        column gap: 4px {
+          text "Bob Singh" font-weight: bold
+          text "CTO" color: #64748b, font-size: 14px
+          text "bob@example.com" color: #2563eb, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        column gap: 4px {
+          text "Carol Wu" font-weight: bold
+          text "Design Lead" color: #64748b, font-size: 14px
+          text "carol@example.com" color: #2563eb, font-size: 14px
+        }
+      }
+    }
+  }
+}

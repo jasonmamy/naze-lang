@@ -1,0 +1,43 @@
+-- Photographer with gallery link
+app "Photographer Profile" {
+  state username = "lens_emma"
+  state bio = "Landscape and portrait photographer"
+  state followers = 9200
+  state following = 130
+  computed ratio = followers / following
+
+  column padding: 24px, gap: 16px {
+    heading "Photographer Profile"
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #14b8a6, radius: 40px {
+        text "E" color: #ffffff, font-size: 32px
+      }
+      column gap: 4px {
+        text "{username}" font-size: 22px, font-weight: bold
+        text "{bio}" color: #64748b
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Followers" color: #64748b, font-size: 12px
+        text "{followers}" font-size: 20px, color: #0d9488
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Following" color: #64748b, font-size: 12px
+        text "{following}" font-size: 20px, color: #0d9488
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Ratio" color: #64748b, font-size: 12px
+        text "{ratio}" font-size: 20px, color: #0d9488
+      }
+    }
+
+    separator
+
+    rect padding: 12px, color: #f0fdfa, radius: 8px {
+      link "Gallery" href: "https://500px.com"
+    }
+  }
+}

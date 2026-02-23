@@ -1,0 +1,29 @@
+-- Multi-checkbox category filter
+app "Course Catalog" {
+  state show-beginner = true
+  state show-intermediate = true
+  state show-advanced = false
+  state courses = [{name: "Intro to Python", level: "beginner"}, {name: "Data Structures", level: "intermediate"}, {name: "System Design", level: "advanced"}]
+  computed total = courses | count
+
+  column padding: 20px, gap: 16px {
+    heading "Course Catalog"
+    text "{total} courses available" color: #64748b
+
+    column gap: 4px {
+      text "Filter by level:" font-weight: bold, font-size: 14px
+      checkbox bind: show-beginner, label: "Beginner"
+      checkbox bind: show-intermediate, label: "Intermediate"
+      checkbox bind: show-advanced, label: "Advanced"
+    }
+
+    separator
+
+    each course in courses | sort-by name {
+      row padding: 10px, color: #f8fafc, radius: 6px, gap: 8px {
+        text "{course.name}" font-weight: bold
+        text "{course.level}" color: #6366f1, font-size: 12px
+      }
+    }
+  }
+}

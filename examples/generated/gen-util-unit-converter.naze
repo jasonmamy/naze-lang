@@ -1,0 +1,27 @@
+-- Unit converter
+app "Unit Converter" {
+  state value = 100
+  state unit = "km"
+  computed converted = value * 62 / 100
+
+  column padding: 20px, gap: 16px {
+    heading "Unit Converter"
+    text "{value} {unit}" font-size: 24px
+    text "= {converted} miles" font-size: 24px, color: #2563eb
+
+    row gap: 8px {
+      rect width: 60px, height: 36px, color: #2563eb, radius: 4px {
+        text "+10" color: #ffffff
+        on click: set value = value + 10
+      }
+      rect width: 60px, height: 36px, color: #64748b, radius: 4px {
+        text "-10" color: #ffffff
+        on click: set value = value - 10
+      }
+      rect width: 80px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set value = 100
+      }
+    }
+  }
+}

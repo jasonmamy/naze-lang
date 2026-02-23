@@ -1,0 +1,17 @@
+-- Inventory
+app "Inventory" {
+  state products = [{name: "Widget A", stock: "150"}, {name: "Widget B", stock: "3"}, {name: "Widget C", stock: "45"}]
+  computed total-items = products | count
+
+  column padding: 20px, gap: 16px {
+    heading "Inventory"
+    text "{total-items} products tracked" color: #64748b
+
+    each p in products | sort-by name {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 12px {
+        text "{p.name}" font-weight: bold
+        text "Stock: {p.stock}" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+-- Podcast listing with durations
+app "Podcasts" {
+  state items = [{title: "Tech Talk #42", duration: "45 min"}, {title: "Design Hour", duration: "32 min"}, {title: "Startup Stories", duration: "58 min"}]
+  state now-playing = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Podcasts"
+    text "{total} episodes" color: #64748b
+
+    if now-playing != "none" {
+      rect padding: 12px, color: #6d28d9, radius: 8px {
+        text "Now: {now-playing}" color: #ffffff, font-size: 18px
+      }
+    }
+
+    each ep in items {
+      row padding: 12px, color: #faf5ff, radius: 8px, gap: 12px {
+        text "{ep.title}" font-weight: bold
+        text "{ep.duration}" color: #64748b
+        rect width: 60px, height: 28px, color: #8b5cf6, radius: 4px {
+          text "Play" color: #ffffff
+          on click: set now-playing = "{ep.title}"
+        }
+      }
+    }
+  }
+}

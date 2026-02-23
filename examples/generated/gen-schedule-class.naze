@@ -1,0 +1,22 @@
+-- School class timetable with subjects
+app "Class Timetable" {
+  state events = [{period: "1", time: "08:30", subject: "Mathematics", teacher: "Dr. Smith"}, {period: "2", time: "09:30", subject: "Physics", teacher: "Prof. Lee"}, {period: "3", time: "10:30", subject: "English", teacher: "Ms. Brown"}, {period: "4", time: "11:30", subject: "History", teacher: "Mr. Davis"}]
+  computed event-count = events | count
+
+  column padding: 20px, gap: 16px {
+    heading "Class Timetable"
+    text "{event-count} classes today" color: #64748b
+
+    each evt in events | sort-by period {
+      row padding: 12px, color: #fefce8, radius: 8px, gap: 12px {
+        rect width: 60px, height: 40px, color: #ca8a04, radius: 4px {
+          text "{evt.time}" color: #ffffff, font-size: 12px
+        }
+        column gap: 2px {
+          text "{evt.subject}" font-weight: bold
+          text "{evt.teacher}" color: #64748b
+        }
+      }
+    }
+  }
+}

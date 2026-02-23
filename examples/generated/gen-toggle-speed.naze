@@ -1,0 +1,30 @@
+-- Playback speed selector with slow, normal, and fast
+app "Speed" {
+  state speed = "normal"
+
+  column padding: 20px, gap: 16px {
+    heading "Speed"
+
+    match speed {
+      "slow": text "0.5x speed" font-size: 18px
+      "normal": text "1x speed" font-size: 18px
+      "fast": text "2x speed" font-size: 18px
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+        text "slow" color: #ffffff
+        on click: set speed = "slow"
+      }
+      rect width: 100px, height: 36px, color: #2563eb, radius: 4px {
+        text "normal" color: #ffffff
+        on click: set speed = "normal"
+      }
+      rect width: 100px, height: 36px, color: #ef4444, radius: 4px {
+        text "fast" color: #ffffff
+        on click: set speed = "fast"
+      }
+    }
+  }
+}

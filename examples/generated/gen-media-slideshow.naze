@@ -1,0 +1,23 @@
+-- Auto slideshow
+app "Slideshow" {
+  state slide-num = 0
+
+  timer advance: every 3s {
+    set slide-num = slide-num + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Slideshow"
+
+    rect width: 400px, height: 250px, color: #1e293b, radius: 12px, padding: 20px {
+      text "Slide {slide-num}" color: #ffffff, font-size: 32px
+    }
+
+    text "Auto-advances every 3 seconds" color: #94a3b8
+
+    rect width: 100px, height: 36px, color: #dc2626, radius: 8px {
+      text "Restart" color: #ffffff
+      on click: set slide-num = 0
+    }
+  }
+}

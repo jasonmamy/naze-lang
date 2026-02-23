@@ -1,0 +1,35 @@
+-- Onboarding help questions
+app "Getting Started FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Getting Started FAQ" color: #6366f1
+    text "New user guide" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "How do I create an account?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "Click Sign Up and enter your email." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Is there a free trial?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "Yes, 14 days free with full access." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Where is the documentation?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "Visit docs.example.com for guides." color: #475569
+    }
+  }
+}

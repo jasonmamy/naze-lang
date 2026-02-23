@@ -1,0 +1,23 @@
+-- Theme with spacing
+theme {
+  colors {
+    primary: #6366f1
+    bg: #fafafa
+  }
+  spacing {
+    xs: 4px
+    sm: 8px
+    md: 16px
+    lg: 24px
+    xl: 48px
+  }
+}
+
+app "Spaced" {
+  column padding: 24px, gap: 16px {
+    heading "Spacing Demo"
+    text "This uses theme spacing tokens"
+    spacer height: 16px
+    text "After spacer" color: #64748b
+  }
+}

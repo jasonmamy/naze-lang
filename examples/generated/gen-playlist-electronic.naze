@@ -1,0 +1,39 @@
+-- Electronic music playlist with BPM info
+app "Electronic Mix" {
+  state tracks = [{title: "Strobe", artist: "Deadmau5", duration: "10:37"}, {title: "Midnight City", artist: "M83", duration: "4:03"}, {title: "Windowlicker", artist: "Aphex Twin", duration: "6:07"}]
+  state current-track = 0
+  state playing = false
+  computed track-count = tracks | count
+
+  column padding: 20px, gap: 16px {
+    heading "Electronic Mix"
+    text "{track-count} tracks" color: #64748b
+
+    if playing {
+      text "Now Playing" color: #a21caf, font-weight: bold
+    }
+
+    each track in tracks {
+      row padding: 10px, color: #fdf2f8, radius: 8px, gap: 8px {
+        text "{track.title}" font-weight: bold
+        text "{track.artist}" color: #64748b
+        text "{track.duration}" color: #a21caf, font-size: 12px
+      }
+    }
+
+    row gap: 8px {
+      rect width: 60px, height: 36px, color: #a21caf, radius: 4px {
+        text "Prev" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track - 1
+      }
+      rect width: 60px, height: 36px, color: #a21caf, radius: 4px {
+        text "Play" color: #ffffff, font-size: 12px
+        on click: set playing = true
+      }
+      rect width: 60px, height: 36px, color: #a21caf, radius: 4px {
+        text "Next" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track + 1
+      }
+    }
+  }
+}

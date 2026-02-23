@@ -1,0 +1,29 @@
+-- Draggable list items
+app "Drag List" {
+  state items = ["First", "Second", "Third", "Fourth"]
+  state dragging = ""
+  state drop-target = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Drag to Reorder"
+
+    each item in items {
+      rect padding: 12px, color: #f8fafc, radius: 8px, draggable: true, drag-data: "{item}" {
+        text "{item}"
+        on drag-start: set dragging = item
+      }
+    }
+
+    rect padding: 16px, color: #dbeafe, radius: 8px, drop-target: true {
+      text "Drop zone" color: #2563eb
+      on drop: set drop-target = drag-data
+    }
+
+    if dragging {
+      text "Dragging: {dragging}" color: #64748b
+    }
+    if drop-target {
+      text "Dropped: {drop-target}" color: #16a34a
+    }
+  }
+}

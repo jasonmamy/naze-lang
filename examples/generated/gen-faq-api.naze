@@ -1,0 +1,35 @@
+-- API documentation FAQ
+app "API FAQ" {
+  state show-auth = false
+  state show-limits = false
+  state show-format = false
+
+  column padding: 24px, gap: 12px {
+    heading "API FAQ" color: #0ea5e9
+    text "Developer questions answered" color: #64748b
+
+    rect padding: 12px, color: #f0f9ff, radius: 8px {
+      text "How do I authenticate?" font-weight: bold
+      on click: set show-auth = true
+    }
+    if show-auth {
+      text "Use Bearer token in the Authorization header." color: #475569
+    }
+
+    rect padding: 12px, color: #f0f9ff, radius: 8px {
+      text "What are the rate limits?" font-weight: bold
+      on click: set show-limits = true
+    }
+    if show-limits {
+      text "1000 requests per hour for free tier." color: #475569
+    }
+
+    rect padding: 12px, color: #f0f9ff, radius: 8px {
+      text "What response format is used?" font-weight: bold
+      on click: set show-format = true
+    }
+    if show-format {
+      text "All responses are JSON with UTF-8 encoding." color: #475569
+    }
+  }
+}

@@ -1,0 +1,26 @@
+-- Delivery address with instructions
+app "Delivery Details" {
+  state recipient = ""
+  state delivery-address = ""
+  state phone = ""
+  state instructions = ""
+  state saved = false
+
+  column padding: 20px, gap: 12px {
+    heading "Delivery Details"
+
+    input bind: recipient, placeholder: "Recipient Name"
+    input bind: delivery-address, placeholder: "Delivery Address"
+    input bind: phone, placeholder: "Phone Number"
+    input bind: instructions, placeholder: "Delivery instructions"
+
+    rect width: 120px, height: 40px, color: #f59e0b, radius: 8px {
+      text "Submit" color: #ffffff
+      on click: set saved = true
+    }
+
+    if saved {
+      text "Delivery info saved!" color: #16a34a
+    }
+  }
+}

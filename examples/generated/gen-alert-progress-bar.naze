@@ -1,0 +1,30 @@
+-- Upload progress indicator
+app "File Upload" {
+  state progress = 0
+  state uploading = false
+
+  timer upload-tick: every 1s {
+    set progress = progress + 8
+  }
+
+  column padding: 24px, gap: 16px {
+    heading "Upload Progress"
+
+    rect width: 400px, height: 24px, color: #e2e8f0, radius: 12px {
+      rect width: 160px, height: 24px, color: #3b82f6, radius: 12px
+    }
+
+    text "{progress}% complete" font-size: 18px, color: #2563eb
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #3b82f6, radius: 8px {
+        text "Upload" color: #ffffff
+        on click: set uploading = true
+      }
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Cancel" color: #ffffff
+        on click: set progress = 0
+      }
+    }
+  }
+}

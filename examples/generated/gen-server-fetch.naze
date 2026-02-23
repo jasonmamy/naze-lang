@@ -1,0 +1,19 @@
+-- Server function with fetch
+server function get-weather(city: text) {
+  let result = fetch "https://api.weather.com/v1/{city}"
+  result
+}
+
+app "Weather" {
+  state city = "London"
+  data weather: get-weather(city)
+
+  column padding: 20px, gap: 16px {
+    heading "Weather"
+    input bind: city, placeholder: "City name"
+    rect width: 100px, height: 36px, color: #0ea5e9, radius: 4px {
+      text "Search" color: #ffffff
+      on click: trigger weather
+    }
+  }
+}

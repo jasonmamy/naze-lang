@@ -1,0 +1,26 @@
+-- Empty shopping cart with browse action
+app "Empty Cart" {
+  state action-taken = false
+
+  column padding: 40px, gap: 16px {
+    rect width: 100px, height: 100px, color: #ecfdf5, radius: 50px {
+      text "0" font-size: 40px, color: #16a34a
+    }
+
+    heading "Your Cart is Empty" font-size: 22px
+    text "Looks like you haven't added anything yet." color: #64748b
+
+    if action-taken == false {
+      rect width: 130px, height: 44px, color: #16a34a, radius: 8px {
+        text "Browse Shop" color: #ffffff
+        on click: set action-taken = true
+      }
+    }
+
+    if action-taken {
+      text "Opening shop..." color: #16a34a
+    }
+
+    text "Free shipping on orders over $50" color: #94a3b8, font-size: 13px
+  }
+}

@@ -1,0 +1,23 @@
+-- Home furniture catalog
+app "Furniture Shop" {
+  state items = [{name: "Oak Desk", price: "$450", material: "Wood"}, {name: "Ergonomic Chair", price: "$380", material: "Mesh"}, {name: "Bookshelf", price: "$220", material: "Pine"}, {name: "Side Table", price: "$120", material: "Bamboo"}]
+  computed item-count = items | count
+  state view = "grid"
+
+  column padding: 24px, gap: 16px {
+    heading "Furniture Shop" color: #78716c
+    text "{item-count} pieces" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #fafaf9, radius: 10px {
+          column gap: 6px {
+            text "{item.name}" font-weight: bold, font-size: 16px
+            text "{item.price}" color: #78716c, font-size: 14px
+            text "{item.material}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

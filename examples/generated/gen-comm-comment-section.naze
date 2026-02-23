@@ -1,0 +1,28 @@
+-- Comment section
+app "Comments" {
+  state new-comment = ""
+  state comments = [{author: "Guest1", body: "This is fantastic!"}, {author: "Guest2", body: "I learned a lot"}, {author: "Guest3", body: "Cover more topics?"}]
+  computed comment-total = comments | count
+
+  column padding: 20px, gap: 16px {
+    heading "Comments"
+    text "{comment-total} comments" color: #64748b
+
+    each c in comments {
+      column padding: 12px, color: #f8fafc, radius: 8px, gap: 4px {
+        text "{c.author}" font-weight: bold, color: #6366f1
+        text "{c.body}"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      input bind: new-comment, placeholder: "Add a comment..."
+      rect width: 100px, height: 40px, color: #6366f1, radius: 8px {
+        text "Comment" color: #ffffff
+        on click: append new-comment to comments
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+-- Multi-step server function
+server function enrich-user(user-id: number) {
+  let user = fetch "https://api.example.com/users/{user-id}"
+  let activity = fetch "https://api.example.com/activity/{user-id}"
+  user
+}
+
+app "User Detail" {
+  data detail: enrich-user(1)
+
+  column padding: 20px, gap: 16px {
+    heading "User Detail"
+
+    if detail.loading {
+      text "Loading user data..." color: #64748b
+    }
+
+    if detail.data {
+      text "User loaded" color: #16a34a
+    }
+  }
+}

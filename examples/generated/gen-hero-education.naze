@@ -1,0 +1,31 @@
+-- Education platform hero section
+app "Learn Hub" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #ecfdf5 {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Learn Without Limits" font-size: 36px, color: #065f46
+        text "Thousands of courses from world-class instructors." font-size: 18px, color: #047857
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #059669, radius: 8px {
+            text "Browse Courses" color: #ffffff, font-size: 16px
+            on click: navigate "/courses"
+          }
+          rect width: 140px, height: 48px, color: #d1fae5, radius: 8px {
+            text "Free Trial" color: #065f46, font-size: 16px
+            on click: navigate "/trial"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #d1fae5 {
+      row padding: 12px, gap: 24px {
+        text "5K+ courses" color: #065f46, font-size: 14px
+        text "200K students" color: #065f46, font-size: 14px
+        text "95 percent rated 4+" color: #065f46, font-size: 14px
+      }
+    }
+  }
+}

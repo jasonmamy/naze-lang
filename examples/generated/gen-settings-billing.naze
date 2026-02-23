@@ -1,0 +1,46 @@
+-- Billing and payment method configuration
+app "Billing Settings" {
+  state auto-renew = true
+  state receipt-email = true
+  state billing-contact = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Billing Settings"
+    text "Manage billing" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "Auto Renew" font-weight: bold, font-size: 14px
+        checkbox bind: auto-renew, label: "Auto-renew subscription"
+      }
+
+      column gap: 4px {
+        text "Email Receipts" font-weight: bold, font-size: 14px
+        checkbox bind: receipt-email, label: "Send receipts by email"
+      }
+
+      column gap: 4px {
+        text "Billing Email" font-weight: bold, font-size: 14px
+        input bind: billing-contact, placeholder: "Billing email address"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #22c55e, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Billing settings saved!" color: #16a34a
+    }
+  }
+}

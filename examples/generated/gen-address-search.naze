@@ -1,0 +1,28 @@
+-- Address search
+app "Find Address" {
+  state query = ""
+  state searched = false
+
+  column padding: 20px, gap: 16px {
+    heading "Address Lookup"
+
+    input bind: query, placeholder: "Enter address or ZIP..."
+
+    rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+      text "Search" color: #ffffff
+      on click: set searched = true
+    }
+
+    if searched {
+      text "Results for: {query}" font-weight: bold
+      rect padding: 12px, color: #ecfdf5, radius: 8px {
+        text "123 Main St, Anytown, USA"
+        text "ZIP: 90210" color: #64748b
+      }
+      rect padding: 12px, color: #ecfdf5, radius: 8px {
+        text "456 Elm St, Anytown, USA"
+        text "ZIP: 90211" color: #64748b
+      }
+    }
+  }
+}

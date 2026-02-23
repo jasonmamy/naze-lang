@@ -1,0 +1,11 @@
+-- Minimal counter
+app "Count" {
+  state n = 0
+  column padding: 20px {
+    text "{n}" font-size: 48px
+    rect width: 60px, height: 36px, color: #2563eb, radius: 4px {
+      text "+" color: #ffffff
+      on click: set n = n + 1
+    }
+  }
+}

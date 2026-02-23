@@ -1,0 +1,22 @@
+-- Warehouse inventory levels grid
+app "Warehouse Stock" {
+  state items = [{name: "Widget A", value: "2,450", detail: "Bin: A1-03"}, {name: "Widget B", value: "890", detail: "Bin: B2-07"}, {name: "Gadget C", value: "5,100", detail: "Bin: C1-12"}, {name: "Part D", value: "340", detail: "Bin: D3-01"}]
+  computed total = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Warehouse Stock"
+    text "{total} SKUs" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #f1f5f9, radius: 8px {
+          column gap: 4px {
+            text "{item.name}" font-weight: bold, font-size: 15px
+            text "{item.value}" color: #475569, font-size: 22px
+            text "{item.detail}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

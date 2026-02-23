@@ -1,0 +1,18 @@
+-- Deployment history log
+app "Deploy Log" {
+  state entries = [{time: "v2.1.0", action: "Production deploy", user: "CI"}, {time: "v2.0.9", action: "Hotfix applied", user: "Bob"}, {time: "v2.0.8", action: "Staging deploy", user: "CI"}, {time: "v2.0.7", action: "Rollback", user: "Alice"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Deploy Log" color: #16a34a
+    text "{total-entries} deployments" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #f0fdf4, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #16a34a, font-size: 12px
+      }
+    }
+  }
+}

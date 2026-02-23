@@ -1,0 +1,43 @@
+-- Musician profile with Spotify link
+app "Musician Profile" {
+  state username = "beats_kai"
+  state bio = "Producer and singer-songwriter"
+  state followers = 7800
+  state following = 60
+  computed ratio = followers / following
+
+  column padding: 24px, gap: 16px {
+    heading "Musician Profile"
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #06b6d4, radius: 40px {
+        text "K" color: #ffffff, font-size: 32px
+      }
+      column gap: 4px {
+        text "{username}" font-size: 22px, font-weight: bold
+        text "{bio}" color: #64748b
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Followers" color: #64748b, font-size: 12px
+        text "{followers}" font-size: 20px, color: #0891b2
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Following" color: #64748b, font-size: 12px
+        text "{following}" font-size: 20px, color: #0891b2
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Ratio" color: #64748b, font-size: 12px
+        text "{ratio}" font-size: 20px, color: #0891b2
+      }
+    }
+
+    separator
+
+    rect padding: 12px, color: #ecfeff, radius: 8px {
+      link "Spotify" href: "https://spotify.com"
+    }
+  }
+}

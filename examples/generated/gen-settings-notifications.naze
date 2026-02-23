@@ -1,0 +1,46 @@
+-- Notification channel configuration
+app "Notification Preferences" {
+  state sms-alerts = false
+  state weekly-digest = true
+  state quiet-hours = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Notification Preferences"
+    text "Choose how you get notified" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "SMS Alerts" font-weight: bold, font-size: 14px
+        checkbox bind: sms-alerts, label: "Send SMS for critical alerts"
+      }
+
+      column gap: 4px {
+        text "Weekly Digest" font-weight: bold, font-size: 14px
+        checkbox bind: weekly-digest, label: "Receive weekly summary email"
+      }
+
+      column gap: 4px {
+        text "Quiet Hours" font-weight: bold, font-size: 14px
+        input bind: quiet-hours, placeholder: "Quiet hours (e.g. 22:00-07:00)"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #0ea5e9, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Notification preferences saved!" color: #16a34a
+    }
+  }
+}

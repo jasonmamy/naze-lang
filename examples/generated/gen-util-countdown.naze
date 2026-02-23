@@ -1,0 +1,19 @@
+-- Event countdown
+app "Event Countdown" {
+  state days = 30
+
+  timer tick: every 1s {
+    set days = days - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Launch Day"
+    text "{days}" font-size: 72px, color: #dc2626
+    text "days remaining" color: #64748b, font-size: 18px
+
+    rect width: 100px, height: 36px, color: #64748b, radius: 8px {
+      text "Reset" color: #ffffff
+      on click: set days = 30
+    }
+  }
+}

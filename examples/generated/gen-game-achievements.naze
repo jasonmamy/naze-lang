@@ -1,0 +1,20 @@
+-- Achievements
+app "Achievements" {
+  state achievements = [{name: "First Steps", desc: "Complete tutorial"}, {name: "Explorer", desc: "Visit all areas"}, {name: "Champion", desc: "Win 10 matches"}, {name: "Collector", desc: "Find all items"}]
+  state unlocked = 2
+  computed total-achievements = achievements | count
+
+  column padding: 20px, gap: 16px {
+    heading "Achievements"
+    text "{unlocked} / {total-achievements} unlocked" color: #f59e0b
+
+    each ach in achievements {
+      row padding: 12px, color: #fefce8, radius: 8px, gap: 8px {
+        column gap: 2px {
+          text "{ach.name}" font-weight: bold
+          text "{ach.desc}" color: #64748b, font-size: 14px
+        }
+      }
+    }
+  }
+}

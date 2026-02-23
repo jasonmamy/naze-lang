@@ -1,0 +1,24 @@
+-- Savings calculator with monthly deposits
+app "Savings" {
+  state monthly = 500
+  state months = 12
+  computed total = monthly * months
+
+  column padding: 20px, gap: 16px {
+    heading "Savings"
+    text "Monthly: {monthly}" font-size: 18px
+    text "Months: {months}" color: #64748b
+    text "Total: {total}" font-size: 24px, color: #10b981
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #10b981, radius: 4px {
+        text "+" color: #ffffff
+        on click: set monthly = monthly + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set monthly = 500
+      }
+    }
+  }
+}

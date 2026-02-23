@@ -1,0 +1,28 @@
+-- Playlist manager with durations
+app "Playlist Manager" {
+  state items = [{song: "Yesterday", length: "2:05"}, {song: "Hey Jude", length: "7:11"}, {song: "Let It Be", length: "3:50"}]
+  state now-playing = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Playlist Manager"
+    text "{total} songs" color: #64748b
+
+    if now-playing != "none" {
+      rect padding: 12px, color: #a16207, radius: 8px {
+        text "Now: {now-playing}" color: #ffffff, font-size: 18px
+      }
+    }
+
+    each s in items {
+      row padding: 12px, color: #fefce8, radius: 8px, gap: 12px {
+        text "{s.song}" font-weight: bold
+        text "{s.length}" color: #64748b
+        rect width: 60px, height: 28px, color: #eab308, radius: 4px {
+          text "Play" color: #ffffff
+          on click: set now-playing = "{s.song}"
+        }
+      }
+    }
+  }
+}

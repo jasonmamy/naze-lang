@@ -1,0 +1,44 @@
+-- Presentation slide toolbar with controls
+app "Slide Toolbar" {
+  state active-tool = "add-slide"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #fef2f2 {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #ef4444, radius: 6px {
+          text "+" color: #ffffff, font-size: 14px
+          on click: set active-tool = "add-slide"
+        }
+        rect width: 36px, height: 36px, color: #2563eb, radius: 6px {
+          text "T" color: #ffffff, font-size: 14px
+          on click: set active-tool = "add-text"
+        }
+        rect width: 36px, height: 36px, color: #16a34a, radius: 6px {
+          text "I" color: #ffffff, font-size: 14px
+          on click: set active-tool = "add-image"
+        }
+        rect width: 36px, height: 36px, color: #7c3aed, radius: 6px {
+          text ">" color: #ffffff, font-size: 14px
+          on click: set active-tool = "present"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #64748b, radius: 6px {
+          text "?" color: #ffffff, font-size: 14px
+          on click: set active-tool = "help"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "add-slide": text "Add a new slide." color: #64748b
+        "add-text": text "Insert a text box." color: #64748b
+        "add-image": text "Insert an image." color: #64748b
+        "present": text "Start the presentation." color: #64748b
+        "help": text "View keyboard shortcuts." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

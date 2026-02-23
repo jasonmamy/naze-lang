@@ -1,0 +1,40 @@
+-- Step indicator
+app "Steps" {
+  state step = 1
+
+  column padding: 20px, gap: 16px {
+    heading "Setup Wizard"
+
+    row gap: 16px {
+      rect width: 32px, height: 32px, color: #2563eb, radius: 16px {
+        text "1" color: #ffffff
+      }
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "2" color: #64748b
+      }
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "3" color: #64748b
+      }
+    }
+
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: text "Enter your details" font-size: 18px
+      2: text "Choose your plan" font-size: 18px
+      3: text "Confirm and finish" font-size: 18px
+      _: text "Complete" color: #16a34a
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #64748b, radius: 4px {
+        text "Back" color: #ffffff
+        on click: set step = step - 1
+      }
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "Next" color: #ffffff
+        on click: set step = step + 1
+      }
+    }
+  }
+}

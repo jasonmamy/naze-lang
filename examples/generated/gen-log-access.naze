@@ -1,0 +1,18 @@
+-- File access audit log
+app "Access Log" {
+  state entries = [{time: "10:30", action: "Viewed report.pdf", user: "Alice"}, {time: "10:15", action: "Downloaded data.csv", user: "Bob"}, {time: "09:45", action: "Edited config.yml", user: "Carol"}, {time: "09:30", action: "Shared notes.md", user: "Alice"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Access Log" color: #8b5cf6
+    text "{total-entries} access events" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #f5f3ff, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #8b5cf6, font-size: 12px
+      }
+    }
+  }
+}

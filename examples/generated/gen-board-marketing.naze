@@ -1,0 +1,54 @@
+-- Marketing campaign task board
+app "Campaign Board" {
+  state todo = [{title: "Blog post", tag: "content"}, {title: "Social graphics", tag: "design"}]
+  state doing = [{title: "Email draft", tag: "outreach"}]
+  state done = [{title: "Landing page", tag: "web"}]
+  computed todo-count = todo | count
+  computed doing-count = doing | count
+  computed done-count = done | count
+
+  column padding: 24px, gap: 16px {
+    heading "Campaign Board" color: #f59e0b
+
+    row gap: 16px {
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #d1d5db, radius: 5px
+          text "To Do ({todo-count})" font-weight: bold, font-size: 14px
+        }
+        each card in todo {
+          rect padding: 12px, color: #fffbeb, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #fbbf24, radius: 5px
+          text "In Progress ({doing-count})" font-weight: bold, font-size: 14px
+        }
+        each card in doing {
+          rect padding: 12px, color: #fffbeb, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+
+      column gap: 8px {
+        row gap: 4px {
+          rect width: 10px, height: 10px, color: #4ade80, radius: 5px
+          text "Done ({done-count})" font-weight: bold, font-size: 14px
+        }
+        each card in done {
+          rect padding: 12px, color: #fffbeb, radius: 8px {
+            text "{card.title}" font-size: 14px
+            text "{card.tag}" color: #94a3b8, font-size: 11px
+          }
+        }
+      }
+    }
+  }
+}

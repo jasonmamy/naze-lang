@@ -1,0 +1,26 @@
+-- Notification banner with auto-dismiss
+app "Notifications" {
+  state show-banner = true
+  state action-done = false
+  timer hide-banner: after 5s { set show-banner = false }
+
+  column padding: 20px, gap: 16px {
+    heading "Notification Demo"
+
+    if show-banner {
+      row padding: 12px, color: #dbeafe, radius: 8px, gap: 8px {
+        text "Welcome! This banner will auto-dismiss in 5 seconds." color: #1e40af
+        spacer
+        rect width: 24px, height: 24px {
+          text "X" color: #1e40af
+          on click: set show-banner = false
+        }
+      }
+    }
+
+    rect width: 180px, height: 40px, color: #2563eb, radius: 8px {
+      text "Show Banner" color: #ffffff
+      on click: set show-banner = true
+    }
+  }
+}

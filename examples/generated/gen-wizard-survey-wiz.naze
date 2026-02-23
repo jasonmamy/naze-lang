@@ -1,0 +1,55 @@
+-- Multi-step survey with satisfaction questions
+app "Customer Survey" {
+  state step = 1
+  state satisfaction = ""
+  state improvement = ""
+  state recommend = ""
+
+  column padding: 24px, gap: 16px {
+    heading "Customer Survey"
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "Satisfaction" font-weight: bold, font-size: 18px
+        text "How satisfied are you? (1-10)" color: #64748b
+        input bind: satisfaction, placeholder: "1-10"
+        rect width: 100px, height: 40px, color: #f59e0b, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Improvements" font-weight: bold, font-size: 18px
+        text "What could we do better?" color: #64748b
+        input bind: improvement, placeholder: "Your suggestion"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 1
+          }
+          rect width: 100px, height: 40px, color: #f59e0b, radius: 8px {
+            text "Next" color: #ffffff
+            on click: set step = 3
+          }
+        }
+      }
+      3: column gap: 12px {
+        text "Recommend" font-weight: bold, font-size: 18px
+        text "Would you recommend us?" color: #64748b
+        input bind: recommend, placeholder: "Yes or No"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 2
+          }
+          rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+            text "Submit" color: #ffffff
+            on click: set step = 1
+          }
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+-- Game difficulty selector
+app "Difficulty" {
+  state choice = "normal"
+
+  column padding: 20px, gap: 16px {
+    heading "Difficulty"
+
+    select bind: choice {
+      option "Easy" value: "easy"
+      option "Normal" value: "normal"
+      option "Hard" value: "hard"
+    }
+
+    match choice {
+      "easy": rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Easy: relaxed gameplay, extra lives" color: #16a34a
+      }
+      "normal": rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Normal: balanced challenge" color: #d97706
+      }
+      "hard": rect padding: 16px, color: #fef2f2, radius: 8px {
+        text "Hard: limited lives, no checkpoints" color: #dc2626
+      }
+      _: text "Select an option" color: #94a3b8
+    }
+  }
+}

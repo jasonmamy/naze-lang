@@ -1,0 +1,58 @@
+-- Cloud storage plan comparison
+app "Cloud Storage" {
+  state selected = "none"
+
+  column padding: 24px, gap: 16px {
+    heading "Cloud Storage" color: #0f172a
+    text "Store your files securely" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Personal" font-weight: bold, font-size: 18px
+          text "$3/mo" color: #8b5cf6, font-size: 28px
+          text "For personal use" color: #64748b, font-size: 14px
+          separator
+          text "100GB space" font-size: 14px
+          text "File sharing" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Personal"
+          }
+        }
+      }
+      rect padding: 20px, color: #f5f3ff, radius: 12px {
+        column gap: 8px {
+          text "Team" font-weight: bold, font-size: 18px
+          text "$12/mo" color: #8b5cf6, font-size: 28px
+          text "Collaborate together" color: #64748b, font-size: 14px
+          separator
+          text "1TB space" font-size: 14px
+          text "Version history" font-size: 14px
+          rect width: 120px, height: 36px, color: #8b5cf6, radius: 6px {
+            text "Choose" color: #ffffff
+            on click: set selected = "Team"
+          }
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Business" font-weight: bold, font-size: 18px
+          text "$25/mo" color: #8b5cf6, font-size: 28px
+          text "Enterprise grade" color: #64748b, font-size: 14px
+          separator
+          text "5TB space" font-size: 14px
+          text "Admin controls" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Business"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #8b5cf6, font-weight: bold
+    }
+  }
+}

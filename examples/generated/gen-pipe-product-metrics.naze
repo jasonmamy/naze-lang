@@ -1,0 +1,18 @@
+-- Product metrics
+app "Products" {
+  state products = [{name: "Widget Pro", rating: 4, reviews: 120}, {name: "Gadget X", rating: 5, reviews: 85}, {name: "Tool Kit", rating: 3, reviews: 200}]
+  computed total = products | count
+  computed total-reviews = products | map reviews | sum
+
+  column padding: 20px, gap: 16px {
+    heading "Product Dashboard"
+    text "{total} products, {total-reviews} reviews" color: #f59e0b
+
+    each p in products | sort-by rating | take 2 {
+      row padding: 8px, color: #fef3c7, radius: 4px, gap: 8px {
+        text "{p.name}" font-weight: bold
+        text "{p.rating}/5" color: #f59e0b
+      }
+    }
+  }
+}

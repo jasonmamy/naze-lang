@@ -1,0 +1,21 @@
+-- SEO metadata on pages
+app "Blog" {
+  meta title: "My Blog"
+  meta description: "A blog about coding"
+
+  column padding: 20px {
+    heading "Blog Home"
+    text "Welcome to the blog"
+    link "About us", to: "/about"
+  }
+}
+
+page "/about" {
+  meta title: "About Us"
+  meta description: "Learn about our team"
+
+  column padding: 20px {
+    heading "About"
+    text "About page content"
+  }
+}

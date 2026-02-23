@@ -1,0 +1,58 @@
+-- Web hosting pricing comparison
+app "Hosting Plans" {
+  state selected = "none"
+
+  column padding: 24px, gap: 16px {
+    heading "Hosting Plans" color: #0f172a
+    text "Reliable hosting for every site" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Basic" font-weight: bold, font-size: 18px
+          text "$5/mo" color: #16a34a, font-size: 28px
+          text "Shared hosting" color: #64748b, font-size: 14px
+          separator
+          text "10GB disk" font-size: 14px
+          text "1 domain" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Basic"
+          }
+        }
+      }
+      rect padding: 20px, color: #f0fdf4, radius: 12px {
+        column gap: 8px {
+          text "Business" font-weight: bold, font-size: 18px
+          text "$15/mo" color: #16a34a, font-size: 28px
+          text "VPS hosting" color: #64748b, font-size: 14px
+          separator
+          text "50GB SSD" font-size: 14px
+          text "5 domains" font-size: 14px
+          rect width: 120px, height: 36px, color: #16a34a, radius: 6px {
+            text "Choose" color: #ffffff
+            on click: set selected = "Business"
+          }
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Dedicated" font-weight: bold, font-size: 18px
+          text "$49/mo" color: #16a34a, font-size: 28px
+          text "Bare metal" color: #64748b, font-size: 14px
+          separator
+          text "500GB NVMe" font-size: 14px
+          text "Unlimited domains" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Dedicated"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a, font-weight: bold
+    }
+  }
+}

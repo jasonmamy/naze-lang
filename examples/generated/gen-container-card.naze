@@ -1,0 +1,20 @@
+-- Container cards
+app "Cards" {
+  column padding: 20px, gap: 16px {
+    heading "Card Layout"
+
+    container padding: 16px, color: #ffffff, radius: 12px, shadow: 2px {
+      column gap: 8px {
+        heading "Card Title" font-size: 18px
+        text "Card description goes here" color: #64748b
+      }
+    }
+
+    container padding: 16px, color: #f0fdf4, radius: 12px {
+      column gap: 8px {
+        heading "Success Card" font-size: 18px, color: #166534
+        text "Everything is working" color: #16a34a
+      }
+    }
+  }
+}

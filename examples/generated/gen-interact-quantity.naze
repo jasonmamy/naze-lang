@@ -1,0 +1,26 @@
+-- Quantity selector for shopping
+app "Quantity" {
+  state qty = 1
+  state added = false
+
+  column padding: 20px, gap: 16px {
+    heading "Quantity"
+    text "{qty}" font-size: 24px, color: #16a34a
+    text "{added}" color: #64748b
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "More" color: #ffffff
+        on click: set qty = qty + 1
+      }
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Add Cart" color: #ffffff
+        on click: set added = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set qty = 1
+      }
+    }
+  }
+}

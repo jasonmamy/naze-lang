@@ -1,0 +1,30 @@
+-- Website analytics summary dashboard
+app "Web Analytics" {
+  state pageviews = 24500
+  state sessions = 8200
+  state bounce = 42
+  state duration = 185
+
+  column padding: 24px, gap: 16px {
+    heading "Web Analytics" color: #0f172a
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #f0f9ff, radius: 10px {
+        text "Page Views" color: #64748b, font-size: 13px
+        text "{pageviews}" font-size: 28px, color: #0369a1
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 10px {
+        text "Sessions" color: #64748b, font-size: 13px
+        text "{sessions}" font-size: 28px, color: #047857
+      }
+      rect padding: 16px, color: #fff7ed, radius: 10px {
+        text "Bounce Rate %" color: #64748b, font-size: 13px
+        text "{bounce}" font-size: 28px, color: #c2410c
+      }
+      rect padding: 16px, color: #fdf2f8, radius: 10px {
+        text "Avg Duration (s)" color: #64748b, font-size: 13px
+        text "{duration}" font-size: 28px, color: #be185d
+      }
+    }
+  }
+}

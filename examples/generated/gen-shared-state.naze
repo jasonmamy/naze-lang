@@ -1,0 +1,36 @@
+-- Shared state across pages
+shared state logged-in = false
+shared state username = ""
+
+app "Portal" {
+  column padding: 20px, gap: 16px {
+    heading "Home"
+
+    if logged-in {
+      text "Welcome, {username}!" font-size: 20px
+      link "Profile", to: "/profile"
+    }
+
+    if logged-in == false {
+      text "Please log in" color: #64748b
+      link "Login", to: "/login"
+    }
+  }
+}
+
+page "/login" {
+  column padding: 20px, gap: 16px {
+    heading "Login"
+    rect width: 120px, height: 40px, color: #2563eb, radius: 8px {
+      text "Log In" color: #ffffff
+      on click: set logged-in = true
+    }
+  }
+}
+
+page "/profile" {
+  column padding: 20px {
+    heading "Profile"
+    text "Logged in as {username}"
+  }
+}

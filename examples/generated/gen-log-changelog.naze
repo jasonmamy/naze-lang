@@ -1,0 +1,20 @@
+-- Product changelog
+app "Changelog" {
+  state releases = [{ver: "2.3.0", date: "Feb 15", note: "Added dark mode"}, {ver: "2.2.1", date: "Feb 10", note: "Fixed login timeout"}, {ver: "2.2.0", date: "Jan 28", note: "New dashboard layout"}, {ver: "2.1.0", date: "Jan 15", note: "API v2 released"}]
+  computed num-releases = releases | count
+
+  column padding: 24px, gap: 16px {
+    heading "Changelog" color: #1e293b
+    text "{num-releases} releases" color: #64748b
+
+    each rel in releases {
+      rect padding: 14px, color: #f8fafc, radius: 8px {
+        row gap: 12px {
+          text "v{rel.ver}" font-weight: bold, color: #2563eb
+          text "{rel.date}" color: #94a3b8, font-size: 12px
+        }
+        text "{rel.note}" color: #475569, font-size: 14px
+      }
+    }
+  }
+}

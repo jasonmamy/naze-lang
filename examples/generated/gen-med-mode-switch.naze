@@ -1,0 +1,26 @@
+-- Mode switcher
+app "Editor" {
+  state mode = "edit"
+  state content = "Hello world"
+
+  column padding: 20px, gap: 16px {
+    heading "Document"
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "Edit" color: #ffffff
+        on click: set mode = "edit"
+      }
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "Preview" color: #ffffff
+        on click: set mode = "preview"
+      }
+    }
+
+    match mode {
+      "edit": input bind: content, placeholder: "Write here..."
+      "preview": text "{content}" font-size: 18px, color: #1e293b
+      _: text "Unknown mode"
+    }
+  }
+}

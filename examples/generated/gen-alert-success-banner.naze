@@ -1,0 +1,28 @@
+-- Success notification banner with dismiss
+app "Success Alert" {
+  state dismissed = false
+
+  column padding: 20px, gap: 16px {
+    heading "Success Alert"
+
+    if dismissed == false {
+      rect padding: 14px, color: #f0fdf4, radius: 8px {
+        row gap: 12px {
+          text "[OK]" font-size: 20px
+          column gap: 4px {
+            text "Operation successful" font-weight: bold, color: #166534
+            text "Your changes have been saved." color: #16a34a, font-size: 13px
+          }
+        }
+        rect width: 70px, height: 28px, color: #16a34a, radius: 4px {
+          text "Dismiss" color: #ffffff, font-size: 12px
+          on click: set dismissed = true
+        }
+      }
+    }
+
+    if dismissed {
+      text "Alert dismissed" color: #94a3b8
+    }
+  }
+}

@@ -1,0 +1,28 @@
+-- Product launch countdown timer
+app "Launch Countdown" {
+  state seconds-left = 60
+  state event-name = "Product Launch"
+
+  timer tick: every 1s {
+    set seconds-left = seconds-left - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Launch Countdown"
+    text "{event-name}" color: #64748b
+
+    rect padding: 24px, color: #1e293b, radius: 12px {
+      text "{seconds-left}" font-size: 64px, color: #f59e0b
+      text "seconds to launch" color: #f59e0b
+    }
+
+    if seconds-left == 0 {
+      text "We are LIVE!" font-size: 20px, color: #16a34a, font-weight: bold
+    }
+
+    rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+      text "Reset" color: #ffffff
+      on click: set seconds-left = 60
+    }
+  }
+}

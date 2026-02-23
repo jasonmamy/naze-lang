@@ -1,0 +1,18 @@
+-- Notification event history
+app "Notifications" {
+  state entries = [{time: "Just now", action: "New comment on your post", user: "Social"}, {time: "1h ago", action: "Build succeeded", user: "CI/CD"}, {time: "3h ago", action: "Invoice ready", user: "Billing"}, {time: "1d ago", action: "Welcome aboard!", user: "System"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Notifications" color: #0ea5e9
+    text "{total-entries} notifications" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #f0f9ff, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #0ea5e9, font-size: 12px
+      }
+    }
+  }
+}

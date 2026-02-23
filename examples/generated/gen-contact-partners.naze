@@ -1,0 +1,31 @@
+-- Partner organizations directory
+app "Partners" {
+  column padding: 24px, gap: 16px {
+    heading "Partners" color: #0ea5e9
+    text "Our trusted partners" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 16px, color: #f0f9ff, radius: 8px {
+        column gap: 4px {
+          text "CloudCorp" font-weight: bold
+          text "Infrastructure" color: #64748b, font-size: 14px
+          text "partner@cloudcorp.io" color: #0ea5e9, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f0f9ff, radius: 8px {
+        column gap: 4px {
+          text "DataFlow" font-weight: bold
+          text "Analytics" color: #64748b, font-size: 14px
+          text "hello@dataflow.dev" color: #0ea5e9, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f0f9ff, radius: 8px {
+        column gap: 4px {
+          text "SecureNet" font-weight: bold
+          text "Security" color: #64748b, font-size: 14px
+          text "info@securenet.com" color: #0ea5e9, font-size: 14px
+        }
+      }
+    }
+  }
+}

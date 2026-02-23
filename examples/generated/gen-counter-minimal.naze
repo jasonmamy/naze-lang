@@ -1,0 +1,12 @@
+-- Minimal counter
+app "Counter" {
+  state count = 0
+
+  column padding: 20px {
+    text "{count}" font-size: 32px
+    rect width: 80px, height: 36px, color: #3b82f6, radius: 4px {
+      text "+1" color: #ffffff
+      on click: set count = count + 1
+    }
+  }
+}

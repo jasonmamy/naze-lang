@@ -1,0 +1,36 @@
+-- Forum topic tags for discussions
+app "Topic Tags" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Topic Tags"
+    text "Browse topics" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #ecfdf5, radius: 12px {
+        text "Help" color: #047857, font-size: 13px
+        on click: set selected-tag = "Help"
+      }
+      rect padding: 8px, color: #f5f3ff, radius: 12px {
+        text "Showcase" color: #6d28d9, font-size: 13px
+        on click: set selected-tag = "Showcase"
+      }
+      rect padding: 8px, color: #fef2f2, radius: 12px {
+        text "Bug Report" color: #b91c1c, font-size: 13px
+        on click: set selected-tag = "Bug Report"
+      }
+      rect padding: 8px, color: #eff6ff, radius: 12px {
+        text "Feature" color: #1d4ed8, font-size: 13px
+        on click: set selected-tag = "Feature"
+      }
+      rect padding: 8px, color: #f8fafc, radius: 12px {
+        text "Discussion" color: #334155, font-size: 13px
+        on click: set selected-tag = "Discussion"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

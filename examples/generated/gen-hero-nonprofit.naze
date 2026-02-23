@@ -1,0 +1,31 @@
+-- Nonprofit donation hero section
+app "Charity Hero" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #fffbeb {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Make a Difference" font-size: 36px, color: #92400e
+        text "Every donation helps build a better future." font-size: 18px, color: #b45309
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #f59e0b, radius: 8px {
+            text "Donate Now" color: #ffffff, font-size: 16px
+            on click: navigate "/donate"
+          }
+          rect width: 140px, height: 48px, color: #fef3c7, radius: 8px {
+            text "Our Mission" color: #92400e, font-size: 16px
+            on click: navigate "/about"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #fef3c7 {
+      row padding: 12px, gap: 24px {
+        text "$2M raised" color: #92400e, font-size: 14px
+        text "50K donors" color: #92400e, font-size: 14px
+        text "30 countries" color: #92400e, font-size: 14px
+      }
+    }
+  }
+}

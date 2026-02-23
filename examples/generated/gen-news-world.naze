@@ -1,0 +1,28 @@
+-- International news headlines
+app "World News" {
+  state articles = [{headline: "Climate Summit Reaches Agreement", source: "BBC", time: "1h ago"}, {headline: "Space Mission Launches Successfully", source: "AP News", time: "3h ago"}, {headline: "Historic Trade Deal Signed", source: "Al Jazeera", time: "5h ago"}]
+  state section = "top"
+
+  column padding: 20px, gap: 16px {
+    heading "World News"
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #0284c7, radius: 4px {
+        text "Top" color: #ffffff, font-size: 12px
+        on click: set section = "top"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Region" color: #ffffff, font-size: 12px
+        on click: set section = "region"
+      }
+    }
+
+    each article in articles {
+      rect padding: 12px, color: #f0f9ff, radius: 8px {
+        text "{article.headline}" font-weight: bold, font-size: 16px
+        text "{article.source}" color: #64748b
+        text "{article.time}" color: #0284c7, font-size: 12px
+      }
+    }
+  }
+}

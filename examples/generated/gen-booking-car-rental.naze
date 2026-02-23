@@ -1,0 +1,28 @@
+-- Vehicle rental booking form
+app "Car Rental" {
+  state guest-name = ""
+  state pickup-date = ""
+  state car-type = ""
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Car Rental" color: #6366f1
+    text "Rent a vehicle" color: #64748b
+
+    input bind: guest-name, placeholder: "Your name"
+    input bind: pickup-date, placeholder: "Pickup date"
+    input bind: car-type, placeholder: "Vehicle type"
+
+    rect width: 140px, height: 44px, color: #6366f1, radius: 8px {
+      text "Rent Now" color: #ffffff
+      on click: set confirmed = true
+    }
+
+    if confirmed {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Confirmed for {guest-name}" color: #16a34a, font-weight: bold
+        text "Rental confirmed!" color: #64748b
+      }
+    }
+  }
+}

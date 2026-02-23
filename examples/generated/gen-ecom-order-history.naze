@@ -1,0 +1,30 @@
+-- Past orders with status tracking
+app "Order History" {
+  state items = [{name: "Laptop Stand", price: "Delivered"}, {name: "USB Hub", price: "Shipped"}, {name: "Cable Kit", price: "Processing"}]
+  state selected = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Order History"
+    text "{total} orders" color: #64748b
+
+    grid columns: 1, gap: 12px {
+      each order in items | sort-by name {
+        rect padding: 16px, color: #ecfdf5, radius: 8px {
+          column gap: 4px {
+            text "{order.name}" font-weight: bold
+            text "{order.price}" color: #16a34a
+          }
+          rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+            text "Track" color: #ffffff
+            on click: set selected = "{order.name}"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a
+    }
+  }
+}

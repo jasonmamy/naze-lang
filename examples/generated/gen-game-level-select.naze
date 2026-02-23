@@ -1,0 +1,36 @@
+-- Level select
+app "Level Select" {
+  state current-level = 1
+
+  column padding: 20px, gap: 16px {
+    heading "Select Level"
+    text "Current: Level {current-level}" color: #6366f1, font-size: 18px
+
+    grid columns: 3, gap: 8px {
+      rect width: 80px, height: 60px, color: #ecfdf5, radius: 8px {
+        text "Lv 1" font-weight: bold
+        on click: set current-level = 1
+      }
+      rect width: 80px, height: 60px, color: #ecfdf5, radius: 8px {
+        text "Lv 2" font-weight: bold
+        on click: set current-level = 2
+      }
+      rect width: 80px, height: 60px, color: #fef3c7, radius: 8px {
+        text "Lv 3" font-weight: bold
+        on click: set current-level = 3
+      }
+      rect width: 80px, height: 60px, color: #fef3c7, radius: 8px {
+        text "Lv 4" font-weight: bold
+        on click: set current-level = 4
+      }
+      rect width: 80px, height: 60px, color: #fef2f2, radius: 8px {
+        text "Lv 5" font-weight: bold
+        on click: set current-level = 5
+      }
+      rect width: 80px, height: 60px, color: #fef2f2, radius: 8px {
+        text "Boss" font-weight: bold, color: #dc2626
+        on click: set current-level = 6
+      }
+    }
+  }
+}

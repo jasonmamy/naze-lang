@@ -1,0 +1,31 @@
+-- Admin dashboard with users, requests, and errors
+app "Admin Panel" {
+  state active-users = 1842
+  state requests = 456000
+  state errors = 23
+  computed error-rate = errors * 1000 / requests
+
+  column padding: 24px, gap: 20px {
+    heading "Admin Panel"
+    text "System overview" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #f0f9ff, radius: 8px {
+        text "Active Users" color: #64748b, font-size: 12px
+        text "{active-users}" font-size: 28px, color: #0369a1
+      }
+      rect padding: 16px, color: #faf5ff, radius: 8px {
+        text "API Requests" color: #64748b, font-size: 12px
+        text "{requests}" font-size: 28px, color: #7e22ce
+      }
+      rect padding: 16px, color: #fef2f2, radius: 8px {
+        text "Errors" color: #64748b, font-size: 12px
+        text "{errors}" font-size: 28px, color: #dc2626
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Error Rate (per 1k): {error-rate}" font-size: 18px, color: #0369a1
+    }
+  }
+}

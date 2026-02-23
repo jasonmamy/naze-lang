@@ -1,0 +1,38 @@
+-- Saved filter presets
+app "Filter Presets" {
+  state active-preset = "none"
+  state result-count = 200
+
+  column padding: 20px, gap: 16px {
+    heading "Filter Presets"
+    text "{result-count} results" color: #64748b
+
+    text "Quick Filters" font-weight: bold
+    row gap: 8px {
+      rect width: 100px, height: 32px, color: #2563eb, radius: 16px {
+        text "Top Rated" color: #ffffff, font-size: 12px
+        on click: set active-preset = "top-rated"
+      }
+      rect width: 100px, height: 32px, color: #16a34a, radius: 16px {
+        text "New Today" color: #ffffff, font-size: 12px
+        on click: set active-preset = "new-today"
+      }
+      rect width: 100px, height: 32px, color: #f59e0b, radius: 16px {
+        text "On Sale" color: #ffffff, font-size: 12px
+        on click: set active-preset = "on-sale"
+      }
+    }
+
+    match active-preset {
+      "top-rated": text "Showing top rated items" color: #2563eb
+      "new-today": text "Showing items added today" color: #16a34a
+      "on-sale": text "Showing sale items" color: #f59e0b
+      _: text "No filter applied" color: #64748b
+    }
+
+    rect width: 100px, height: 32px, color: #e2e8f0, radius: 4px {
+      text "Clear Filter"
+      on click: set active-preset = "none"
+    }
+  }
+}

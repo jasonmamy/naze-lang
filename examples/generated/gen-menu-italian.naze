@@ -1,0 +1,40 @@
+-- Italian restaurant menu with categories
+app "Trattoria Menu" {
+  state category = "Pasta"
+  state items = [{name: "Carbonara", desc: "Egg, pecorino, guanciale", price: "$16"}, {name: "Margherita", desc: "Tomato, mozzarella, basil", price: "$14"}, {name: "Tiramisu", desc: "Coffee-soaked ladyfingers", price: "$9"}]
+  computed total-items = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Trattoria Menu" color: #b91c1c
+
+    row gap: 8px {
+      rect padding: 8px, color: #b91c1c, radius: 4px {
+        text "Pasta" color: #ffffff, font-size: 13px
+        on click: set category = "Pasta"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Pizza" font-size: 13px
+        on click: set category = "Pizza"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Desserts" font-size: 13px
+        on click: set category = "Desserts"
+      }
+    }
+
+    text "{total-items} items on the menu" color: #94a3b8, font-size: 12px
+
+    each item in items {
+      rect padding: 12px, color: #fef2f2, radius: 8px {
+        row gap: 8px {
+          column gap: 2px {
+            text "{item.name}" font-weight: bold
+            text "{item.desc}" color: #64748b, font-size: 13px
+          }
+          spacer
+          text "{item.price}" font-weight: bold, color: #b91c1c
+        }
+      }
+    }
+  }
+}

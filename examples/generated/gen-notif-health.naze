@@ -1,0 +1,53 @@
+-- Health and wellness notifications
+app "Health Alerts" {
+  state unread = 3
+  state notifications = [{title: "Step goal reached", body: "You hit 10K steps today", time: "30 min ago"}, {title: "Hydration reminder", body: "Time to drink some water", time: "1 hour ago"}, {title: "Sleep report", body: "You slept 7.5 hours last night", time: "This morning"}]
+  computed total = notifications | count
+  state filter = "all"
+
+  column padding: 24px, gap: 16px {
+    heading "Health Alerts" color: #0891b2
+
+    row gap: 8px {
+      text "Notifications" font-size: 18px, font-weight: bold
+      rect padding: 4px, color: #ecfeff, radius: 10px {
+        text "{unread}" color: #0e7490, font-size: 12px
+      }
+      spacer
+      rect padding: 8px, color: #f1f5f9, radius: 4px {
+        text "Mark all read" font-size: 12px, color: #64748b
+        on click: set unread = 0
+      }
+    }
+
+    row gap: 8px {
+      rect padding: 6px, color: #0891b2, radius: 4px {
+        text "All" color: #ffffff, font-size: 12px
+        on click: set filter = "all"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Activity" font-size: 12px
+        on click: set filter = "Activity"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Reminders" font-size: 12px
+        on click: set filter = "Reminders"
+      }
+    }
+
+    text "{total} notifications" color: #94a3b8, font-size: 12px
+
+    each notif in notifications {
+      rect padding: 12px, color: #f0f9ff, radius: 8px {
+        column gap: 4px {
+          row gap: 8px {
+            rect width: 8px, height: 8px, color: #06b6d4, radius: 4px
+            text "{notif.title}" font-weight: bold, font-size: 14px
+          }
+          text "{notif.body}" color: #64748b, font-size: 13px
+          text "{notif.time}" color: #94a3b8, font-size: 11px
+        }
+      }
+    }
+  }
+}

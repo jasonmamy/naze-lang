@@ -1,0 +1,25 @@
+-- Risk assessment badges
+app "Risk Level" {
+  state status = "low"
+
+  column padding: 20px, gap: 16px {
+    heading "Risk Level"
+
+    row gap: 8px {
+      rect width: 80px, height: 28px, color: #16a34a, radius: 12px {
+        text "low" color: #ffffff, font-size: 12px
+        on click: set status = "low"
+      }
+      rect width: 80px, height: 28px, color: #f59e0b, radius: 12px {
+        text "medium" color: #ffffff, font-size: 12px
+        on click: set status = "medium"
+      }
+      rect width: 80px, height: 28px, color: #ef4444, radius: 12px {
+        text "high" color: #ffffff, font-size: 12px
+        on click: set status = "high"
+      }
+    }
+
+    text "Current: {status}" font-size: 18px, font-weight: bold
+  }
+}

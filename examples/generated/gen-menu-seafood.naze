@@ -1,0 +1,40 @@
+-- Seafood restaurant menu
+app "The Catch" {
+  state category = "Fish"
+  state items = [{name: "Grilled Salmon", desc: "Lemon herb butter, rice", price: "$24"}, {name: "Lobster Tail", desc: "Drawn butter, asparagus", price: "$38"}, {name: "Clam Chowder", desc: "New England style, sourdough", price: "$10"}]
+  computed total-items = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "The Catch" color: #0369a1
+
+    row gap: 8px {
+      rect padding: 8px, color: #0369a1, radius: 4px {
+        text "Fish" color: #ffffff, font-size: 13px
+        on click: set category = "Fish"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Shellfish" font-size: 13px
+        on click: set category = "Shellfish"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Starters" font-size: 13px
+        on click: set category = "Starters"
+      }
+    }
+
+    text "{total-items} items on the menu" color: #94a3b8, font-size: 12px
+
+    each item in items {
+      rect padding: 12px, color: #f0f9ff, radius: 8px {
+        row gap: 8px {
+          column gap: 2px {
+            text "{item.name}" font-weight: bold
+            text "{item.desc}" color: #64748b, font-size: 13px
+          }
+          spacer
+          text "{item.price}" font-weight: bold, color: #0369a1
+        }
+      }
+    }
+  }
+}

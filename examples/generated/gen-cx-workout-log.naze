@@ -1,0 +1,30 @@
+-- Workout log
+app "Workout" {
+  state elapsed = 0
+  state exercises = [{name: "Squats", sets: "3", reps: "12"}, {name: "Bench Press", sets: "4", reps: "8"}, {name: "Deadlift", sets: "3", reps: "5"}, {name: "Pull-ups", sets: "3", reps: "10"}]
+  computed exercise-count = exercises | count
+
+  timer session: every 1s {
+    set elapsed = elapsed + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Today's Workout"
+    row gap: 16px {
+      text "{elapsed}s" font-size: 24px, color: #2563eb
+      text "{exercise-count} exercises" color: #64748b
+    }
+
+    each ex in exercises {
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 12px {
+        column gap: 4px {
+          text "{ex.name}" font-weight: bold, font-size: 16px
+          row gap: 8px {
+            text "{ex.sets} sets" color: #64748b
+            text "{ex.reps} reps" color: #64748b
+          }
+        }
+      }
+    }
+  }
+}

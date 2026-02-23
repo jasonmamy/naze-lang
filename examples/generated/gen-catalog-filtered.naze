@@ -1,0 +1,36 @@
+-- Filtered product catalog
+app "Filtered Catalog" {
+  state category = "all"
+  state products = [{name: "Widget A", cat: "tools", price: "$12"}, {name: "Gadget B", cat: "tech", price: "$29"}, {name: "Tool C", cat: "tools", price: "$18"}, {name: "Device D", cat: "tech", price: "$45"}]
+
+  column padding: 24px, gap: 16px {
+    heading "Products" color: #1e293b
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #2563eb, radius: 6px {
+        text "All" color: #ffffff
+        on click: set category = "all"
+      }
+      rect width: 80px, height: 32px, color: #e2e8f0, radius: 6px {
+        text "Tools"
+        on click: set category = "tools"
+      }
+      rect width: 80px, height: 32px, color: #e2e8f0, radius: 6px {
+        text "Tech"
+        on click: set category = "tech"
+      }
+    }
+
+    text "Showing: {category}" color: #64748b
+
+    each prod in products {
+      rect padding: 12px, color: #f8fafc, radius: 8px {
+        row gap: 12px {
+          text "{prod.name}" font-weight: bold
+          text "{prod.price}" color: #2563eb
+          text "{prod.cat}" color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

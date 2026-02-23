@@ -1,0 +1,31 @@
+-- IoT sensor dashboard with temperature and humidity
+app "IoT Dashboard" {
+  state temperature = 23
+  state humidity-pct = 58
+  state sensors-online = 47
+  computed comfort-index = temperature + humidity-pct
+
+  column padding: 24px, gap: 20px {
+    heading "IoT Dashboard"
+    text "Sensor array status" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        text "Temp (C)" color: #64748b, font-size: 12px
+        text "{temperature}" font-size: 28px, color: #ea580c
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Humidity %" color: #64748b, font-size: 12px
+        text "{humidity-pct}" font-size: 28px, color: #2563eb
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Sensors Online" color: #64748b, font-size: 12px
+        text "{sensors-online}" font-size: 28px, color: #16a34a
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Comfort Index: {comfort-index}" font-size: 18px, color: #ea580c
+    }
+  }
+}

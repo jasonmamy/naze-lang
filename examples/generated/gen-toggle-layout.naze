@@ -1,0 +1,30 @@
+-- Layout mode with compact, normal, and wide options
+app "Layout" {
+  state layout = "normal"
+
+  column padding: 20px, gap: 16px {
+    heading "Layout"
+
+    match layout {
+      "compact": text "Compact layout" color: #64748b
+      "normal": text "Normal layout" color: #64748b
+      "wide": text "Wide layout" color: #64748b
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #0ea5e9, radius: 4px {
+        text "compact" color: #ffffff
+        on click: set layout = "compact"
+      }
+      rect width: 100px, height: 36px, color: #2563eb, radius: 4px {
+        text "normal" color: #ffffff
+        on click: set layout = "normal"
+      }
+      rect width: 100px, height: 36px, color: #7c3aed, radius: 4px {
+        text "wide" color: #ffffff
+        on click: set layout = "wide"
+      }
+    }
+  }
+}

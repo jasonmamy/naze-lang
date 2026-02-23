@@ -1,0 +1,40 @@
+-- Operating system preference poll
+app "OS Preference" {
+  state opt-a = 35
+  state opt-b = 28
+  state opt-c = 20
+  computed total-votes = opt-a + opt-b + opt-c
+
+  column padding: 24px, gap: 16px {
+    heading "OS Preference" color: #16a34a
+    text "Which OS do you use?" font-size: 18px
+    text "Total votes: {total-votes}" color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+        text "Linux ({opt-a})" color: #ffffff
+        on click: set opt-a = opt-a + 1
+      }
+      rect width: 120px, height: 40px, color: #64748b, radius: 8px {
+        text "macOS ({opt-b})" color: #ffffff
+        on click: set opt-b = opt-b + 1
+      }
+      rect width: 120px, height: 40px, color: #94a3b8, radius: 8px {
+        text "Windows ({opt-c})" color: #ffffff
+        on click: set opt-c = opt-c + 1
+      }
+    }
+
+    column gap: 4px {
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Linux" font-size: 12px
+      }
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "macOS" font-size: 12px
+      }
+      rect width: 300px, height: 24px, color: #e2e8f0, radius: 4px {
+        text "Windows" font-size: 12px
+      }
+    }
+  }
+}

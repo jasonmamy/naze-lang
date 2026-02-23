@@ -1,0 +1,29 @@
+-- Support ticket overview
+app "Support" {
+  state open-tickets = 23
+  state resolved = 145
+
+  column padding: 20px, gap: 16px {
+    heading "Support"
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Open" color: #64748b, font-size: 12px
+        text "{open-tickets}" font-size: 24px, color: #f59e0b
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Resolved" color: #64748b, font-size: 12px
+        text "{resolved}" font-size: 24px, color: #10b981
+      }
+    }
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #f59e0b, radius: 4px {
+        text "+1" color: #ffffff
+        on click: set open-tickets = open-tickets + 1
+      }
+      rect width: 80px, height: 32px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set open-tickets = 23
+      }
+    }
+  }
+}

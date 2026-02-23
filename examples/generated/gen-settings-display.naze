@@ -1,0 +1,46 @@
+-- Display and appearance preferences
+app "Display Settings" {
+  state dark-mode = false
+  state compact-view = false
+  state font-pref = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Display Settings"
+    text "Customize appearance" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "Dark Mode" font-weight: bold, font-size: 14px
+        checkbox bind: dark-mode, label: "Enable dark theme"
+      }
+
+      column gap: 4px {
+        text "Compact View" font-weight: bold, font-size: 14px
+        checkbox bind: compact-view, label: "Use compact layout"
+      }
+
+      column gap: 4px {
+        text "Font Family" font-weight: bold, font-size: 14px
+        input bind: font-pref, placeholder: "Font preference"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #6366f1, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Display preferences saved!" color: #16a34a
+    }
+  }
+}

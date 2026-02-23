@@ -1,0 +1,30 @@
+-- Search with results display
+app "Search" {
+  state query = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Search"
+    text "Search our catalog" color: #64748b
+
+    input bind: query, placeholder: "Search..."
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #8b5cf6, radius: 4px {
+        text "Search" color: #ffffff
+        on click: set submitted = true
+      }
+      rect width: 80px, height: 36px, color: #94a3b8, radius: 4px {
+        text "Clear" color: #ffffff
+        on click: set query = ""
+        on click: set submitted = false
+      }
+    }
+
+    if submitted {
+      rect padding: 12px, color: #faf5ff, radius: 8px {
+        text "Results for: {query}" font-weight: bold, color: #8b5cf6
+      }
+    }
+  }
+}

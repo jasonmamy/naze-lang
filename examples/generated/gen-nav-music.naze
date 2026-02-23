@@ -1,0 +1,34 @@
+-- Music app with library, playlists, and discover
+app "Music" {
+  column padding: 20px, gap: 16px {
+    heading "Music"
+    text "Your music"
+    link "Library", to: "/library"
+    link "Playlists", to: "/playlists"
+    link "Discover", to: "/discover"
+  }
+}
+
+page "/library" {
+  column padding: 20px {
+    heading "My Library"
+    text "Your saved music"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/playlists" {
+  column padding: 20px {
+    heading "Playlists"
+    text "Your playlists"
+    link "Back to Home", to: "/"
+  }
+}
+
+page "/discover" {
+  column padding: 20px {
+    heading "Discover"
+    text "Find new music"
+    link "Back to Home", to: "/"
+  }
+}

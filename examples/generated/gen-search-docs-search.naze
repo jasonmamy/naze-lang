@@ -1,0 +1,30 @@
+-- Documentation search with category tags
+app "Docs Search" {
+  state query = ""
+  state items = [{title: "Getting Started", section: "Basics", tag: "beginner"}, {title: "API Reference", section: "Advanced", tag: "reference"}, {title: "Deployment", section: "Ops", tag: "devops"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Docs Search"
+
+    row gap: 8px {
+      input bind: query, placeholder: "Search documentation..."
+      rect width: 90px, height: 40px, color: #6366f1, radius: 8px {
+        text "Search" color: #ffffff
+        on click: set query = ""
+      }
+    }
+
+    text "{total} results" color: #64748b
+
+    each doc in items | sort-by title {
+      rect padding: 12px, color: #faf5ff, radius: 6px {
+        row gap: 12px {
+          text "{doc.title}" font-weight: bold
+          text "{doc.section}" color: #64748b, font-size: 13px
+          text "{doc.tag}" color: #7c3aed, font-size: 12px
+        }
+      }
+    }
+  }
+}

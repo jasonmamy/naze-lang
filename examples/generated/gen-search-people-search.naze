@@ -1,0 +1,30 @@
+-- People directory search with department
+app "People Search" {
+  state query = ""
+  state items = [{name: "Ana Garcia", dept: "Engineering", title: "Staff Eng"}, {name: "Ben Wilson", dept: "Design", title: "Lead"}, {name: "Cara Liu", dept: "Product", title: "PM"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "People Search"
+
+    row gap: 8px {
+      input bind: query, placeholder: "Search people..."
+      rect width: 90px, height: 40px, color: #0ea5e9, radius: 8px {
+        text "Search" color: #ffffff
+        on click: set query = ""
+      }
+    }
+
+    text "{total} people" color: #64748b
+
+    each person in items | sort-by name {
+      rect padding: 12px, color: #f0f9ff, radius: 6px {
+        row gap: 12px {
+          text "{person.name}" font-weight: bold
+          text "{person.dept}" color: #64748b, font-size: 13px
+          text "{person.title}" color: #0369a1, font-size: 12px
+        }
+      }
+    }
+  }
+}

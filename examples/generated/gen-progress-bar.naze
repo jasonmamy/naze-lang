@@ -1,0 +1,24 @@
+-- Progress bar
+app "Progress" {
+  state progress = 65
+
+  column padding: 20px, gap: 16px {
+    heading "Upload Progress"
+    text "{progress}%" font-size: 24px, color: #2563eb
+
+    rect width: 300px, height: 20px, color: #e2e8f0, radius: 10px {
+      rect width: 195px, height: 20px, color: #2563eb, radius: 10px
+    }
+
+    row gap: 8px {
+      rect width: 60px, height: 32px, color: #2563eb, radius: 4px {
+        text "+10" color: #ffffff
+        on click: set progress = progress + 10
+      }
+      rect width: 60px, height: 32px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set progress = 0
+      }
+    }
+  }
+}

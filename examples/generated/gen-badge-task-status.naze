@@ -1,0 +1,25 @@
+-- Task status badge selector
+app "Task Status" {
+  state status = "todo"
+
+  column padding: 20px, gap: 16px {
+    heading "Task Status"
+
+    row gap: 8px {
+      rect width: 80px, height: 28px, color: #64748b, radius: 12px {
+        text "todo" color: #ffffff, font-size: 12px
+        on click: set status = "todo"
+      }
+      rect width: 80px, height: 28px, color: #f59e0b, radius: 12px {
+        text "doing" color: #ffffff, font-size: 12px
+        on click: set status = "doing"
+      }
+      rect width: 80px, height: 28px, color: #16a34a, radius: 12px {
+        text "done" color: #ffffff, font-size: 12px
+        on click: set status = "done"
+      }
+    }
+
+    text "Current: {status}" font-size: 18px, font-weight: bold
+  }
+}

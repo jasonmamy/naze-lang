@@ -1,0 +1,30 @@
+-- Book review cards with reader ratings
+app "Book Reviews" {
+  state reviews = [{author: "Reader1", stars: "5", comment: "A masterpiece"}, {author: "Reader2", stars: "3", comment: "Decent read"}, {author: "Reader3", stars: "4", comment: "Engaging plot"}]
+  state rating-filter = "all"
+  computed total-reviews = reviews | count
+
+  column padding: 20px, gap: 16px {
+    heading "Book Reviews"
+    text "{total-reviews} reviews" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "All" color: #ffffff
+        on click: set rating-filter = "all"
+      }
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "4+ Stars" color: #ffffff
+        on click: set rating-filter = "4"
+      }
+    }
+
+    each review in reviews {
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        text "{review.author}" font-weight: bold
+        text "{review.stars}" color: #f59e0b
+        text "{review.comment}" color: #64748b
+      }
+    }
+  }
+}

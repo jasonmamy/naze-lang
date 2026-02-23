@@ -1,0 +1,20 @@
+-- Form with checkbox toggles
+app "Preferences" {
+  state agree = false
+  state newsletter = false
+
+  column padding: 20px, gap: 12px {
+    heading "Sign Up"
+    checkbox "I agree to the terms" bind: agree
+    checkbox "Subscribe to newsletter" bind: newsletter
+
+    if agree {
+      rect width: 160px, height: 40px, color: #2563eb, radius: 8px {
+        text "Submit" color: #ffffff
+      }
+    }
+    if agree == false {
+      text "Please accept the terms" color: #94a3b8
+    }
+  }
+}

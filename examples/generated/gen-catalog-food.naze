@@ -1,0 +1,23 @@
+-- Restaurant menu catalog
+app "Menu" {
+  state items = [{name: "Margherita Pizza", price: "$14", category: "Mains"}, {name: "Caesar Salad", price: "$10", category: "Starters"}, {name: "Tiramisu", price: "$8", category: "Desserts"}, {name: "Bruschetta", price: "$9", category: "Starters"}]
+  computed item-count = items | count
+  state view = "grid"
+
+  column padding: 24px, gap: 16px {
+    heading "Menu" color: #ea580c
+    text "{item-count} dishes" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #fff7ed, radius: 10px {
+          column gap: 6px {
+            text "{item.name}" font-weight: bold, font-size: 16px
+            text "{item.price}" color: #ea580c, font-size: 14px
+            text "{item.category}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

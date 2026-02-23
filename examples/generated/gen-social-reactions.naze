@@ -1,0 +1,32 @@
+-- Emoji reaction picker
+app "React to Message" {
+  state reaction = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Message"
+    rect padding: 16px, color: #f0f9ff, radius: 8px {
+      text "Hey team, the release looks great!" font-size: 16px
+    }
+
+    text "Your reaction: {reaction}" color: #64748b
+
+    row gap: 8px {
+      rect width: 60px, height: 40px, color: #fef3c7, radius: 8px {
+        text "Thumbs"
+        on click: set reaction = "thumbs-up"
+      }
+      rect width: 60px, height: 40px, color: #fce7f3, radius: 8px {
+        text "Heart"
+        on click: set reaction = "heart"
+      }
+      rect width: 60px, height: 40px, color: #ecfdf5, radius: 8px {
+        text "Check"
+        on click: set reaction = "check"
+      }
+      rect width: 60px, height: 40px, color: #eff6ff, radius: 8px {
+        text "Eyes"
+        on click: set reaction = "eyes"
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+-- E-commerce product listing with prices
+app "Product Catalog" {
+  state items = [{name: "Wireless Mouse", price: "$29"}, {name: "Keyboard", price: "$59"}, {name: "Monitor", price: "$349"}, {name: "Webcam", price: "$79"}]
+  state selected = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Product Catalog"
+    text "{total} products" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each prod in items | sort-by name {
+        rect padding: 16px, color: #f8fafc, radius: 8px {
+          column gap: 4px {
+            text "{prod.name}" font-weight: bold
+            text "{prod.price}" color: #2563eb
+          }
+          rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+            text "Add" color: #ffffff
+            on click: set selected = "{prod.name}"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a
+    }
+  }
+}

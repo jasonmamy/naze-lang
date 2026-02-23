@@ -1,0 +1,55 @@
+-- Appointment booking wizard with date and service
+app "Book Appointment" {
+  state step = 1
+  state service-type = ""
+  state preferred-date = ""
+  state notes = ""
+
+  column padding: 24px, gap: 16px {
+    heading "Book Appointment"
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "Service" font-weight: bold, font-size: 18px
+        text "What service do you need?" color: #64748b
+        input bind: service-type, placeholder: "e.g. Consultation"
+        rect width: 100px, height: 40px, color: #ec4899, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Date" font-weight: bold, font-size: 18px
+        text "When would you like to come?" color: #64748b
+        input bind: preferred-date, placeholder: "Preferred date"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 1
+          }
+          rect width: 100px, height: 40px, color: #ec4899, radius: 8px {
+            text "Next" color: #ffffff
+            on click: set step = 3
+          }
+        }
+      }
+      3: column gap: 12px {
+        text "Notes" font-weight: bold, font-size: 18px
+        text "Anything else we should know?" color: #64748b
+        input bind: notes, placeholder: "Additional notes"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 2
+          }
+          rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+            text "Confirm" color: #ffffff
+            on click: set step = 1
+          }
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

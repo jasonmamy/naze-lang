@@ -1,0 +1,20 @@
+-- Notes app
+app "Notes" {
+  state title = ""
+  state body = ""
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "New Note"
+    input bind: title, placeholder: "Note title..."
+    textarea bind: body, placeholder: "Write your note..."
+    rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+      text "Save" color: #ffffff
+      on click: set saved = true
+    }
+
+    if saved {
+      text "Note saved!" color: #16a34a
+    }
+  }
+}

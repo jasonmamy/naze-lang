@@ -1,0 +1,31 @@
+-- Web analytics dashboard with page views and conversions
+app "Analytics Hub" {
+  state page-views = 84200
+  state uniques = 12500
+  state conversions = 340
+  computed conv-rate = conversions * 100 / uniques
+
+  column padding: 24px, gap: 20px {
+    heading "Analytics Hub"
+    text "Last 30 days overview" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Page Views" color: #64748b, font-size: 12px
+        text "{page-views}" font-size: 28px, color: #1e40af
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Unique Visitors" color: #64748b, font-size: 12px
+        text "{uniques}" font-size: 28px, color: #166534
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Conversions" color: #64748b, font-size: 12px
+        text "{conversions}" font-size: 28px, color: #92400e
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Conversion Rate %: {conv-rate}" font-size: 18px, color: #1e40af
+    }
+  }
+}

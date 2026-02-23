@@ -1,0 +1,39 @@
+-- Game menu
+app "Space Quest" {
+  state screen = "menu"
+
+  column padding: 20px, gap: 16px {
+    match screen {
+      "menu": column gap: 16px, padding: 40px {
+        heading "Space Quest" color: #6366f1, font-size: 32px
+        text "A Galactic Adventure" color: #94a3b8
+
+        rect width: 200px, height: 50px, color: #6366f1, radius: 8px {
+          text "New Game" color: #ffffff, font-size: 18px
+          on click: set screen = "play"
+        }
+        rect width: 200px, height: 50px, color: #64748b, radius: 8px {
+          text "Settings" color: #ffffff, font-size: 18px
+          on click: set screen = "settings"
+        }
+      }
+      "play": column gap: 16px {
+        heading "Playing..."
+        text "Game world here" color: #64748b
+        rect width: 100px, height: 36px, color: #dc2626, radius: 8px {
+          text "Menu" color: #ffffff
+          on click: set screen = "menu"
+        }
+      }
+      "settings": column gap: 16px {
+        heading "Settings"
+        text "Volume, controls" color: #64748b
+        rect width: 100px, height: 36px, color: #64748b, radius: 8px {
+          text "Back" color: #ffffff
+          on click: set screen = "menu"
+        }
+      }
+      _: text "Unknown screen"
+    }
+  }
+}

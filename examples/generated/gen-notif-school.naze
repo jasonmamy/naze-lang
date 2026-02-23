@@ -1,0 +1,53 @@
+-- Student school notifications
+app "School Alerts" {
+  state unread = 7
+  state notifications = [{title: "Grade posted", body: "Math exam: 92/100", time: "1 hour ago"}, {title: "Assignment due", body: "Essay due tomorrow at noon", time: "3 hours ago"}, {title: "Class cancelled", body: "Physics lab moved to Friday", time: "Today"}]
+  computed total = notifications | count
+  state filter = "all"
+
+  column padding: 24px, gap: 16px {
+    heading "School Alerts" color: #4f46e5
+
+    row gap: 8px {
+      text "Notifications" font-size: 18px, font-weight: bold
+      rect padding: 4px, color: #eef2ff, radius: 10px {
+        text "{unread}" color: #4338ca, font-size: 12px
+      }
+      spacer
+      rect padding: 8px, color: #f1f5f9, radius: 4px {
+        text "Mark all read" font-size: 12px, color: #64748b
+        on click: set unread = 0
+      }
+    }
+
+    row gap: 8px {
+      rect padding: 6px, color: #4f46e5, radius: 4px {
+        text "All" color: #ffffff, font-size: 12px
+        on click: set filter = "all"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Grades" font-size: 12px
+        on click: set filter = "Grades"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Classes" font-size: 12px
+        on click: set filter = "Classes"
+      }
+    }
+
+    text "{total} notifications" color: #94a3b8, font-size: 12px
+
+    each notif in notifications {
+      rect padding: 12px, color: #eef2ff, radius: 8px {
+        column gap: 4px {
+          row gap: 8px {
+            rect width: 8px, height: 8px, color: #6366f1, radius: 4px
+            text "{notif.title}" font-weight: bold, font-size: 14px
+          }
+          text "{notif.body}" color: #64748b, font-size: 13px
+          text "{notif.time}" color: #94a3b8, font-size: 11px
+        }
+      }
+    }
+  }
+}

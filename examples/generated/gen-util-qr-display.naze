@@ -1,0 +1,28 @@
+-- QR code display
+app "QR Display" {
+  state url = "https://example.com"
+  state size = 200
+
+  column padding: 20px, gap: 16px {
+    heading "QR Code Generator"
+    input bind: url, placeholder: "Enter URL..."
+
+    rect width: 200px, height: 200px, color: #f3f4f6, radius: 8px, padding: 20px {
+      text "QR Code" font-size: 18px
+      text "{url}" color: #64748b, font-size: 12px
+    }
+
+    text "Size: {size}px" color: #94a3b8
+
+    row gap: 8px {
+      rect width: 60px, height: 32px, color: #2563eb, radius: 4px {
+        text "Small" color: #ffffff
+        on click: set size = 150
+      }
+      rect width: 60px, height: 32px, color: #2563eb, radius: 4px {
+        text "Large" color: #ffffff
+        on click: set size = 300
+      }
+    }
+  }
+}

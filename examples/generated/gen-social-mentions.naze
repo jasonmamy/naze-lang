@@ -1,0 +1,17 @@
+-- Mention tracker
+app "Mentions" {
+  state mentions = [{from: "Alice", context: "in #general"}, {from: "Bob", context: "in PR review"}, {from: "Carol", context: "in thread"}]
+  computed mention-count = mentions | count
+
+  column padding: 20px, gap: 16px {
+    heading "Your Mentions"
+    text "{mention-count} recent mentions" color: #6366f1
+
+    each m in mentions {
+      row padding: 10px, color: #faf5ff, radius: 6px, gap: 8px {
+        text "@{m.from}" font-weight: bold, color: #7c3aed
+        text "{m.context}" color: #64748b
+      }
+    }
+  }
+}

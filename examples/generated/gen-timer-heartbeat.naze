@@ -1,0 +1,25 @@
+-- Heartbeat monitor counting beats
+app "Heartbeat" {
+  state beats = 0
+  state active = false
+
+  timer tick: every 1s {
+    set beats = beats + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Heartbeat"
+    text "{beats} bpm" font-size: 48px, color: #ef4444
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Start" color: #ffffff
+        on click: set active = true
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set beats = 0
+      }
+    }
+  }
+}

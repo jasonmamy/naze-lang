@@ -1,0 +1,32 @@
+-- Error toast notification on failed action
+app "Error Alert" {
+  state show-toast = false
+  state action-done = false
+
+  column padding: 24px, gap: 16px {
+    heading "Error Alert"
+    text "Submit the form to proceed." color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #ef4444, radius: 8px {
+        text "Submit" color: #ffffff
+        on click: set show-toast = true
+        on click: set action-done = true
+      }
+    }
+
+    if show-toast {
+      rect width: 340px, height: 48px, color: #fef2f2, radius: 8px {
+        row padding: 12px, gap: 12px {
+          text "[!]" font-size: 16px
+          text "Something went wrong. Try again." color: #991b1b, font-size: 14px
+          spacer
+          rect width: 24px, height: 24px, radius: 4px {
+            text "x" color: #991b1b, font-size: 12px
+            on click: set show-toast = false
+          }
+        }
+      }
+    }
+  }
+}

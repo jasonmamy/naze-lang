@@ -1,0 +1,22 @@
+-- Team roster
+app "Team" {
+  state members = [{name: "Alice", role: "Lead", dept: "engineering"}, {name: "Bob", role: "Designer", dept: "design"}, {name: "Carol", role: "PM", dept: "product"}, {name: "Dan", role: "Engineer", dept: "engineering"}]
+  computed headcount = members | count
+
+  column padding: 20px, gap: 16px {
+    heading "Team Directory"
+    text "{headcount} members" color: #64748b
+
+    each member in members | sort-by name {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 12px {
+        column gap: 2px {
+          text "{member.name}" font-weight: bold
+          row gap: 8px {
+            text "{member.role}" color: #2563eb, font-size: 12px
+            text "{member.dept}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

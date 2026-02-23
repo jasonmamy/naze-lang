@@ -1,0 +1,31 @@
+-- Data privacy configuration
+app "Privacy Settings" {
+  state analytics = true
+  state personalization = false
+  state third-party = false
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Privacy Settings"
+    text "Control your data" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: analytics, label: "Usage analytics"
+        checkbox bind: personalization, label: "Personalized content"
+        checkbox bind: third-party, label: "Third-party sharing"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #8b5cf6, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

@@ -1,0 +1,46 @@
+-- Team workspace configuration
+app "Workspace Settings" {
+  state public-channels = true
+  state guest-access = false
+  state workspace-name = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Workspace Settings"
+    text "Configure team workspace" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "Public Channels" font-weight: bold, font-size: 14px
+        checkbox bind: public-channels, label: "Allow public channels"
+      }
+
+      column gap: 4px {
+        text "Guest Access" font-weight: bold, font-size: 14px
+        checkbox bind: guest-access, label: "Allow guest members"
+      }
+
+      column gap: 4px {
+        text "Workspace Name" font-weight: bold, font-size: 14px
+        input bind: workspace-name, placeholder: "Workspace name"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #8b5cf6, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Workspace settings saved!" color: #16a34a
+    }
+  }
+}

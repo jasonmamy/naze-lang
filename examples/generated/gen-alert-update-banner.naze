@@ -1,0 +1,28 @@
+-- App update available notification
+app "Update Alert" {
+  state dismissed = false
+
+  column padding: 20px, gap: 16px {
+    heading "Update Alert"
+
+    if dismissed == false {
+      rect padding: 14px, color: #faf5ff, radius: 8px {
+        row gap: 12px {
+          text "[^]" font-size: 20px
+          column gap: 4px {
+            text "New version available" font-weight: bold, color: #6b21a8
+            text "Version 2.5.0 includes performance improvements." color: #9333ea, font-size: 13px
+          }
+        }
+        rect width: 70px, height: 28px, color: #7c3aed, radius: 4px {
+          text "Update" color: #ffffff, font-size: 12px
+          on click: set dismissed = true
+        }
+      }
+    }
+
+    if dismissed {
+      text "Alert dismissed" color: #94a3b8
+    }
+  }
+}

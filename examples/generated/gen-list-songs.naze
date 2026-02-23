@@ -1,0 +1,17 @@
+-- Music playlist sorted by artist
+app "Playlist" {
+  state items = [{title: "Imagine", artist: "Lennon"}, {title: "Bohemian", artist: "Queen"}, {title: "Yesterday", artist: "Beatles"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Playlist"
+    text "{total} songs" color: #64748b
+
+    each song in items | sort-by artist {
+      row padding: 8px, color: #f5f3ff, radius: 4px, gap: 8px {
+        text "{song.title}" font-weight: bold
+        text "{song.artist}" color: #64748b
+      }
+    }
+  }
+}

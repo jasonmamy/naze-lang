@@ -1,0 +1,41 @@
+-- Weekly planner
+app "Weekly Planner" {
+  state selected-day = "Monday"
+
+  column padding: 20px, gap: 16px {
+    heading "Weekly Planner"
+
+    row gap: 4px {
+      rect width: 50px, height: 32px, color: #2563eb, radius: 4px {
+        text "Mon" color: #ffffff, font-size: 12px
+        on click: set selected-day = "Monday"
+      }
+      rect width: 50px, height: 32px, color: #64748b, radius: 4px {
+        text "Tue" color: #ffffff, font-size: 12px
+        on click: set selected-day = "Tuesday"
+      }
+      rect width: 50px, height: 32px, color: #64748b, radius: 4px {
+        text "Wed" color: #ffffff, font-size: 12px
+        on click: set selected-day = "Wednesday"
+      }
+      rect width: 50px, height: 32px, color: #64748b, radius: 4px {
+        text "Thu" color: #ffffff, font-size: 12px
+        on click: set selected-day = "Thursday"
+      }
+      rect width: 50px, height: 32px, color: #64748b, radius: 4px {
+        text "Fri" color: #ffffff, font-size: 12px
+        on click: set selected-day = "Friday"
+      }
+    }
+
+    text "Showing: {selected-day}" font-weight: bold, color: #2563eb
+
+    match selected-day {
+      "Monday": text "Standup, Sprint Review, Deep Work"
+      "Tuesday": text "Design sync, Code reviews"
+      "Wednesday": text "Client demo, Planning"
+      "Thursday": text "Pair programming, Retro"
+      _: text "Deploy prep, Team lunch"
+    }
+  }
+}

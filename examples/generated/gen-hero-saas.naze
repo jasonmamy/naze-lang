@@ -1,0 +1,31 @@
+-- SaaS product hero section with CTAs
+app "SaaS Landing" {
+  column gap: 0px {
+    rect width: 800px, height: 360px, color: #0f172a {
+      column padding: 48px, gap: 16px {
+        spacer height: 20px
+        heading "Ship Faster with Acme" font-size: 36px, color: #f8fafc
+        text "The all-in-one platform for modern teams." font-size: 18px, color: #94a3b8
+
+        row gap: 12px {
+          rect width: 160px, height: 48px, color: #2563eb, radius: 8px {
+            text "Get Started" color: #ffffff, font-size: 16px
+            on click: navigate "/signup"
+          }
+          rect width: 140px, height: 48px, color: #1e293b, radius: 8px {
+            text "Learn More" color: #e2e8f0, font-size: 16px
+            on click: navigate "/features"
+          }
+        }
+      }
+    }
+
+    rect width: 800px, height: 48px, color: #1e293b {
+      row padding: 12px, gap: 24px {
+        text "10K+ users" color: #94a3b8, font-size: 14px
+        text "99.9 percent uptime" color: #94a3b8, font-size: 14px
+        text "24/7 support" color: #94a3b8, font-size: 14px
+      }
+    }
+  }
+}

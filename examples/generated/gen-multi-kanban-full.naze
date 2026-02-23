@@ -1,0 +1,40 @@
+-- Full Kanban
+app "Kanban Pro" {
+  storage board-name: local "kanban-name" default: "Sprint Board"
+  state new-task = ""
+  state todo = [{title: "Design UI", tag: "design"}, {title: "Write tests", tag: "dev"}]
+  state doing = [{title: "Build API", tag: "dev"}]
+  state done = [{title: "Setup repo", tag: "ops"}]
+  computed todo-count = todo | count
+  computed done-count = done | count
+
+  column padding: 20px, gap: 16px {
+    heading "{board-name}"
+    row gap: 8px {
+      input bind: new-task, placeholder: "New task..."
+      rect width: 60px, height: 36px, color: #16a34a, radius: 4px {
+        text "Add" color: #ffffff
+        on click: append new-task to todo
+      }
+    }
+
+    row gap: 16px {
+      column gap: 8px, padding: 12px, color: #fef2f2, radius: 8px {
+        text "Todo ({todo-count})" font-weight: bold, color: #dc2626
+        each item in todo {
+          rect padding: 8px, color: #ffffff, radius: 4px {
+            text "{item.title}"
+          }
+        }
+      }
+      column gap: 8px, padding: 12px, color: #f0fdf4, radius: 8px {
+        text "Done ({done-count})" font-weight: bold, color: #16a34a
+        each item in done {
+          rect padding: 8px, color: #ffffff, radius: 4px {
+            text "{item.title}"
+          }
+        }
+      }
+    }
+  }
+}

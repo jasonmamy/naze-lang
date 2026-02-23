@@ -1,0 +1,41 @@
+-- Cloudy overcast weather
+app "Overcast" {
+  state temp = 14
+  state feels-like = 13
+  state humidity = 75
+  state wind = 12
+  state condition = "Overcast"
+
+  column padding: 24px, gap: 16px, color: #f8fafc {
+    heading "London Weather" color: #475569
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #e2e8f0, radius: 12px {
+        text "CLD" font-size: 36px
+      }
+      column gap: 4px {
+        text "{temp}C" font-size: 48px, font-weight: bold, color: #475569
+        text "{condition}" color: #64748b, font-size: 16px
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Feels Like" color: #64748b, font-size: 11px
+        text "{feels-like}C" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Humidity" color: #64748b, font-size: 11px
+        text "{humidity}%" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Wind" color: #64748b, font-size: 11px
+        text "{wind} mph" font-size: 18px
+      }
+    }
+
+    separator
+
+    text "Forecast: Clouds clearing by weekend" color: #94a3b8, font-size: 13px
+  }
+}

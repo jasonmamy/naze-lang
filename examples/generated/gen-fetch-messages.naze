@@ -1,0 +1,25 @@
+-- Message inbox from API
+app "Messages" {
+  data inbox: fetch "/api/messages"
+
+  column padding: 20px, gap: 16px {
+    heading "Messages"
+
+    if inbox.loading {
+      text "Loading messages..." color: #64748b
+    }
+
+    if inbox.error {
+      text "Failed to load messages" color: #dc2626
+    }
+
+    if inbox.data {
+      text "messages loaded successfully" color: #16a34a
+      each msg in inbox.data {
+        row padding: 8px, color: #fce7f3, radius: 4px {
+          text "{msg.subject}"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+-- Live search with type-ahead filtering
+app "Contact Search" {
+  state search-term = ""
+  state contacts = [{name: "Alice Chen", email: "alice@co.com"}, {name: "Bob Kraft", email: "bob@co.com"}, {name: "Carol Young", email: "carol@co.com"}, {name: "Dan Torres", email: "dan@co.com"}]
+  computed count = contacts | count
+
+  column padding: 20px, gap: 16px {
+    heading "Contacts"
+    input bind: search-term, placeholder: "Type to filter..."
+    text "{count} contacts" color: #64748b, font-size: 13px
+
+    each c in contacts | sort-by name {
+      row padding: 10px, color: #f0f9ff, radius: 6px, gap: 12px {
+        column gap: 2px {
+          text "{c.name}" font-weight: bold
+          text "{c.email}" color: #0369a1, font-size: 13px
+        }
+      }
+    }
+  }
+}

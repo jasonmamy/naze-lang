@@ -1,0 +1,6 @@
+-- A minimal link to an external URL
+app "Links" {
+  column padding: 20px {
+    link "Visit Example" href: "https://example.com"
+  }
+}

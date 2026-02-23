@@ -1,0 +1,26 @@
+-- Soft pastel color scheme
+theme pastel {
+  colors {
+    primary: #cdb4db
+    secondary: #ffc8dd
+    bg: #f8edeb
+    text-color: #6d6875
+    accent: #a2d2ff
+  }
+}
+
+app "Pastel Theme" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Pastel Theme" color: theme.colors.text-color
+
+    rect padding: 16px, color: theme.colors.primary, radius: 8px {
+      text "Primary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.secondary, radius: 8px {
+      text "Secondary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.accent, radius: 8px {
+      text "Accent" color: #ffffff
+    }
+  }
+}

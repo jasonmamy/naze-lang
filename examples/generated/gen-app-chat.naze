@@ -1,0 +1,27 @@
+-- Chat interface
+app "Chat" {
+  state message = ""
+  state messages = []
+
+  column padding: 20px, gap: 16px {
+    heading "Chat"
+
+    scroll height: 300px {
+      column gap: 4px {
+        each msg in messages {
+          rect padding: 8px, color: #f3f4f6, radius: 8px {
+            text "{msg}"
+          }
+        }
+      }
+    }
+
+    row gap: 8px {
+      input bind: message, placeholder: "Type a message..."
+      rect width: 80px, height: 40px, color: #2563eb, radius: 8px {
+        text "Send" color: #ffffff
+        on click: append message to messages
+      }
+    }
+  }
+}

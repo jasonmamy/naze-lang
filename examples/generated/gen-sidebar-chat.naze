@@ -1,0 +1,40 @@
+-- Chat application sidebar with channel list
+app "Chat App" {
+  state active-page = "general"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #f0fdf4 {
+      column padding: 16px, gap: 4px {
+        text "Chat" font-weight: bold, font-size: 18px, color: #16a34a
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "General" color: #166534
+          on click: set active-page = "general"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Random" color: #166534
+          on click: set active-page = "random"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Help" color: #166534
+          on click: set active-page = "help"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Announcements" color: #166534
+          on click: set active-page = "announcements"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "general": heading "General"
+        "random": heading "Random"
+        "help": heading "Help"
+        "announcements": heading "Announcements"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

@@ -1,0 +1,19 @@
+-- Empty calendar events state
+app "No Events" {
+  column padding: 40px, gap: 20px {
+    spacer height: 40px
+
+    rect width: 80px, height: 80px, color: #fce7f3, radius: 40px {
+      text "~" font-size: 32px, color: #ec4899
+    }
+
+    heading "No Upcoming Events" font-size: 22px, color: #1e293b
+    text "Your calendar is clear." color: #64748b, font-size: 16px
+    text "Schedule an event to stay organized." color: #94a3b8, font-size: 14px
+
+    rect width: 160px, height: 44px, color: #ec4899, radius: 8px {
+      text "Create Event" color: #ffffff, font-size: 15px
+      on click: navigate "/events/new"
+    }
+  }
+}

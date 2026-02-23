@@ -1,0 +1,27 @@
+-- Shipping details toggle
+app "Shipping Info" {
+  state expanded = false
+
+  column padding: 20px, gap: 16px {
+    heading "Shipping Info"
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 8px {
+        row gap: 8px {
+          text "Shipping Information" font-weight: bold
+          rect width: 70px, height: 28px, color: #ec4899, radius: 4px {
+            text "Toggle" color: #ffffff, font-size: 12px
+            on click: set expanded = true
+          }
+        }
+
+        if expanded {
+          separator
+          text "Free shipping on orders over $50." color: #334155
+          text "Standard delivery: 3-5 business days." color: #64748b
+          text "Express delivery available for $9.99." color: #94a3b8, font-size: 12px
+        }
+      }
+    }
+  }
+}

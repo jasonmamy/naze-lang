@@ -1,0 +1,31 @@
+-- Backup configuration
+app "Backup Settings" {
+  state auto-backup = true
+  state include-media = false
+  state encrypt-backup = true
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Backup Settings"
+    text "Manage automatic backups" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: auto-backup, label: "Automatic backups"
+        checkbox bind: include-media, label: "Include media files"
+        checkbox bind: encrypt-backup, label: "Encrypt backup data"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #0891b2, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

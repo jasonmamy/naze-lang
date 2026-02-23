@@ -1,0 +1,49 @@
+-- Shopping cart with items and total
+app "Shop" {
+  shared state cart = []
+  state products = [{name: "T-Shirt", price: 25}, {name: "Hoodie", price: 55}, {name: "Cap", price: 15}, {name: "Socks", price: 8}]
+
+  computed total = cart | map price | sum
+  computed cart-count = cart | count
+
+  row padding: 16px, color: #1e293b {
+    heading "Shop" color: #ffffff, font-size: 18px
+    spacer
+    text "Cart: {cart-count} items" color: #ffffff
+    link "Cart", to: "/cart"
+  }
+
+  page "/" {
+    column padding: 20px, gap: 12px {
+      heading "Products"
+      each product in products {
+        row padding: 12px, color: #f8fafc, radius: 8px, gap: 12px {
+          column gap: 4px {
+            text "{product.name}" font-weight: bold
+            text "${product.price}" color: #64748b
+          }
+          spacer
+          rect width: 80px, height: 36px, color: #2563eb, radius: 8px {
+            text "Add" color: #ffffff
+            on click: set cart = cart + [product]
+          }
+        }
+      }
+    }
+  }
+
+  page "/cart" {
+    column padding: 20px, gap: 12px {
+      heading "Your Cart"
+      each item in cart {
+        row padding: 8px, color: #f3f4f6, radius: 4px {
+          text "{item.name}"
+          spacer
+          text "${item.price}"
+        }
+      }
+      separator
+      text "Total: ${total}" font-weight: bold, font-size: 20px
+    }
+  }
+}

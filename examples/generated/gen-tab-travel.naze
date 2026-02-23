@@ -1,0 +1,39 @@
+-- Travel planning tabs with flights, hotels, and activities
+app "Trip Planner" {
+  state tab = "flights"
+
+  column padding: 20px, gap: 16px {
+    heading "Trip Planner"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #14b8a6, radius: 0px {
+        text "Flights" color: #ffffff
+        on click: set tab = "flights"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Hotels" color: #334155
+        on click: set tab = "hotels"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Activities" color: #334155
+        on click: set tab = "activities"
+      }
+    }
+
+    match tab {
+      "flights": column padding: 16px, gap: 8px {
+        text "Flight Search" font-weight: bold
+        text "Find the best deals on flights." color: #64748b
+      }
+      "hotels": column padding: 16px, gap: 8px {
+        text "Hotel Booking" font-weight: bold
+        text "Compare hotels and guesthouses." color: #64748b
+      }
+      "activities": column padding: 16px, gap: 8px {
+        text "Local Activities" font-weight: bold
+        text "Tours, dining, and attractions nearby." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

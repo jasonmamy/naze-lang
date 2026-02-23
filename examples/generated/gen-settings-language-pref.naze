@@ -1,0 +1,46 @@
+-- Language and locale preferences
+app "Language Settings" {
+  state auto-translate = true
+  state spellcheck = true
+  state locale = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Language Settings"
+    text "Set your language and region" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "Auto-Translate" font-weight: bold, font-size: 14px
+        checkbox bind: auto-translate, label: "Translate foreign content"
+      }
+
+      column gap: 4px {
+        text "Spell Check" font-weight: bold, font-size: 14px
+        checkbox bind: spellcheck, label: "Enable spell checking"
+      }
+
+      column gap: 4px {
+        text "Locale" font-weight: bold, font-size: 14px
+        input bind: locale, placeholder: "Locale (e.g. en-US)"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Language settings saved!" color: #16a34a
+    }
+  }
+}

@@ -1,0 +1,11 @@
+-- Minimal toggle
+app "Toggle" {
+  state on = false
+  column padding: 20px {
+    text "State: {on}" font-size: 20px
+    rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+      text "Toggle" color: #ffffff
+      on click: set on = true
+    }
+  }
+}

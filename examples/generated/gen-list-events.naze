@@ -1,0 +1,17 @@
+-- Event schedule sorted by date
+app "Events" {
+  state items = [{title: "Meetup", date: "Jan 15"}, {title: "Workshop", date: "Feb 20"}, {title: "Conference", date: "Mar 10"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Events"
+    text "{total} events" color: #64748b
+
+    each evt in items | sort-by date {
+      row padding: 8px, color: #fdf2f8, radius: 4px, gap: 8px {
+        text "{evt.title}" font-weight: bold
+        text "{evt.date}" color: #64748b
+      }
+    }
+  }
+}

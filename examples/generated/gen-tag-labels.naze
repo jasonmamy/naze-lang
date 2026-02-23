@@ -1,0 +1,36 @@
+-- Email label tag management
+app "Email Labels" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Email Labels"
+    text "Organize with labels" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #dbeafe, radius: 12px {
+        text "Work" color: #1d4ed8, font-size: 13px
+        on click: set selected-tag = "Work"
+      }
+      rect padding: 8px, color: #d1fae5, radius: 12px {
+        text "Personal" color: #15803d, font-size: 13px
+        on click: set selected-tag = "Personal"
+      }
+      rect padding: 8px, color: #fef3c7, radius: 12px {
+        text "Finance" color: #a16207, font-size: 13px
+        on click: set selected-tag = "Finance"
+      }
+      rect padding: 8px, color: #fce7f3, radius: 12px {
+        text "Travel" color: #be185d, font-size: 13px
+        on click: set selected-tag = "Travel"
+      }
+      rect padding: 8px, color: #fee2e2, radius: 12px {
+        text "Urgent" color: #b91c1c, font-size: 13px
+        on click: set selected-tag = "Urgent"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

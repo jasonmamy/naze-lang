@@ -1,0 +1,44 @@
+-- Media player toolbar with playback controls
+app "Media Player" {
+  state active-tool = "play"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #0f172a {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #64748b, radius: 6px {
+          text "<" color: #ffffff, font-size: 14px
+          on click: set active-tool = "prev"
+        }
+        rect width: 36px, height: 36px, color: #3b82f6, radius: 6px {
+          text ">" color: #ffffff, font-size: 14px
+          on click: set active-tool = "play"
+        }
+        rect width: 36px, height: 36px, color: #64748b, radius: 6px {
+          text "||" color: #ffffff, font-size: 14px
+          on click: set active-tool = "pause"
+        }
+        rect width: 36px, height: 36px, color: #64748b, radius: 6px {
+          text ">" color: #ffffff, font-size: 14px
+          on click: set active-tool = "next"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #ef4444, radius: 6px {
+          text "x" color: #ffffff, font-size: 14px
+          on click: set active-tool = "stop"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "prev": text "Skip to previous track." color: #64748b
+        "play": text "Play the current track." color: #64748b
+        "pause": text "Pause playback." color: #64748b
+        "next": text "Skip to next track." color: #64748b
+        "stop": text "Stop playback completely." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+-- Fitness tracker dashboard
+app "Fitness" {
+  state steps = 8500
+  state calories = 2100
+  state distance = 6
+  state active-min = 45
+
+  column padding: 20px, gap: 16px {
+    heading "Fitness"
+
+    grid columns: 2, gap: 16px {
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Steps" color: #64748b, font-size: 14px
+        text "{steps}" font-size: 28px
+      }
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        text "Calories" color: #64748b, font-size: 14px
+        text "{calories}" font-size: 28px
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Distance km" color: #64748b, font-size: 14px
+        text "{distance}" font-size: 28px
+      }
+      rect padding: 16px, color: #faf5ff, radius: 8px {
+        text "Active Min" color: #64748b, font-size: 14px
+        text "{active-min}" font-size: 28px
+      }
+    }
+  }
+}

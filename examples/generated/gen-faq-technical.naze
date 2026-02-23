@@ -1,0 +1,35 @@
+-- Technical support questions
+app "Technical FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Technical FAQ" color: #f97316
+    text "Tech support answers" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "What browsers are supported?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "Chrome, Firefox, Safari, and Edge." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Is there a mobile app?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "Yes, available on iOS and Android." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "What is the uptime guarantee?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "We guarantee 99.9% uptime." color: #475569
+    }
+  }
+}

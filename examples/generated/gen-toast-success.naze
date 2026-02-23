@@ -1,0 +1,32 @@
+-- Success toast after saving data
+app "Save Success" {
+  state show-toast = false
+  state action-done = false
+
+  column padding: 24px, gap: 16px {
+    heading "Save Success"
+    text "Edit your profile settings below." color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set show-toast = true
+        on click: set action-done = true
+      }
+    }
+
+    if show-toast {
+      rect width: 340px, height: 48px, color: #f0fdf4, radius: 8px {
+        row padding: 12px, gap: 12px {
+          text "[OK]" font-size: 16px
+          text "Changes saved successfully!" color: #166534, font-size: 14px
+          spacer
+          rect width: 24px, height: 24px, radius: 4px {
+            text "x" color: #166534, font-size: 12px
+            on click: set show-toast = false
+          }
+        }
+      }
+    }
+  }
+}

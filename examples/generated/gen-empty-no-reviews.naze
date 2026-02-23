@@ -1,0 +1,19 @@
+-- Empty reviews state for a product
+app "No Reviews" {
+  column padding: 40px, gap: 20px {
+    spacer height: 40px
+
+    rect width: 80px, height: 80px, color: #fef3c7, radius: 40px {
+      text "*" font-size: 32px, color: #f59e0b
+    }
+
+    heading "No Reviews Yet" font-size: 22px, color: #1e293b
+    text "Be the first to share your experience." color: #64748b, font-size: 16px
+    text "Your feedback helps other customers." color: #94a3b8, font-size: 14px
+
+    rect width: 160px, height: 44px, color: #f59e0b, radius: 8px {
+      text "Write Review" color: #ffffff, font-size: 15px
+      on click: navigate "/review/new"
+    }
+  }
+}

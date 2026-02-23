@@ -1,0 +1,48 @@
+-- Pricing frequently asked questions accordion
+app "Pricing FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Pricing FAQ"
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "How much does it cost?" font-weight: bold, color: #1e293b
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #f1f5f9 {
+        text "Plans start at $9 per month for individuals." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Is there a free trial?" font-weight: bold, color: #1e293b
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #f1f5f9 {
+        text "Yes, enjoy a 14-day free trial on all plans." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Can I cancel anytime?" font-weight: bold, color: #1e293b
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #f1f5f9 {
+        text "Absolutely. Cancel anytime with no penalties." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Do you offer refunds?" font-weight: bold, color: #1e293b
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #f1f5f9 {
+        text "Full refund within 30 days of purchase." color: #475569
+      }
+    }
+  }
+}

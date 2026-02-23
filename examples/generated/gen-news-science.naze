@@ -1,0 +1,28 @@
+-- Science and research news feed
+app "Science Daily" {
+  state articles = [{headline: "New Exoplanet Discovered in Habitable Zone", source: "Nature", time: "2h ago"}, {headline: "Gene Therapy Trial Shows Promise", source: "Science", time: "4h ago"}, {headline: "Quantum Computing Milestone Reached", source: "MIT Review", time: "6h ago"}]
+  state section = "latest"
+
+  column padding: 20px, gap: 16px {
+    heading "Science Daily"
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #7c3aed, radius: 4px {
+        text "Latest" color: #ffffff, font-size: 12px
+        on click: set section = "latest"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Popular" color: #ffffff, font-size: 12px
+        on click: set section = "popular"
+      }
+    }
+
+    each article in articles {
+      rect padding: 12px, color: #faf5ff, radius: 8px {
+        text "{article.headline}" font-weight: bold, font-size: 16px
+        text "{article.source}" color: #64748b
+        text "{article.time}" color: #7c3aed, font-size: 12px
+      }
+    }
+  }
+}

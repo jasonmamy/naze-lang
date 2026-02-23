@@ -1,0 +1,30 @@
+-- Sales dashboard with revenue metrics
+app "Sales" {
+  state revenue = 52000
+  state deals = 128
+  state customers = 340
+  state growth = 12
+
+  column padding: 20px, gap: 16px {
+    heading "Sales"
+
+    grid columns: 2, gap: 16px {
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        text "Revenue" color: #64748b, font-size: 14px
+        text "{revenue}" font-size: 28px
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        text "Deals" color: #64748b, font-size: 14px
+        text "{deals}" font-size: 28px
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Customers" color: #64748b, font-size: 14px
+        text "{customers}" font-size: 28px
+      }
+      rect padding: 16px, color: #fce7f3, radius: 8px {
+        text "Growth %" color: #64748b, font-size: 14px
+        text "{growth}" font-size: 28px
+      }
+    }
+  }
+}

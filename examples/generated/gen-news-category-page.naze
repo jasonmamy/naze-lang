@@ -1,0 +1,40 @@
+-- News categories
+app "News Hub" {
+  column padding: 20px, gap: 16px {
+    heading "News Hub"
+    text "Select a category" color: #64748b
+    link "Technology", to: "/tech"
+    link "Sports", to: "/sports"
+    link "Business", to: "/business"
+  }
+}
+
+page "/tech" {
+  column padding: 20px, gap: 12px {
+    heading "Technology"
+    text "Latest tech articles"
+    text "AI advances reshape the industry" font-weight: bold
+    text "New programming language gains traction"
+    link "Back to Hub", to: "/"
+  }
+}
+
+page "/sports" {
+  column padding: 20px, gap: 12px {
+    heading "Sports"
+    text "Latest sports coverage"
+    text "Championship series goes to game 7" font-weight: bold
+    text "Olympic qualifiers continue"
+    link "Back to Hub", to: "/"
+  }
+}
+
+page "/business" {
+  column padding: 20px, gap: 12px {
+    heading "Business"
+    text "Market and finance news"
+    text "Central bank holds interest rates" font-weight: bold
+    text "Startup funding reaches new heights"
+    link "Back to Hub", to: "/"
+  }
+}

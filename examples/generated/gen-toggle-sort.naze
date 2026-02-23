@@ -1,0 +1,30 @@
+-- Sort option selector with name, date, and size
+app "Sort By" {
+  state sort-by = "name"
+
+  column padding: 20px, gap: 16px {
+    heading "Sort By"
+
+    match sort-by {
+      "name": text "Sorted by name" color: #2563eb
+      "date": text "Sorted by date" color: #2563eb
+      "size": text "Sorted by size" color: #2563eb
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+        text "name" color: #ffffff
+        on click: set sort-by = "name"
+      }
+      rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+        text "date" color: #ffffff
+        on click: set sort-by = "date"
+      }
+      rect width: 100px, height: 36px, color: #64748b, radius: 4px {
+        text "size" color: #ffffff
+        on click: set sort-by = "size"
+      }
+    }
+  }
+}

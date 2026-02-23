@@ -1,0 +1,34 @@
+-- Photo gallery grid
+app "Photo Gallery" {
+  state section = "featured"
+
+  column padding: 20px, gap: 16px {
+    heading "Photo Gallery"
+    row gap: 8px {
+      rect width: 100px, height: 32px, color: #2563eb, radius: 4px {
+        text "Featured" color: #ffffff
+        on click: set section = "featured"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "All" color: #ffffff
+        on click: set section = "all"
+      }
+    }
+
+    match section {
+      "featured": grid columns: 2, gap: 8px {
+        rect width: 150px, height: 120px, color: #dbeafe, radius: 8px
+        rect width: 150px, height: 120px, color: #dcfce7, radius: 8px
+      }
+      "all": grid columns: 3, gap: 8px {
+        rect width: 100px, height: 80px, color: #dbeafe, radius: 8px
+        rect width: 100px, height: 80px, color: #dcfce7, radius: 8px
+        rect width: 100px, height: 80px, color: #fef3c7, radius: 8px
+        rect width: 100px, height: 80px, color: #fce7f3, radius: 8px
+        rect width: 100px, height: 80px, color: #e0e7ff, radius: 8px
+        rect width: 100px, height: 80px, color: #f3e8ff, radius: 8px
+      }
+      _: text "Unknown"
+    }
+  }
+}

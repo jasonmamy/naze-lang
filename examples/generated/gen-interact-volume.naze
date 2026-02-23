@@ -1,0 +1,26 @@
+-- Volume control with up and down
+app "Volume" {
+  state volume = 50
+  state muted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Volume"
+    text "{volume}" font-size: 24px, color: #2563eb
+    text "{muted}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #2563eb, radius: 8px {
+        text "Up" color: #ffffff
+        on click: set volume = volume + 10
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Down" color: #ffffff
+        on click: set muted = true
+      }
+      rect width: 80px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set volume = 50
+      }
+    }
+  }
+}

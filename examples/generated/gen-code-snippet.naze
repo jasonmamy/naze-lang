@@ -1,0 +1,11 @@
+-- Code snippet display
+app "Code Viewer" {
+  column padding: 20px, gap: 16px {
+    heading "Code Example"
+    rect padding: 16px, color: #1e293b, radius: 8px {
+      code "def hello():" color: #e2e8f0, font-size: 14px
+      code "    print('Hello')" color: #e2e8f0, font-size: 14px
+    }
+    text "A simple Python snippet" color: #64748b
+  }
+}

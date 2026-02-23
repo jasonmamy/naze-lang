@@ -1,0 +1,41 @@
+-- Clear sunny weather display
+app "Sunny Day" {
+  state temp = 38
+  state feels-like = 40
+  state humidity = 15
+  state wind = 8
+  state condition = "Clear Sky"
+
+  column padding: 24px, gap: 16px, color: #fffbeb {
+    heading "Phoenix Weather" color: #d97706
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #fef3c7, radius: 12px {
+        text "SUN" font-size: 36px
+      }
+      column gap: 4px {
+        text "{temp}C" font-size: 48px, font-weight: bold, color: #d97706
+        text "{condition}" color: #64748b, font-size: 16px
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Feels Like" color: #64748b, font-size: 11px
+        text "{feels-like}C" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Humidity" color: #64748b, font-size: 11px
+        text "{humidity}%" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Wind" color: #64748b, font-size: 11px
+        text "{wind} km/h" font-size: 18px
+      }
+    }
+
+    separator
+
+    text "Forecast: Sunny all week, highs near 40C" color: #94a3b8, font-size: 13px
+  }
+}

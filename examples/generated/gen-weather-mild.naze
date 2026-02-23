@@ -1,0 +1,41 @@
+-- Mild pleasant weather display
+app "Pleasant Day" {
+  state temp = 22
+  state feels-like = 22
+  state humidity = 50
+  state wind = 10
+  state condition = "Partly Cloudy"
+
+  column padding: 24px, gap: 16px, color: #ecfdf5 {
+    heading "Barcelona Weather" color: #059669
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #d1fae5, radius: 12px {
+        text "MLD" font-size: 36px
+      }
+      column gap: 4px {
+        text "{temp}C" font-size: 48px, font-weight: bold, color: #059669
+        text "{condition}" color: #64748b, font-size: 16px
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Feels Like" color: #64748b, font-size: 11px
+        text "{feels-like}C" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Humidity" color: #64748b, font-size: 11px
+        text "{humidity}%" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Wind" color: #64748b, font-size: 11px
+        text "{wind} km/h" font-size: 18px
+      }
+    }
+
+    separator
+
+    text "Forecast: Beautiful weather all week" color: #94a3b8, font-size: 13px
+  }
+}

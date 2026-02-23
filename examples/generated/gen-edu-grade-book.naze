@@ -1,0 +1,31 @@
+-- Grade book with subjects and scores
+app "Grade Book" {
+  state items = [{subject: "Math", grade: "A (95%)"}, {subject: "Science", grade: "B+ (88%)"}, {subject: "English", grade: "A- (91%)"}, {subject: "History", grade: "B (85%)"}]
+  state current = 0
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Grade Book"
+    text "{current} of {total} graded" color: #ec4899
+
+    each entry in items {
+      rect padding: 12px, color: #fdf2f8, radius: 8px {
+        column gap: 4px {
+          text "{entry.subject}" font-weight: bold
+          text "{entry.grade}" color: #64748b
+        }
+      }
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #ec4899, radius: 8px {
+        text "View" color: #ffffff
+        on click: set current = current + 1
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Reset"
+        on click: set current = 0
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+-- Weather forecast grid with conditions
+app "5-Day Forecast" {
+  state items = [{name: "Mon", value: "22C", detail: "Sunny"}, {name: "Tue", value: "19C", detail: "Cloudy"}, {name: "Wed", value: "17C", detail: "Rain"}, {name: "Thu", value: "21C", detail: "Clear"}, {name: "Fri", value: "24C", detail: "Sunny"}]
+  computed total = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "5-Day Forecast"
+    text "{total} days" color: #64748b
+
+    grid columns: 5, gap: 12px {
+      each day in items | sort-by name {
+        rect padding: 14px, color: #fff7ed, radius: 8px {
+          column gap: 4px {
+            text "{day.name}" font-weight: bold, font-size: 15px
+            text "{day.value}" color: #c2410c, font-size: 22px
+            text "{day.detail}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

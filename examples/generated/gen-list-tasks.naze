@@ -1,0 +1,17 @@
+-- Task list sorted by priority
+app "Tasks" {
+  state items = [{title: "Fix bug", priority: "high"}, {title: "Add test", priority: "medium"}, {title: "Update docs", priority: "low"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Tasks"
+    text "{total} tasks" color: #64748b
+
+    each task in items | sort-by priority {
+      row padding: 8px, color: #eff6ff, radius: 4px, gap: 8px {
+        text "{task.title}" font-weight: bold
+        text "{task.priority}" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+-- Coffee shop menu with pastries
+app "Cafe Menu" {
+  state category = "Coffee"
+  state items = [{name: "Espresso", desc: "Double shot, house blend", price: "$4"}, {name: "Chai Latte", desc: "Spiced masala chai", price: "$5"}, {name: "Croissant", desc: "Butter, flaky, fresh baked", price: "$4"}]
+  computed total-items = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Cafe Menu" color: #78350f
+
+    row gap: 8px {
+      rect padding: 8px, color: #78350f, radius: 4px {
+        text "Coffee" color: #ffffff, font-size: 13px
+        on click: set category = "Coffee"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Tea" font-size: 13px
+        on click: set category = "Tea"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Pastries" font-size: 13px
+        on click: set category = "Pastries"
+      }
+    }
+
+    text "{total-items} items on the menu" color: #94a3b8, font-size: 12px
+
+    each item in items {
+      rect padding: 12px, color: #fef3c7, radius: 8px {
+        row gap: 8px {
+          column gap: 2px {
+            text "{item.name}" font-weight: bold
+            text "{item.desc}" color: #64748b, font-size: 13px
+          }
+          spacer
+          text "{item.price}" font-weight: bold, color: #78350f
+        }
+      }
+    }
+  }
+}

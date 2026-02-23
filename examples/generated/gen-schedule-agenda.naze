@@ -1,0 +1,20 @@
+-- Daily agenda
+app "Today's Agenda" {
+  state tasks = [{time: "08:00", task: "Morning standup", priority: "high"}, {time: "10:00", task: "Deep work block", priority: "high"}, {time: "12:00", task: "Lunch break", priority: "low"}, {time: "14:00", task: "Client call", priority: "high"}, {time: "16:00", task: "Code review", priority: "medium"}]
+
+  column padding: 20px, gap: 12px {
+    heading "Today's Agenda"
+
+    each item in tasks {
+      row padding: 10px, color: #f8fafc, radius: 8px, gap: 12px {
+        text "{item.time}" font-weight: bold, color: #2563eb
+        text "{item.task}" font-size: 16px
+        match item.priority {
+          "high": text "HIGH" color: #dc2626, font-size: 12px
+          "medium": text "MED" color: #f59e0b, font-size: 12px
+          _: text "LOW" color: #16a34a, font-size: 12px
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+-- Nested error boundaries
+app "Resilient App" {
+  data users: fetch "/api/users"
+  data stats: fetch "/api/stats"
+
+  column padding: 20px, gap: 16px {
+    heading "Dashboard"
+
+    boundary {
+      text "Users: loading..." color: #64748b
+    } catch {
+      text "Users unavailable" color: #dc2626
+    }
+
+    boundary {
+      text "Stats: loading..." color: #64748b
+    } catch {
+      text "Stats unavailable" color: #dc2626
+    }
+  }
+}

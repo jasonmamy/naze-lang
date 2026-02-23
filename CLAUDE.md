@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Naze is a declarative, AI-native UI language designed to replace HTML/CSS/JS. It compiles `.naze` source files into a custom binary format (`app_data.bin`), which a WASM runtime deserializes and renders via Canvas2D — bypassing the DOM entirely.
 
-**Current status:** Phase 2 substantially complete. See `docs/MVP.md` for Phase 1 summary, `docs/PHASE2.md` for Phase 2 progress, `docs/PROTOTYPE.md` for full architecture spec.
+**Current status:** Phase 5 complete (M1-M41). Phase 6 (Developer Experience & Adoption) in progress — M42 (CI/CD) and M44 (Playground) complete. See `docs/ROADMAP.md` for the full roadmap, `docs/PHASE5.md` and `docs/PHASE5B.md` for Phase 5 details, `docs/PHASE6.md` for Phase 6, and `docs/PROTOTYPE.md` for the architecture spec.
 
 ## Build Commands
 
@@ -42,11 +42,11 @@ There is also a `Makefile` with shortcuts: `make build`, `make test`, `make chec
 
 ## Workspace Structure
 
-Cargo workspace with 9 crates in `crates/`:
+Cargo workspace with 11 crates in `crates/`:
 
 | Crate | Target | Purpose |
 |-------|--------|---------|
-| `nazec` | native | CLI binary (clap) — `new`, `build`, `run`, `check`, `dev`, `parse`, `gallery` |
+| `nazec` | native | CLI binary (clap) — 18 commands (see CLI section below) |
 | `naze-parser` | native | PEG parser (pest) — `.naze` → AST. Grammar in `src/naze.pest` |
 | `naze-compiler` | native | Import resolution, type checking, codegen → `app_data.bin` |
 | `naze-ir` | both | Shared IR types (`RenderTree`, `RenderNode`), custom binary serialization |
@@ -55,6 +55,8 @@ Cargo workspace with 9 crates in `crates/`:
 | `naze-renderer` | WASM | Canvas2D renderer (web-sys) — draws to browser canvas |
 | `naze-native` | native | Standalone desktop viewer — winit + tiny-skia software rasterizer |
 | `naze-lsp` | native | Language Server Protocol implementation (tower-lsp) |
+| `naze-registry` | native | Package registry server (Axum + SQLite + filesystem storage) |
+| `naze-playground` | WASM | Compiler-as-WASM for browser-based playground |
 
 **Important:** `naze-runtime` is WASM-only and excluded from `default-members`. It must be built separately with `wasm-pack`. The pre-built WASM + JS wrapper live in `crates/naze-runtime/pkg/` and are embedded into the `nazec` binary via `include_bytes!()` (see `crates/nazec/src/build.rs`).
 
@@ -77,7 +79,7 @@ Cargo workspace with 9 crates in `crates/`:
 ## Custom Binary Serialization (naze-ir)
 
 The IR uses a custom binary format instead of serde to keep WASM size small (~40KB savings). Key types:
-- `RenderTree`: title, state declarations, data declarations, root nodes, page definitions
+- `RenderTree`: title, root, state, computed, data, storage, timers, params, pages, themes, imports, server_functions, server_calls, guards, prompts
 - `RenderNode`: kind (string), props (HashMap), children, event handlers, conditions, each-bindings
 - `RenderValue`: Str, Num (with optional unit), Color (u32), Bool, InterpolatedStr, List, Object, Bind
 
@@ -87,12 +89,23 @@ All serialization is in `crates/naze-ir/src/lib.rs`. The `serde` feature is only
 
 ```
 nazec new <name>              # Scaffold project with naze.toml + app.naze
-nazec build [--target web|native|android]  # Compile .naze → dist/
+nazec build [--target web|native|android] [--static]  # Compile .naze → dist/
 nazec run                     # Preview in native desktop window (hot reload)
 nazec dev [--port 3000]       # Dev server with browser hot reload
+nazec serve [--port 8080]     # Production SSR server
 nazec check                   # Type-check without building
+nazec test [--format json]    # Run .test.naze test suites
 nazec parse <file>            # Dump AST as JSON
+nazec grammar [--format gbnf|ebnf]  # Export grammar for LLM constrained decoding
 nazec gallery [--build]       # Build interactive example gallery
+nazec analyze                 # WASM binary size analyzer
+nazec add <package>           # Add dependency to naze.toml
+nazec remove <package>        # Remove dependency
+nazec update                  # Update dependencies
+nazec publish                 # Publish package to registry
+nazec search <query>          # Search package registry
+nazec playground [--port]     # Start hosted playground server
+nazec ai <generate|fix|dataset>  # AI code generation and training tools
 ```
 
 ## Key Design Decisions
@@ -112,7 +125,7 @@ Naze achieves an **AI Efficiency Index (AEI) of 1x** — the lowest cost per AI 
 - **σ (scatter):** Does this feature require reading files beyond the current component? If understanding or generating code for this feature requires the AI to read another file (shared state stores, external config, type definition files), it pushes σ > 1 and breaks Λ-Linear scaling. Design for σ = 1: all information the AI needs should be in the current file.
 - **λ (verbosity):** Does this feature add boilerplate or verbose syntax? Minimize tokens per unit of intent. Prefer concise, declarative forms over ceremony.
 - **r (retry rate):** Does this feature introduce multiple valid forms for the same concept, implicit behavior, or context-dependent semantics? These increase the probability of incorrect AI generation. Maintain one canonical form per concept.
-- **μ (model cost):** Does this feature significantly increase grammar rule count beyond ~56 rules? Larger grammars may require larger (more expensive) models. Keep the grammar LL(1)-compatible and small.
+- **μ (model cost):** Does this feature significantly increase grammar complexity? The grammar is currently ~153 rules (grown from ~56 in Phase 1) and remains LL(1)-compatible. New rules are acceptable when they follow existing patterns (e.g., `storage` mirrors `state`), but novel syntax forms should be justified.
 
 **Concrete examples:**
 - `shared state` — must be designed so the AI needs only the current file (σ = 1), not a separate state store
@@ -123,14 +136,18 @@ See `docs/TOKEN_EFFICIENCY.md` for the full framework, formula, and multi-langua
 
 ## Key Files
 
-- **PEG Grammar**: `crates/naze-parser/src/naze.pest` (~100 rules)
+- **PEG Grammar**: `crates/naze-parser/src/naze.pest` (~153 rules)
 - **AST Types**: `crates/naze-parser/src/ast.rs`
 - **Type Checker**: `crates/naze-compiler/src/typecheck.rs` (largest file, ~37KB)
 - **Code Generator**: `crates/naze-compiler/src/codegen.rs` (~52KB)
 - **IR + Serialization**: `crates/naze-ir/src/lib.rs`
-- **WASM Runtime**: `crates/naze-runtime/src/lib.rs` (~3000 lines)
+- **WASM Runtime**: `crates/naze-runtime/src/lib.rs` (~5000+ lines)
 - **Build Pipeline**: `crates/nazec/src/build.rs` (WASM embedding + dist/ generation)
-- **Examples**: `examples/` directory (18+ `.naze` files demonstrating features)
+- **Server Functions**: `crates/nazec/src/server_fns.rs` (shared JSON↔RenderValue, server fn evaluation)
+- **SSR Server**: `crates/nazec/src/serve.rs` (production Axum server)
+- **HTML Renderer**: `crates/nazec/src/html_renderer.rs` (SSG output)
+- **AI Tools**: `crates/nazec/src/ai.rs` (generate, fix, dataset commands)
+- **Examples**: `examples/` directory (69 `.naze` files demonstrating features)
 
 ## Risk Areas
 

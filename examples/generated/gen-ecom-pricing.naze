@@ -1,0 +1,51 @@
+-- Pricing table
+app "Pricing Plans" {
+  state chosen = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Choose Your Plan"
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Starter" font-weight: bold, font-size: 18px
+          text "$9/mo" font-size: 28px, color: #64748b
+          text "1 user" color: #94a3b8
+          text "5GB storage" color: #94a3b8
+          rect width: 100px, height: 36px, color: #64748b, radius: 8px {
+            text "Select" color: #ffffff
+            on click: set chosen = "starter"
+          }
+        }
+      }
+      rect padding: 20px, color: #eff6ff, radius: 12px {
+        column gap: 8px {
+          text "Pro" font-weight: bold, font-size: 18px
+          text "$29/mo" font-size: 28px, color: #2563eb
+          text "5 users" color: #64748b
+          text "50GB storage" color: #64748b
+          rect width: 100px, height: 36px, color: #2563eb, radius: 8px {
+            text "Select" color: #ffffff
+            on click: set chosen = "pro"
+          }
+        }
+      }
+      rect padding: 20px, color: #f0fdf4, radius: 12px {
+        column gap: 8px {
+          text "Enterprise" font-weight: bold, font-size: 18px
+          text "$99/mo" font-size: 28px, color: #16a34a
+          text "Unlimited" color: #64748b
+          text "500GB storage" color: #64748b
+          rect width: 100px, height: 36px, color: #16a34a, radius: 8px {
+            text "Select" color: #ffffff
+            on click: set chosen = "enterprise"
+          }
+        }
+      }
+    }
+
+    if chosen != "none" {
+      text "Plan: {chosen}" color: #16a34a, font-size: 18px
+    }
+  }
+}

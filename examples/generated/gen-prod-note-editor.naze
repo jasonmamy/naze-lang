@@ -1,0 +1,27 @@
+-- Note editor
+app "Note Editor" {
+  state title = ""
+  state body = ""
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Note Editor"
+    input bind: title, placeholder: "Note title..."
+    textarea bind: body, placeholder: "Start writing..."
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 80px, height: 36px, color: #e2e8f0, radius: 4px {
+        text "Clear"
+        on click: set title = ""
+      }
+    }
+
+    if saved {
+      text "Saved!" color: #16a34a
+    }
+  }
+}

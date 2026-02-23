@@ -1,0 +1,14 @@
+-- E-commerce promotional banner
+app "Shop Banner" {
+  column {
+    rect width: 800px, height: 260px, color: #fef3c7, radius: 16px {
+      column padding: 40px, gap: 12px {
+        text "Summer Sale - 30% Off" color: #92400e, font-size: 34px, font-weight: bold
+        text "Limited time offer on all collections." color: #a16207, font-size: 16px
+        rect width: 120px, height: 44px, color: #92400e, radius: 8px {
+          text "Shop Now" color: #ffffff
+        }
+      }
+    }
+  }
+}

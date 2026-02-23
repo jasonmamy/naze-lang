@@ -1,0 +1,29 @@
+-- Live updating metrics
+app "Live Metrics" {
+  state requests = 0
+  state active-users = 42
+  computed rps = requests
+
+  timer req-tick: every 1s {
+    set requests = requests + 3
+  }
+
+  column padding: 24px, gap: 16px {
+    heading "Live System Metrics" color: #0ea5e9
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #f0f9ff, radius: 10px {
+        text "Requests" color: #64748b, font-size: 13px
+        text "{requests}" font-size: 32px, color: #0ea5e9
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 10px {
+        text "Active Users" color: #64748b, font-size: 13px
+        text "{active-users}" font-size: 32px, color: #16a34a
+      }
+      rect padding: 16px, color: #f5f3ff, radius: 10px {
+        text "Req/sec" color: #64748b, font-size: 13px
+        text "{rps}" font-size: 32px, color: #7c3aed
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+-- Game score tracker
+app "Score" {
+  state points = 0
+  state combo = 0
+
+  column padding: 20px, gap: 16px {
+    heading "Score"
+    text "{points}" font-size: 24px, color: #ec4899
+    text "{combo}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #ec4899, radius: 8px {
+        text "Score!" color: #ffffff
+        on click: set points = points + 10
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Combo" color: #ffffff
+        on click: set combo = combo + 1
+      }
+      rect width: 80px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set points = 0
+      }
+    }
+  }
+}

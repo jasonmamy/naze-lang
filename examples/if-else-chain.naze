@@ -1,0 +1,32 @@
+-- Conditional rendering with if/else chains
+app "Grade Checker" {
+  state score = 75
+
+  column padding: 20px, gap: 16px {
+    heading "Grade Checker"
+    text "Score: {score}"
+
+    if score >= 90 {
+      text "Grade: A" color: #16a34a, font-size: 24px
+    } else if score >= 80 {
+      text "Grade: B" color: #2563eb, font-size: 24px
+    } else if score >= 70 {
+      text "Grade: C" color: #eab308, font-size: 24px
+    } else if score >= 60 {
+      text "Grade: D" color: #f97316, font-size: 24px
+    } else {
+      text "Grade: F" color: #dc2626, font-size: 24px
+    }
+
+    row gap: 8px {
+      rect width: 40px, height: 40px, color: #2563eb, radius: 8px {
+        text "+" color: #ffffff
+        on click: set score = score + 5
+      }
+      rect width: 40px, height: 40px, color: #dc2626, radius: 8px {
+        text "-" color: #ffffff
+        on click: set score = score - 5
+      }
+    }
+  }
+}

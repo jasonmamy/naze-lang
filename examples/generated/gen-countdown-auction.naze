@@ -1,0 +1,35 @@
+-- Auction countdown
+app "Live Auction" {
+  state time-remaining = 180
+  state current-bid = 500
+  state bid-count = 12
+
+  timer auction: every 1s {
+    set time-remaining = time-remaining - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Live Auction"
+
+    rect padding: 20px, color: #fef3c7, radius: 12px {
+      text "{time-remaining} seconds left" font-size: 28px, color: #b45309
+    }
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "Current Bid" color: #64748b
+      text "${current-bid}" font-size: 36px, color: #16a34a, font-weight: bold
+      text "{bid-count} bids" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "+$50" color: #ffffff
+        on click: set current-bid = current-bid + 50
+      }
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "+$100" color: #ffffff
+        on click: set current-bid = current-bid + 100
+      }
+    }
+  }
+}

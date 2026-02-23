@@ -1,0 +1,48 @@
+-- Health and wellness FAQ accordion
+app "Health FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Health FAQ"
+
+    rect padding: 12px, color: #fff7ed, radius: 8px {
+      text "How many calories should I eat?" font-weight: bold, color: #9a3412
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #ffedd5 {
+        text "2000 calories daily is a general guideline." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fff7ed, radius: 8px {
+      text "How much water should I drink?" font-weight: bold, color: #9a3412
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #ffedd5 {
+        text "Aim for 8 glasses or about 2 liters daily." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fff7ed, radius: 8px {
+      text "How much sleep do I need?" font-weight: bold, color: #9a3412
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #ffedd5 {
+        text "Adults need 7 to 9 hours per night." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #fff7ed, radius: 8px {
+      text "How often should I exercise?" font-weight: bold, color: #9a3412
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #ffedd5 {
+        text "At least 150 minutes of moderate exercise weekly." color: #475569
+      }
+    }
+  }
+}

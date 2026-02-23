@@ -1,0 +1,48 @@
+-- Pricing page
+app "Pricing" {
+  state selected-plan = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Choose a Plan"
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Basic" font-weight: bold, font-size: 18px
+          text "$9/mo" font-size: 24px, color: #2563eb
+          text "5 projects" color: #64748b
+          rect width: 100px, height: 36px, color: #2563eb, radius: 8px {
+            text "Select" color: #ffffff
+            on click: set selected-plan = "basic"
+          }
+        }
+      }
+      rect padding: 20px, color: #eff6ff, radius: 12px {
+        column gap: 8px {
+          text "Pro" font-weight: bold, font-size: 18px
+          text "$29/mo" font-size: 24px, color: #2563eb
+          text "Unlimited" color: #64748b
+          rect width: 100px, height: 36px, color: #2563eb, radius: 8px {
+            text "Select" color: #ffffff
+            on click: set selected-plan = "pro"
+          }
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Enterprise" font-weight: bold, font-size: 18px
+          text "Custom" font-size: 24px, color: #2563eb
+          text "Dedicated" color: #64748b
+          rect width: 100px, height: 36px, color: #64748b, radius: 8px {
+            text "Contact" color: #ffffff
+            on click: set selected-plan = "enterprise"
+          }
+        }
+      }
+    }
+
+    if selected-plan != "none" {
+      text "Selected: {selected-plan}" color: #16a34a, font-size: 18px
+    }
+  }
+}

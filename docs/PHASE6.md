@@ -2,7 +2,7 @@
 
 **Goal:** Make Naze usable and discoverable by external developers. After Phase 6, a developer can discover Naze online, try it in a playground, install the CLI and VS Code extension with one command, follow a tutorial to build an app, deploy it to production, and share components via the registry. The AI generation claim is validated with benchmarks and a published fine-tuned model.
 
-**Status:** Planning.
+**Status:** In Progress. M42 (CI/CD) and M44 (Playground) complete.
 
 **Architecture shift:** Phases 1-5 built the language, compiler, runtime, and server infrastructure. Phase 6 builds the adoption infrastructure around it. No major language changes — the focus is CI/CD, documentation, distribution, tooling polish, and ecosystem seeding.
 
@@ -32,14 +32,14 @@ M42 (CI/CD) ──────────────────────�
 
 Automated quality gates on every commit. Foundation for binary distribution (M46) and release management.
 
-- [ ] GitHub Actions workflow: `cargo test --workspace` on push/PR (exclude WASM-only crates)
-- [ ] GitHub Actions workflow: `cargo clippy --workspace -- -D warnings` lint check
-- [ ] GitHub Actions workflow: `cargo fmt --all -- --check` format check
-- [ ] WASM size regression check: fail if `naze_runtime_bg.wasm` exceeds budget
-- [ ] Matrix testing: stable + nightly Rust, Linux + macOS
-- [ ] Release workflow: build binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows (x86_64)
-- [ ] Release workflow: attach binaries + checksums to GitHub Release on tag push
-- [ ] Cache `~/.cargo` and `target/` for faster CI runs
+- [x] GitHub Actions workflow: `cargo test --workspace` on push/PR (exclude WASM-only crates)
+- [x] GitHub Actions workflow: `cargo clippy --workspace -- -D warnings` lint check
+- [x] GitHub Actions workflow: `cargo fmt --all -- --check` format check
+- [x] WASM size regression check: fail if `naze_runtime_bg.wasm` exceeds budget
+- [x] Matrix testing: stable + nightly Rust, Linux + macOS
+- [x] Release workflow: build binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows (x86_64)
+- [x] Release workflow: attach binaries + checksums to GitHub Release on tag push
+- [x] Cache `~/.cargo` and `target/` for faster CI runs
 
 ---
 

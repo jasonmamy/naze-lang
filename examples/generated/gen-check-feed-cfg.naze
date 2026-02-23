@@ -1,0 +1,31 @@
+-- News feed preferences
+app "Feed Settings" {
+  state show-images = true
+  state auto-play = false
+  state show-previews = true
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Feed Settings"
+    text "Customize your feed" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: show-images, label: "Show images in feed"
+        checkbox bind: auto-play, label: "Auto-play videos"
+        checkbox bind: show-previews, label: "Show link previews"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #ec4899, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

@@ -1,0 +1,36 @@
+-- Job listing filter panel with role and location
+app "Job Filters" {
+  state experience = 0
+  state job-type = "all"
+  state results-count = 85
+
+  column padding: 20px, gap: 16px {
+    heading "Job Filters"
+    text "{results-count} results" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "Filters" font-weight: bold, font-size: 16px
+
+      text "Job Type" font-weight: bold, color: #374151, font-size: 14px
+      select bind: job-type {
+      option "All Types" value: "all"
+      option "Full-time" value: "full"
+      option "Part-time" value: "part"
+      option "Contract" value: "contract"
+    }
+
+      text "Min Experience (years)" font-weight: bold, color: #374151, font-size: 14px
+      input bind: experience, placeholder: "Years"
+    }
+
+    rect width: 120px, height: 36px, color: #16a34a, radius: 4px {
+      text "Apply Filters" color: #ffffff
+      on click: set results-count = 23
+    }
+
+    rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+      text "Clear All"
+      on click: set experience = 0
+    }
+  }
+}

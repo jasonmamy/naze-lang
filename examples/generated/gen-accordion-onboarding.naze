@@ -1,0 +1,48 @@
+-- Onboarding steps accordion guide
+app "Getting Started" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Getting Started"
+
+    rect padding: 12px, color: #ecfdf5, radius: 8px {
+      text "Step 1: Create Your Account" font-weight: bold, color: #065f46
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #d1fae5 {
+        text "Sign up with your email or social login." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #ecfdf5, radius: 8px {
+      text "Step 2: Set Up Your Profile" font-weight: bold, color: #065f46
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #d1fae5 {
+        text "Add a photo, bio, and your interests." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #ecfdf5, radius: 8px {
+      text "Step 3: Connect Your Tools" font-weight: bold, color: #065f46
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #d1fae5 {
+        text "Link GitHub, Slack, or other services." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #ecfdf5, radius: 8px {
+      text "Step 4: Start Building" font-weight: bold, color: #065f46
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #d1fae5 {
+        text "Create your first project from templates." color: #475569
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+-- Error notification banner with retry action
+app "Error Alert" {
+  state dismissed = false
+
+  column padding: 20px, gap: 16px {
+    heading "Error Alert"
+
+    if dismissed == false {
+      rect padding: 14px, color: #fef2f2, radius: 8px {
+        row gap: 12px {
+          text "[!!]" font-size: 20px
+          column gap: 4px {
+            text "Something went wrong" font-weight: bold, color: #991b1b
+            text "Failed to save changes. Please try again." color: #dc2626, font-size: 13px
+          }
+        }
+        rect width: 70px, height: 28px, color: #dc2626, radius: 4px {
+          text "Retry" color: #ffffff, font-size: 12px
+          on click: set dismissed = true
+        }
+      }
+    }
+
+    if dismissed {
+      text "Alert dismissed" color: #94a3b8
+    }
+  }
+}

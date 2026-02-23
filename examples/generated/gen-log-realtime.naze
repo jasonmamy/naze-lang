@@ -1,0 +1,34 @@
+-- Live event counter log
+app "Live Events" {
+  state event-count = 0
+  state last-event = "none"
+
+  timer event-tick: every 1s {
+    set event-count = event-count + 1
+  }
+
+  column padding: 24px, gap: 16px {
+    heading "Live Event Monitor" color: #0ea5e9
+    text "Events captured: {event-count}" font-size: 24px, color: #0ea5e9
+
+    match last-event {
+      "none": text "Waiting for events..." color: #94a3b8
+      _: text "Last: {last-event}" color: #475569
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #ef4444, radius: 6px {
+        text "Error" color: #ffffff
+        on click: set last-event = "error"
+      }
+      rect width: 100px, height: 36px, color: #f59e0b, radius: 6px {
+        text "Warning" color: #ffffff
+        on click: set last-event = "warning"
+      }
+      rect width: 100px, height: 36px, color: #16a34a, radius: 6px {
+        text "Info" color: #ffffff
+        on click: set last-event = "info"
+      }
+    }
+  }
+}

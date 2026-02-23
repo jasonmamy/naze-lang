@@ -1,0 +1,30 @@
+-- Priority selector with low, medium, and high
+app "Priority" {
+  state priority = "medium"
+
+  column padding: 20px, gap: 16px {
+    heading "Priority"
+
+    match priority {
+      "low": text "Low priority" color: #16a34a
+      "medium": text "Medium priority" color: #f59e0b
+      "high": text "High priority" color: #dc2626
+      _: text "Select an option" color: #64748b
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 36px, color: #16a34a, radius: 4px {
+        text "low" color: #ffffff
+        on click: set priority = "low"
+      }
+      rect width: 100px, height: 36px, color: #f59e0b, radius: 4px {
+        text "medium" color: #ffffff
+        on click: set priority = "medium"
+      }
+      rect width: 100px, height: 36px, color: #dc2626, radius: 4px {
+        text "high" color: #ffffff
+        on click: set priority = "high"
+      }
+    }
+  }
+}

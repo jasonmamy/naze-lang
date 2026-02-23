@@ -1,0 +1,24 @@
+-- Running pace calculator
+app "Run Pace" {
+  state minutes = 30
+  state km = 5
+  computed pace = minutes / km
+
+  column padding: 20px, gap: 16px {
+    heading "Run Pace"
+    text "Minutes: {minutes}" font-size: 18px
+    text "Kilometers: {km}" color: #64748b
+    text "Min/km: {pace}" font-size: 24px, color: #06b6d4
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #06b6d4, radius: 4px {
+        text "+" color: #ffffff
+        on click: set minutes = minutes + 1
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set minutes = 30
+      }
+    }
+  }
+}

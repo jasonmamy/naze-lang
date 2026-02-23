@@ -1,0 +1,25 @@
+-- Slideshow auto-advance timer
+app "Slideshow" {
+  state slide = 0
+  state active = false
+
+  timer tick: every 3s {
+    set slide = slide + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Slideshow"
+    text "{slide} slides shown" font-size: 48px, color: #ec4899
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Start" color: #ffffff
+        on click: set active = true
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set slide = 0
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+-- Music player
+app "Player" {
+  state track = "Bohemian Rhapsody"
+  state artist = "Queen"
+  state playing = false
+  state position = 0
+
+  timer playback: every 1s {
+    set position = position + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Now Playing"
+    text "{track}" font-size: 24px
+    text "{artist}" color: #64748b
+    text "{position}s elapsed" color: #94a3b8
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Play" color: #ffffff
+        on click: set playing = true
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Pause" color: #ffffff
+        on click: set playing = false
+      }
+      rect width: 80px, height: 40px, color: #ef4444, radius: 8px {
+        text "Stop" color: #ffffff
+        on click: set position = 0
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+-- Office locations directory
+app "Our Offices" {
+  column padding: 24px, gap: 16px {
+    heading "Our Offices" color: #8b5cf6
+    text "Visit us at our offices" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 16px, color: #f5f3ff, radius: 8px {
+        column gap: 4px {
+          text "San Francisco" font-weight: bold
+          text "Headquarters" color: #64748b, font-size: 14px
+          text "123 Market St" color: #8b5cf6, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f5f3ff, radius: 8px {
+        column gap: 4px {
+          text "London" font-weight: bold
+          text "EU Office" color: #64748b, font-size: 14px
+          text "45 Oxford St" color: #8b5cf6, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f5f3ff, radius: 8px {
+        column gap: 4px {
+          text "Tokyo" font-weight: bold
+          text "Asia Office" color: #64748b, font-size: 14px
+          text "1-1 Shibuya" color: #8b5cf6, font-size: 14px
+        }
+      }
+    }
+  }
+}

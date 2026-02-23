@@ -1,0 +1,46 @@
+-- Accessibility and assistive technology settings
+app "Accessibility" {
+  state high-contrast = false
+  state reduce-motion = false
+  state screen-reader-label = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Accessibility"
+    text "Make it work for you" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "High Contrast" font-weight: bold, font-size: 14px
+        checkbox bind: high-contrast, label: "Use high contrast colors"
+      }
+
+      column gap: 4px {
+        text "Reduce Motion" font-weight: bold, font-size: 14px
+        checkbox bind: reduce-motion, label: "Minimize animations"
+      }
+
+      column gap: 4px {
+        text "Screen Reader" font-weight: bold, font-size: 14px
+        input bind: screen-reader-label, placeholder: "Screen reader name"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #0891b2, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Accessibility settings saved!" color: #16a34a
+    }
+  }
+}

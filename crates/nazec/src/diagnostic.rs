@@ -108,8 +108,12 @@ impl DiagnosticPrinter {
             Severity::Warning => "\x1b[1;33mwarning\x1b[0m",
         };
 
-        // Header: error: message
-        eprintln!("{severity_label}: {}", error.message);
+        // Header: error[E001]: message
+        if let Some(code) = &error.error_code {
+            eprintln!("{severity_label}[{code}]: {}", error.message);
+        } else {
+            eprintln!("{severity_label}: {}", error.message);
+        }
 
         // Location: --> file:line:column
         if error.line > 0 {
@@ -153,6 +157,11 @@ impl DiagnosticPrinter {
                     }
                 }
             }
+        }
+
+        // Suggested fix
+        if let Some(fix) = &error.suggested_fix {
+            eprintln!("  \x1b[1;32m= fix:\x1b[0m {fix}");
         }
 
         eprintln!();

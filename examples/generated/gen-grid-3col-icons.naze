@@ -1,0 +1,32 @@
+-- Icon grid
+app "Icon Grid" {
+  column padding: 20px, gap: 16px {
+    heading "Icon Grid"
+    grid columns: 3, gap: 12px {
+      column gap: 4px {
+        rect width: 60px, height: 60px, color: #ef4444, radius: 12px
+        text "Home" color: #64748b, font-size: 12px
+      }
+      column gap: 4px {
+        rect width: 60px, height: 60px, color: #f59e0b, radius: 12px
+        text "Search" color: #64748b, font-size: 12px
+      }
+      column gap: 4px {
+        rect width: 60px, height: 60px, color: #22c55e, radius: 12px
+        text "Profile" color: #64748b, font-size: 12px
+      }
+      column gap: 4px {
+        rect width: 60px, height: 60px, color: #3b82f6, radius: 12px
+        text "Settings" color: #64748b, font-size: 12px
+      }
+      column gap: 4px {
+        rect width: 60px, height: 60px, color: #8b5cf6, radius: 12px
+        text "Help" color: #64748b, font-size: 12px
+      }
+      column gap: 4px {
+        rect width: 60px, height: 60px, color: #ec4899, radius: 12px
+        text "Logout" color: #64748b, font-size: 12px
+      }
+    }
+  }
+}

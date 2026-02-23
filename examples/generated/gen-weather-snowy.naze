@@ -1,0 +1,41 @@
+-- Snowy winter weather display
+app "Snow Report" {
+  state temp = -5
+  state feels-like = -12
+  state humidity = 80
+  state wind = 25
+  state condition = "Heavy Snow"
+
+  column padding: 24px, gap: 16px, color: #eef2ff {
+    heading "Aspen Weather" color: #4338ca
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #e0e7ff, radius: 12px {
+        text "SNW" font-size: 36px
+      }
+      column gap: 4px {
+        text "{temp}C" font-size: 48px, font-weight: bold, color: #4338ca
+        text "{condition}" color: #64748b, font-size: 16px
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Feels Like" color: #64748b, font-size: 11px
+        text "{feels-like}C" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Humidity" color: #64748b, font-size: 11px
+        text "{humidity}%" font-size: 18px
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Wind" color: #64748b, font-size: 11px
+        text "{wind} km/h" font-size: 18px
+      }
+    }
+
+    separator
+
+    text "Forecast: 15cm expected overnight, powder alert" color: #94a3b8, font-size: 13px
+  }
+}

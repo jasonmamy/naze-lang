@@ -1,0 +1,23 @@
+-- Server function with SQL
+server function recent-logs(n: number) {
+  let result = sql "SELECT * FROM logs ORDER BY created_at DESC LIMIT $1" [n]
+  result
+}
+
+app "Logs" {
+  data logs: recent-logs(50)
+
+  column padding: 20px, gap: 16px {
+    heading "Recent Logs"
+
+    if logs.loading {
+      text "Loading..." color: #64748b
+    }
+
+    if logs.data {
+      each log in logs.data {
+        text "{log}" color: #374151
+      }
+    }
+  }
+}

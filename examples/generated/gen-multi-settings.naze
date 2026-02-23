@@ -1,0 +1,50 @@
+-- Persistent settings
+app "Settings" {
+  storage username: local "settings-username" default: "user"
+  storage theme-pref: local "settings-theme" default: "light"
+  state font-size = 16
+  state notifications = true
+
+  column padding: 20px, gap: 16px {
+    heading "App Settings"
+    input bind: username, placeholder: "Display name..."
+    text "Hello, {username}!" color: #2563eb
+
+    separator
+
+    match theme-pref {
+      "light": text "Light mode active" color: #f59e0b
+      "dark": text "Dark mode active" color: #6366f1
+      _: text "Default"
+    }
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #f8fafc, radius: 4px {
+        text "Light"
+        on click: set theme-pref = "light"
+      }
+      rect width: 80px, height: 36px, color: #1e293b, radius: 4px {
+        text "Dark" color: #ffffff
+        on click: set theme-pref = "dark"
+      }
+    }
+
+    separator
+
+    text "Font Size: {font-size}px" color: #64748b
+    row gap: 8px {
+      rect width: 40px, height: 32px, color: #e2e8f0, radius: 4px {
+        text "A-"
+        on click: set font-size = font-size - 2
+      }
+      rect width: 40px, height: 32px, color: #e2e8f0, radius: 4px {
+        text "A+"
+        on click: set font-size = font-size + 2
+      }
+    }
+
+    checkbox bind: notifications, label: "Enable notifications"
+    if notifications {
+      text "Notifications are ON" color: #16a34a
+    }
+  }
+}

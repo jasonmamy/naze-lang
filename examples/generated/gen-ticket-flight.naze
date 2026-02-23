@@ -1,0 +1,51 @@
+-- Flight boarding pass display
+app "Boarding Pass" {
+  state ticket-id = "AA-2847"
+  state status = "Checked In"
+  state priority = "Economy"
+
+  column padding: 24px, gap: 16px {
+    heading "Boarding Pass" color: #1e40af
+
+    rect padding: 20px, color: #ffffff, radius: 12px {
+      column gap: 12px {
+        row gap: 8px {
+          text "Boarding Pass" font-weight: bold, font-size: 18px
+          spacer
+          rect padding: 6px, color: #eff6ff, radius: 4px {
+            text "{status}" color: #1e40af, font-size: 12px
+          }
+        }
+
+        separator
+
+        row gap: 16px {
+          column gap: 4px {
+            text "ID" color: #94a3b8, font-size: 11px
+            text "{ticket-id}" font-size: 14px
+          }
+          column gap: 4px {
+            text "Priority" color: #94a3b8, font-size: 11px
+            text "{priority}" font-size: 14px, color: #64748b
+          }
+          column gap: 4px {
+            text "Gate" color: #94a3b8, font-size: 11px
+            text "B22" font-size: 14px
+          }
+        }
+
+        separator
+
+        text "New York JFK to London Heathrow" color: #334155
+        text "Departure: Feb 20, 2026 at 7:45 PM - Seat 14C" color: #64748b, font-size: 13px
+      }
+    }
+
+    match status {
+      "Checked In": rect padding: 10px, color: #eff6ff, radius: 8px {
+        text "Boarding begins at 7:15 PM" color: #1e40af, font-size: 13px
+      }
+      _: text "Unknown status" color: #94a3b8
+    }
+  }
+}

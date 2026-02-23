@@ -1,0 +1,21 @@
+-- Activity feed with timeline
+app "Activity Feed" {
+  state events = [{action: "Merged PR #142", user: "alice", time: "2 min ago"}, {action: "Opened issue #89", user: "bob", time: "15 min ago"}, {action: "Deployed v2.1", user: "carol", time: "1 hr ago"}, {action: "Added review", user: "dan", time: "3 hrs ago"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Activity"
+
+    each evt in events {
+      row padding: 10px, gap: 12px {
+        rect width: 8px, height: 8px, color: #3b82f6, radius: 4px
+        column gap: 2px {
+          row gap: 6px {
+            text "{evt.user}" font-weight: bold, font-size: 14px
+            text "{evt.time}" color: #94a3b8, font-size: 12px
+          }
+          text "{evt.action}" color: #374151
+        }
+      }
+    }
+  }
+}

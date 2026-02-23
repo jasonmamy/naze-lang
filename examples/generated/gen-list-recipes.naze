@@ -1,0 +1,17 @@
+-- Recipe collection sorted by name
+app "Recipes" {
+  state items = [{name: "Pasta", time: "20min"}, {name: "Salad", time: "10min"}, {name: "Soup", time: "30min"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Recipes"
+    text "{total} recipes" color: #64748b
+
+    each recipe in items | sort-by name {
+      row padding: 8px, color: #fff7ed, radius: 4px, gap: 8px {
+        text "{recipe.name}" font-weight: bold
+        text "{recipe.time}" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+-- Brightness adjuster
+app "Brightness" {
+  state brightness = 75
+
+  column padding: 20px, gap: 16px {
+    heading "Display Settings"
+    text "Brightness: {brightness}%" font-size: 20px
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #f59e0b, radius: 8px {
+        text "Brighter" color: #ffffff
+        on click: set brightness = brightness + 5
+      }
+      rect width: 100px, height: 40px, color: #334155, radius: 8px {
+        text "Dimmer" color: #ffffff
+        on click: set brightness = brightness - 5
+      }
+    }
+  }
+}

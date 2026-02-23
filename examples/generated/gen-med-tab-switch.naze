@@ -1,0 +1,31 @@
+-- Tab switcher
+app "Tabs Demo" {
+  state tab = "info"
+
+  column padding: 20px, gap: 16px {
+    heading "Two Tabs"
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+        text "Info" color: #ffffff
+        on click: set tab = "info"
+      }
+      rect width: 100px, height: 40px, color: #8b5cf6, radius: 8px {
+        text "Settings" color: #ffffff
+        on click: set tab = "settings"
+      }
+    }
+
+    match tab {
+      "info": column gap: 8px {
+        text "Information panel" font-weight: bold
+        text "Here you find general info" color: #64748b
+      }
+      "settings": column gap: 8px {
+        text "Settings panel" font-weight: bold
+        text "Adjust your preferences" color: #64748b
+      }
+      _: text "Unknown tab"
+    }
+  }
+}

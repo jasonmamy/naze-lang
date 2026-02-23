@@ -1,0 +1,43 @@
+-- Esports player profile
+app "Gamer Profile" {
+  state username = "pro_rex"
+  state bio = "Competitive FPS player"
+  state followers = 12000
+  state following = 45
+  computed ratio = followers / following
+
+  column padding: 24px, gap: 16px {
+    heading "Gamer Profile"
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #a855f7, radius: 40px {
+        text "R" color: #ffffff, font-size: 32px
+      }
+      column gap: 4px {
+        text "{username}" font-size: 22px, font-weight: bold
+        text "{bio}" color: #64748b
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Followers" color: #64748b, font-size: 12px
+        text "{followers}" font-size: 20px, color: #9333ea
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Following" color: #64748b, font-size: 12px
+        text "{following}" font-size: 20px, color: #9333ea
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Ratio" color: #64748b, font-size: 12px
+        text "{ratio}" font-size: 20px, color: #9333ea
+      }
+    }
+
+    separator
+
+    rect padding: 12px, color: #faf5ff, radius: 8px {
+      link "Twitch" href: "https://twitch.tv"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+-- Spreadsheet toolbar with cell operations
+app "Spreadsheet Bar" {
+  state active-tool = "select"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #f0fdf4 {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #16a34a, radius: 6px {
+          text "^" color: #ffffff, font-size: 14px
+          on click: set active-tool = "select"
+        }
+        rect width: 36px, height: 36px, color: #2563eb, radius: 6px {
+          text "=" color: #ffffff, font-size: 14px
+          on click: set active-tool = "formula"
+        }
+        rect width: 36px, height: 36px, color: #7c3aed, radius: 6px {
+          text "#" color: #ffffff, font-size: 14px
+          on click: set active-tool = "format"
+        }
+        rect width: 36px, height: 36px, color: #f59e0b, radius: 6px {
+          text "v" color: #ffffff, font-size: 14px
+          on click: set active-tool = "sort"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #ef4444, radius: 6px {
+          text "X" color: #ffffff, font-size: 14px
+          on click: set active-tool = "clear-cell"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "select": text "Select cells for editing." color: #64748b
+        "formula": text "Insert a formula." color: #64748b
+        "format": text "Format cell values." color: #64748b
+        "sort": text "Sort selected column." color: #64748b
+        "clear-cell": text "Clear cell contents." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

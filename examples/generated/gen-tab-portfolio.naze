@@ -1,0 +1,39 @@
+-- Portfolio tabs with work, about, and contact
+app "Portfolio" {
+  state tab = "work"
+
+  column padding: 20px, gap: 16px {
+    heading "Portfolio"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #1e293b, radius: 0px {
+        text "Work" color: #ffffff
+        on click: set tab = "work"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "About" color: #334155
+        on click: set tab = "about"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Contact" color: #334155
+        on click: set tab = "contact"
+      }
+    }
+
+    match tab {
+      "work": column padding: 16px, gap: 8px {
+        text "Selected Projects" font-weight: bold
+        text "Web apps, mobile apps, and design work." color: #64748b
+      }
+      "about": column padding: 16px, gap: 8px {
+        text "About Me" font-weight: bold
+        text "Designer and developer with 8 years experience." color: #64748b
+      }
+      "contact": column padding: 16px, gap: 8px {
+        text "Get in Touch" font-weight: bold
+        text "Available for freelance work." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

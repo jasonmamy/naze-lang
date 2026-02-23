@@ -1,0 +1,30 @@
+-- Marketing campaign performance dashboard
+app "Marketing Metrics" {
+  state leads = 340
+  state conversions = 52
+  state ctr = 3
+  state spend = 12500
+
+  column padding: 24px, gap: 16px {
+    heading "Marketing Metrics" color: #0f172a
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #eff6ff, radius: 10px {
+        text "New Leads" color: #64748b, font-size: 13px
+        text "{leads}" font-size: 28px, color: #1e40af
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 10px {
+        text "Conversions" color: #64748b, font-size: 13px
+        text "{conversions}" font-size: 28px, color: #15803d
+      }
+      rect padding: 16px, color: #fff7ed, radius: 10px {
+        text "CTR %" color: #64748b, font-size: 13px
+        text "{ctr}" font-size: 28px, color: #ea580c
+      }
+      rect padding: 16px, color: #fef2f2, radius: 10px {
+        text "Ad Spend ($)" color: #64748b, font-size: 13px
+        text "{spend}" font-size: 28px, color: #dc2626
+      }
+    }
+  }
+}

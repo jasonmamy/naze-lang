@@ -1,0 +1,39 @@
+-- Kanban board
+app "Kanban" {
+  state todo-items = ["Design UI", "Write tests"]
+  state doing-items = ["Build API"]
+  state done-items = ["Setup repo"]
+
+  column padding: 20px, gap: 16px {
+    heading "Kanban Board"
+
+    row gap: 16px {
+      column gap: 8px {
+        text "Todo" font-weight: bold, color: #dc2626
+        each item in todo-items {
+          rect padding: 8px, color: #fef2f2, radius: 4px {
+            text "{item}"
+          }
+        }
+      }
+
+      column gap: 8px {
+        text "Doing" font-weight: bold, color: #f59e0b
+        each item in doing-items {
+          rect padding: 8px, color: #fffbeb, radius: 4px {
+            text "{item}"
+          }
+        }
+      }
+
+      column gap: 8px {
+        text "Done" font-weight: bold, color: #16a34a
+        each item in done-items {
+          rect padding: 8px, color: #f0fdf4, radius: 4px {
+            text "{item}"
+          }
+        }
+      }
+    }
+  }
+}

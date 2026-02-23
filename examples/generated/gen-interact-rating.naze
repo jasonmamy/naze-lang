@@ -1,0 +1,26 @@
+-- Star rating incrementer
+app "Rating" {
+  state stars = 0
+  state rated = false
+
+  column padding: 20px, gap: 16px {
+    heading "Rating"
+    text "{stars}" font-size: 24px, color: #f59e0b
+    text "{rated}" color: #64748b
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #f59e0b, radius: 8px {
+        text "Add Star" color: #ffffff
+        on click: set stars = stars + 1
+      }
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Submit" color: #ffffff
+        on click: set rated = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set stars = 0
+      }
+    }
+  }
+}

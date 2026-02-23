@@ -1,0 +1,43 @@
+-- Archive item confirmation modal
+app "Archive Confirm" {
+  state show-modal = false
+  state confirmed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Archive Confirm"
+    text "Manage your project items." color: #64748b
+
+    rect width: 140px, height: 40px, color: #0891b2, radius: 8px {
+      text "Archive" color: #ffffff
+      on click: set show-modal = true
+    }
+
+    if confirmed {
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        text "Item archived." color: #16a34a
+      }
+    }
+
+    if show-modal {
+      rect width: 400px, height: 220px, color: #00000066, radius: 0px {
+        rect width: 360px, height: 180px, color: #ffffff, radius: 12px {
+          column padding: 24px, gap: 12px {
+            text "Archive Item?" font-weight: bold, font-size: 18px
+            text "Archived items can be restored later." color: #64748b
+            row gap: 8px {
+              rect width: 100px, height: 36px, color: #0891b2, radius: 6px {
+                text "Archive" color: #ffffff
+                on click: set confirmed = true
+                on click: set show-modal = false
+              }
+              rect width: 100px, height: 36px, color: #e2e8f0, radius: 6px {
+                text "Cancel" color: #334155
+                on click: set show-modal = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

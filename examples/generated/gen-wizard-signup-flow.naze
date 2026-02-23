@@ -1,0 +1,55 @@
+-- Account registration wizard with verification
+app "Create Account" {
+  state step = 1
+  state reg-email = ""
+  state reg-password = ""
+  state verify-code = ""
+
+  column padding: 24px, gap: 16px {
+    heading "Create Account"
+    text "Step {step} of 3" color: #64748b
+
+    match step {
+      1: column gap: 12px {
+        text "Email" font-weight: bold, font-size: 18px
+        text "Enter your email address" color: #64748b
+        input bind: reg-email, placeholder: "you@example.com"
+        rect width: 100px, height: 40px, color: #7c3aed, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Password" font-weight: bold, font-size: 18px
+        text "Choose a secure password" color: #64748b
+        input bind: reg-password, placeholder: "Password (8+ chars)"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 1
+          }
+          rect width: 100px, height: 40px, color: #7c3aed, radius: 8px {
+            text "Next" color: #ffffff
+            on click: set step = 3
+          }
+        }
+      }
+      3: column gap: 12px {
+        text "Verify" font-weight: bold, font-size: 18px
+        text "Enter the code we sent you" color: #64748b
+        input bind: verify-code, placeholder: "6-digit code"
+        row gap: 8px {
+          rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+            text "Back"
+            on click: set step = 2
+          }
+          rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+            text "Verify" color: #ffffff
+            on click: set step = 1
+          }
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+-- Match history
+app "Match History" {
+  state matches = [{teams: "Red v Blue", result: "3-1", date: "Feb 15"}, {teams: "Green v Yellow", result: "2-2", date: "Feb 14"}, {teams: "Red v Green", result: "1-0", date: "Feb 13"}]
+  computed match-total = matches | count
+
+  column padding: 20px, gap: 16px {
+    heading "Match History"
+    text "{match-total} recent matches" color: #64748b
+
+    each m in matches {
+      row padding: 12px, color: #f3f4f6, radius: 8px, gap: 12px {
+        text "{m.teams}" font-weight: bold
+        text "{m.result}" font-size: 20px, color: #2563eb
+        text "{m.date}" color: #64748b, font-size: 12px
+      }
+    }
+  }
+}

@@ -166,13 +166,13 @@ pub fn resolve(project_dir: &Path, entry: &str, deps: &[ResolvedDep]) -> Resolve
     let entry_source = match std::fs::read_to_string(&entry_path) {
         Ok(s) => s,
         Err(e) => {
-            errors.push(CompileError {
-                message: format!("cannot read entry file '{}': {}", entry, e),
-                file: entry.to_string(),
-                line: 0,
-                column: 0,
-                severity: Severity::Error,
-            });
+            errors.push(CompileError::new(
+                format!("cannot read entry file '{}': {}", entry, e),
+                entry.to_string(),
+                0,
+                0,
+                Severity::Error,
+            ));
             return ResolvedProject {
                 entry: SourceFile {
                     path: entry_path,
@@ -189,13 +189,13 @@ pub fn resolve(project_dir: &Path, entry: &str, deps: &[ResolvedDep]) -> Resolve
     let entry_nodes = match naze_parser::parse(&entry_source, entry) {
         Ok(nodes) => nodes,
         Err(e) => {
-            errors.push(CompileError {
-                message: e.message.clone(),
-                file: e.file.clone(),
-                line: e.line,
-                column: e.column,
-                severity: Severity::Error,
-            });
+            errors.push(CompileError::new(
+                e.message.clone(),
+                e.file.clone(),
+                e.line,
+                e.column,
+                Severity::Error,
+            ));
             return ResolvedProject {
                 entry: SourceFile {
                     path: entry_path,
@@ -253,17 +253,17 @@ pub fn resolve(project_dir: &Path, entry: &str, deps: &[ResolvedDep]) -> Resolve
             };
 
             if let Some(existing) = components.get(import_path) {
-                errors.push(CompileError {
-                    message: format!(
+                errors.push(CompileError::new(
+                    format!(
                         "duplicate component '{}': already defined in {}",
                         import_path,
                         existing.file.display()
                     ),
-                    file: span.file.clone(),
-                    line: span.line,
-                    column: span.col,
-                    severity: Severity::Error,
-                });
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ).with_fix("E006", "Rename one of the components or remove the duplicate"));
             } else {
                 components.insert(import_path.clone(), def);
             }
@@ -309,13 +309,13 @@ pub fn resolve(project_dir: &Path, entry: &str, deps: &[ResolvedDep]) -> Resolve
     let imports = collect_use_paths(&entry_file.nodes);
     for (use_path, span) in &imports {
         if !components.contains_key(use_path) {
-            errors.push(CompileError {
-                message: format!("unresolved import '{}'", use_path),
-                file: span.file.clone(),
-                line: span.line,
-                column: span.col,
-                severity: Severity::Error,
-            });
+            errors.push(CompileError::new(
+                format!("unresolved import '{}'", use_path),
+                span.file.clone(),
+                span.line,
+                span.col,
+                Severity::Error,
+            ));
         }
     }
 
@@ -361,13 +361,13 @@ pub fn resolve_incremental(
     let entry_source = match std::fs::read_to_string(&entry_path) {
         Ok(s) => s,
         Err(e) => {
-            errors.push(CompileError {
-                message: format!("cannot read entry file '{}': {}", entry, e),
-                file: entry.to_string(),
-                line: 0,
-                column: 0,
-                severity: Severity::Error,
-            });
+            errors.push(CompileError::new(
+                format!("cannot read entry file '{}': {}", entry, e),
+                entry.to_string(),
+                0,
+                0,
+                Severity::Error,
+            ));
             return ResolvedProject {
                 entry: SourceFile {
                     path: entry_path,
@@ -394,13 +394,13 @@ pub fn resolve_incremental(
                     nodes
                 }
                 Err(e) => {
-                    errors.push(CompileError {
-                        message: e.message.clone(),
-                        file: e.file.clone(),
-                        line: e.line,
-                        column: e.column,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        e.message.clone(),
+                        e.file.clone(),
+                        e.line,
+                        e.column,
+                        Severity::Error,
+                    ));
                     return ResolvedProject {
                         entry: SourceFile {
                             path: entry_path,
@@ -423,13 +423,13 @@ pub fn resolve_incremental(
                 nodes
             }
             Err(e) => {
-                errors.push(CompileError {
-                    message: e.message.clone(),
-                    file: e.file.clone(),
-                    line: e.line,
-                    column: e.column,
-                    severity: Severity::Error,
-                });
+                errors.push(CompileError::new(
+                    e.message.clone(),
+                    e.file.clone(),
+                    e.line,
+                    e.column,
+                    Severity::Error,
+                ));
                 return ResolvedProject {
                     entry: SourceFile {
                         path: entry_path,
@@ -488,17 +488,17 @@ pub fn resolve_incremental(
             };
 
             if let Some(existing) = components.get(import_path) {
-                errors.push(CompileError {
-                    message: format!(
+                errors.push(CompileError::new(
+                    format!(
                         "duplicate component '{}': already defined in {}",
                         import_path,
                         existing.file.display()
                     ),
-                    file: span.file.clone(),
-                    line: span.line,
-                    column: span.col,
-                    severity: Severity::Error,
-                });
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ).with_fix("E006", "Rename one of the components or remove the duplicate"));
             } else {
                 components.insert(import_path.clone(), def);
             }
@@ -541,13 +541,13 @@ pub fn resolve_incremental(
     let imports = collect_use_paths(&entry_file.nodes);
     for (use_path, span) in &imports {
         if !components.contains_key(use_path) {
-            errors.push(CompileError {
-                message: format!("unresolved import '{}'", use_path),
-                file: span.file.clone(),
-                line: span.line,
-                column: span.col,
-                severity: Severity::Error,
-            });
+            errors.push(CompileError::new(
+                format!("unresolved import '{}'", use_path),
+                span.file.clone(),
+                span.line,
+                span.col,
+                Severity::Error,
+            ));
         }
     }
 
@@ -592,13 +592,13 @@ fn collect_wasm_imports(
                     });
                 }
                 Err(msg) => {
-                    errors.push(CompileError {
-                        message: msg,
-                        file: span.file.clone(),
-                        line: span.line,
-                        column: span.col,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        msg,
+                        span.file.clone(),
+                        span.line,
+                        span.col,
+                        Severity::Error,
+                    ));
                 }
             }
         }
@@ -697,13 +697,13 @@ fn load_themes(
         let source = match std::fs::read_to_string(&theme_path) {
             Ok(s) => s,
             Err(e) => {
-                errors.push(CompileError {
-                    message: format!("cannot read theme.naze: {}", e),
-                    file: "theme.naze".to_string(),
-                    line: 0,
-                    column: 0,
-                    severity: Severity::Warning,
-                });
+                errors.push(CompileError::new(
+                    format!("cannot read theme.naze: {}", e),
+                    "theme.naze".to_string(),
+                    0,
+                    0,
+                    Severity::Warning,
+                ));
                 String::new()
             }
         };
@@ -714,13 +714,13 @@ fn load_themes(
                     collect_raw_themes(&nodes, &mut raw_themes);
                 }
                 Err(e) => {
-                    errors.push(CompileError {
-                        message: e.message,
-                        file: e.file,
-                        line: e.line,
-                        column: e.column,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        e.message,
+                        e.file,
+                        e.line,
+                        e.column,
+                        Severity::Error,
+                    ));
                 }
             }
         }
@@ -765,16 +765,16 @@ fn load_themes(
                     if !name_to_idx.contains_key(parent_name) && parent_name != "default" {
                         // Parent doesn't exist — report error if not already visited
                         if visited.insert(raw.name.clone()) {
-                            errors.push(CompileError {
-                                message: format!(
+                            errors.push(CompileError::new(
+                                format!(
                                     "theme '{}' extends unknown theme '{}'",
                                     raw.name, parent_name
                                 ),
-                                file: "theme".to_string(),
-                                line: 0,
-                                column: 0,
-                                severity: Severity::Error,
-                            });
+                                "theme".to_string(),
+                                0,
+                                0,
+                                Severity::Error,
+                            ));
                         }
                         true // resolve anyway using default as base
                     } else {
@@ -820,13 +820,13 @@ fn load_themes(
             // Cycle detected — report and break
             for raw in &raw_themes {
                 if !resolved_names.contains(&raw.name) {
-                    errors.push(CompileError {
-                        message: format!("circular theme inheritance involving '{}'", raw.name),
-                        file: "theme".to_string(),
-                        line: 0,
-                        column: 0,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        format!("circular theme inheritance involving '{}'", raw.name),
+                        "theme".to_string(),
+                        0,
+                        0,
+                        Severity::Error,
+                    ));
                     // Resolve with default as base anyway
                     let mut theme = default_theme();
                     theme.name = raw.name.clone();
@@ -931,13 +931,13 @@ fn discover_naze_files(
             let source = match std::fs::read_to_string(&path) {
                 Ok(s) => s,
                 Err(e) => {
-                    errors.push(CompileError {
-                        message: format!("cannot read '{}': {}", path.display(), e),
-                        file: path.display().to_string(),
-                        line: 0,
-                        column: 0,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        format!("cannot read '{}': {}", path.display(), e),
+                        path.display().to_string(),
+                        0,
+                        0,
+                        Severity::Error,
+                    ));
                     continue;
                 }
             };
@@ -945,13 +945,13 @@ fn discover_naze_files(
             let nodes = match naze_parser::parse(&source, &import_path) {
                 Ok(n) => n,
                 Err(e) => {
-                    errors.push(CompileError {
-                        message: e.message,
-                        file: e.file,
-                        line: e.line,
-                        column: e.column,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        e.message,
+                        e.file,
+                        e.line,
+                        e.column,
+                        Severity::Error,
+                    ));
                     continue;
                 }
             };
@@ -977,17 +977,17 @@ fn discover_dep_files(
     errors: &mut Vec<CompileError>,
 ) {
     if !dep_dir.exists() {
-        errors.push(CompileError {
-            message: format!(
+        errors.push(CompileError::new(
+            format!(
                 "dependency '{}' directory not found: {}",
                 dep_name,
                 dep_dir.display()
             ),
-            file: dep_name.to_string(),
-            line: 0,
-            column: 0,
-            severity: Severity::Error,
-        });
+            dep_name.to_string(),
+            0,
+            0,
+            Severity::Error,
+        ));
         return;
     }
     discover_dep_files_recursive(dep_name, dep_dir, dep_dir, files, errors);
@@ -1025,13 +1025,13 @@ fn discover_dep_files_recursive(
             let source = match std::fs::read_to_string(&path) {
                 Ok(s) => s,
                 Err(e) => {
-                    errors.push(CompileError {
-                        message: format!("cannot read '{}': {}", path.display(), e),
-                        file: path.display().to_string(),
-                        line: 0,
-                        column: 0,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        format!("cannot read '{}': {}", path.display(), e),
+                        path.display().to_string(),
+                        0,
+                        0,
+                        Severity::Error,
+                    ));
                     continue;
                 }
             };
@@ -1039,13 +1039,13 @@ fn discover_dep_files_recursive(
             let nodes = match naze_parser::parse(&source, &import_path) {
                 Ok(n) => n,
                 Err(e) => {
-                    errors.push(CompileError {
-                        message: e.message,
-                        file: e.file,
-                        line: e.line,
-                        column: e.column,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        e.message,
+                        e.file,
+                        e.line,
+                        e.column,
+                        Severity::Error,
+                    ));
                     continue;
                 }
             };
@@ -1094,13 +1094,13 @@ fn discover_naze_files_cached(
             let source = match std::fs::read_to_string(&path) {
                 Ok(s) => s,
                 Err(e) => {
-                    errors.push(CompileError {
-                        message: format!("cannot read '{}': {}", path.display(), e),
-                        file: path.display().to_string(),
-                        line: 0,
-                        column: 0,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        format!("cannot read '{}': {}", path.display(), e),
+                        path.display().to_string(),
+                        0,
+                        0,
+                        Severity::Error,
+                    ));
                     continue;
                 }
             };
@@ -1120,13 +1120,13 @@ fn discover_naze_files_cached(
                             n
                         }
                         Err(e) => {
-                            errors.push(CompileError {
-                                message: e.message,
-                                file: e.file,
-                                line: e.line,
-                                column: e.column,
-                                severity: Severity::Error,
-                            });
+                            errors.push(CompileError::new(
+                                e.message,
+                                e.file,
+                                e.line,
+                                e.column,
+                                Severity::Error,
+                            ));
                             continue;
                         }
                     }
@@ -1140,13 +1140,13 @@ fn discover_naze_files_cached(
                         n
                     }
                     Err(e) => {
-                        errors.push(CompileError {
-                            message: e.message,
-                            file: e.file,
-                            line: e.line,
-                            column: e.column,
-                            severity: Severity::Error,
-                        });
+                        errors.push(CompileError::new(
+                            e.message,
+                            e.file,
+                            e.line,
+                            e.column,
+                            Severity::Error,
+                        ));
                         continue;
                     }
                 }
@@ -1193,16 +1193,16 @@ fn check_unresolved_elements(
                     && !imported_names.contains(name.as_str())
                     && !components.values().any(|c| c.name == *name)
                 {
-                    errors.push(CompileError {
-                        message: format!(
+                    errors.push(CompileError::new(
+                        format!(
                             "unknown element '{}': not a builtin or imported component",
                             name
                         ),
-                        file: span.file.clone(),
-                        line: span.line,
-                        column: span.col,
-                        severity: Severity::Warning,
-                    });
+                        span.file.clone(),
+                        span.line,
+                        span.col,
+                        Severity::Warning,
+                    ).with_fix("E001", "Check spelling, or add 'use \"components/NAME\"' to import it"));
                 }
                 check_unresolved_elements(children, imported_names, components, errors);
             }
@@ -1263,13 +1263,13 @@ fn check_circular_deps(files: &HashMap<String, SourceFile>, errors: &mut Vec<Com
                 }
 
                 if in_stack.contains(node) {
-                    errors.push(CompileError {
-                        message: format!("circular dependency detected involving '{}'", node),
-                        file: node.to_string(),
-                        line: 0,
-                        column: 0,
-                        severity: Severity::Error,
-                    });
+                    errors.push(CompileError::new(
+                        format!("circular dependency detected involving '{}'", node),
+                        node.to_string(),
+                        0,
+                        0,
+                        Severity::Error,
+                    ).with_fix("E010", "Break the cycle by extracting shared logic into a separate component"));
                     continue;
                 }
 
@@ -1286,13 +1286,13 @@ fn check_circular_deps(files: &HashMap<String, SourceFile>, errors: &mut Vec<Com
                         if !visited.contains(dep.as_str()) {
                             stack.push((dep.as_str(), false));
                         } else if in_stack.contains(dep.as_str()) {
-                            errors.push(CompileError {
-                                message: format!("circular dependency: '{}' -> '{}'", node, dep),
-                                file: node.to_string(),
-                                line: 0,
-                                column: 0,
-                                severity: Severity::Error,
-                            });
+                            errors.push(CompileError::new(
+                                format!("circular dependency: '{}' -> '{}'", node, dep),
+                                node.to_string(),
+                                0,
+                                0,
+                                Severity::Error,
+                            ).with_fix("E010", "Break the cycle by extracting shared logic into a separate component"));
                         }
                     }
                 }

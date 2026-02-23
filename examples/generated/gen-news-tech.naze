@@ -1,0 +1,28 @@
+-- Technology news feed with section filters
+app "Tech News" {
+  state articles = [{headline: "AI Model Breaks Records", source: "TechCrunch", time: "2h ago"}, {headline: "New Chip Architecture Unveiled", source: "Wired", time: "4h ago"}, {headline: "Open Source Framework Hits 1M Stars", source: "GitHub Blog", time: "6h ago"}]
+  state section = "latest"
+
+  column padding: 20px, gap: 16px {
+    heading "Tech News"
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+        text "Latest" color: #ffffff, font-size: 12px
+        on click: set section = "latest"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Trending" color: #ffffff, font-size: 12px
+        on click: set section = "trending"
+      }
+    }
+
+    each article in articles {
+      rect padding: 12px, color: #eff6ff, radius: 8px {
+        text "{article.headline}" font-weight: bold, font-size: 16px
+        text "{article.source}" color: #64748b
+        text "{article.time}" color: #2563eb, font-size: 12px
+      }
+    }
+  }
+}

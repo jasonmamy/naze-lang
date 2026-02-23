@@ -1,0 +1,13 @@
+-- JS data source
+app "Clock" {
+  data timestamp: js "Date.now"
+
+  column padding: 20px, gap: 16px {
+    heading "JS Clock"
+    text "Timestamp: {timestamp.data}" font-size: 20px
+
+    if timestamp.loading {
+      text "Loading..." color: #64748b
+    }
+  }
+}

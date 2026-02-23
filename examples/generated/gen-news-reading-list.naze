@@ -1,0 +1,20 @@
+-- Reading list
+app "Reading List" {
+  state saved = [{title: "The Future of Computing", source: "MIT Review", saved: "true"}, {title: "Climate Action Report", source: "UN", saved: "true"}, {title: "Design Systems Guide", source: "Figma", saved: "true"}]
+  computed saved-count = saved | count
+
+  column padding: 20px, gap: 16px {
+    heading "Reading List"
+    text "{saved-count} saved articles" color: #64748b
+
+    each article in saved {
+      row padding: 12px, color: #f8fafc, radius: 8px, gap: 8px {
+        rect width: 4px, height: 40px, color: #2563eb, radius: 2px
+        column gap: 2px {
+          text "{article.title}" font-weight: bold
+          text "{article.source}" color: #64748b, font-size: 12px
+        }
+      }
+    }
+  }
+}

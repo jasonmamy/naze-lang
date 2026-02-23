@@ -1,0 +1,22 @@
+-- Employee shift schedule with roles
+app "Shift Roster" {
+  state events = [{order: "1", time: "06:00", employee: "Alice - Morning", role: "Front Desk"}, {order: "2", time: "14:00", employee: "Bob - Afternoon", role: "Support"}, {order: "3", time: "22:00", employee: "Carol - Night", role: "Security"}]
+  computed event-count = events | count
+
+  column padding: 20px, gap: 16px {
+    heading "Shift Roster"
+    text "{event-count} shifts today" color: #64748b
+
+    each evt in events | sort-by order {
+      row padding: 12px, color: #faf5ff, radius: 8px, gap: 12px {
+        rect width: 60px, height: 40px, color: #7c3aed, radius: 4px {
+          text "{evt.time}" color: #ffffff, font-size: 12px
+        }
+        column gap: 2px {
+          text "{evt.employee}" font-weight: bold
+          text "{evt.role}" color: #64748b
+        }
+      }
+    }
+  }
+}

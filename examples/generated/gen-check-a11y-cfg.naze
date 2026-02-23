@@ -1,0 +1,31 @@
+-- Accessibility settings
+app "Accessibility" {
+  state high-contrast = false
+  state reduce-motion = false
+  state screen-reader = false
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Accessibility"
+    text "Make the app work for you" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: high-contrast, label: "High contrast mode"
+        checkbox bind: reduce-motion, label: "Reduce motion"
+        checkbox bind: screen-reader, label: "Screen reader hints"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #7c3aed, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

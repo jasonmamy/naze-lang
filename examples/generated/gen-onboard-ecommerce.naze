@@ -1,0 +1,54 @@
+-- E-commerce store setup wizard
+app "Shop Setup" {
+  state step = 1
+  state name = ""
+  state agreed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Shop Setup" color: #ea580c
+
+    row gap: 8px {
+      rect width: 32px, height: 32px, color: #ea580c, radius: 16px {
+        text "1" color: #ffffff, font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "2" font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "3" font-size: 14px
+      }
+    }
+
+    match step {
+      1: column gap: 12px {
+        text "Open Your Store" font-size: 20px, font-weight: bold
+        text "Start selling in minutes with our platform." color: #64748b
+        rect width: 140px, height: 40px, color: #ea580c, radius: 8px {
+          text "Get Started" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Name Your Store" font-size: 20px, font-weight: bold
+        text "Choose a memorable store name." color: #64748b
+        input bind: name, placeholder: "Store name"
+        rect width: 100px, height: 40px, color: #ea580c, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 3
+        }
+      }
+      3: column gap: 12px {
+        text "Seller Agreement" font-size: 20px, font-weight: bold
+        text "Review the seller terms and fees." color: #64748b
+        checkbox bind: agreed, label: "I accept the seller agreement"
+        rect width: 120px, height: 40px, color: #ea580c, radius: 8px {
+          text "Complete" color: #ffffff
+          on click: set step = 1
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

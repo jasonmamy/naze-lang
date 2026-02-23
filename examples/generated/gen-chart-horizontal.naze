@@ -1,0 +1,29 @@
+-- Skill levels horizontal bars
+app "Skill Chart" {
+  column padding: 24px, gap: 12px {
+    heading "Skill Levels" color: #4f46e5
+
+    column gap: 8px {
+      row gap: 8px {
+        text "Python" font-size: 13px
+        rect width: 200px, height: 20px, color: #6366f1, radius: 4px
+      }
+      row gap: 8px {
+        text "Rust  " font-size: 13px
+        rect width: 160px, height: 20px, color: #818cf8, radius: 4px
+      }
+      row gap: 8px {
+        text "Go    " font-size: 13px
+        rect width: 120px, height: 20px, color: #a5b4fc, radius: 4px
+      }
+      row gap: 8px {
+        text "JS    " font-size: 13px
+        rect width: 180px, height: 20px, color: #6366f1, radius: 4px
+      }
+      row gap: 8px {
+        text "SQL   " font-size: 13px
+        rect width: 140px, height: 20px, color: #818cf8, radius: 4px
+      }
+    }
+  }
+}

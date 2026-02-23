@@ -1,0 +1,26 @@
+-- Billing address form for payment
+app "Billing Address" {
+  state billing-street = ""
+  state billing-city = ""
+  state billing-state = ""
+  state billing-zip = ""
+  state saved = false
+
+  column padding: 20px, gap: 12px {
+    heading "Billing Address"
+
+    input bind: billing-street, placeholder: "Billing Address"
+    input bind: billing-city, placeholder: "City"
+    input bind: billing-state, placeholder: "State/Province"
+    input bind: billing-zip, placeholder: "Postal Code"
+
+    rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+      text "Continue" color: #ffffff
+      on click: set saved = true
+    }
+
+    if saved {
+      text "Billing address confirmed!" color: #16a34a
+    }
+  }
+}

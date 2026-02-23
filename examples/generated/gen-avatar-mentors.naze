@@ -1,0 +1,35 @@
+-- Available mentors with initials avatars
+app "Mentors" {
+  column padding: 24px, gap: 16px {
+    heading "Mentors"
+
+    row gap: 16px {
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #059669, radius: 24px {
+          text "JW" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Dr. Wells" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #7c3aed, radius: 24px {
+          text "AT" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Prof. Tan" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #dc2626, radius: 24px {
+          text "BH" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Dr. Hart" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #0891b2, radius: 24px {
+          text "CF" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Prof. Fox" font-size: 12px, color: #64748b
+      }
+    }
+
+    text "Available mentors for booking" color: #94a3b8, font-size: 14px
+  }
+}

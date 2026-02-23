@@ -1,0 +1,26 @@
+-- Office address entry form
+app "Office Location" {
+  state company = ""
+  state floor = ""
+  state building = ""
+  state address = ""
+  state saved = false
+
+  column padding: 20px, gap: 12px {
+    heading "Office Location"
+
+    input bind: company, placeholder: "Company Name"
+    input bind: floor, placeholder: "Floor / Suite"
+    input bind: building, placeholder: "Building Name"
+    input bind: address, placeholder: "Full Address"
+
+    rect width: 120px, height: 40px, color: #6366f1, radius: 8px {
+      text "Register" color: #ffffff
+      on click: set saved = true
+    }
+
+    if saved {
+      text "Office registered!" color: #16a34a
+    }
+  }
+}

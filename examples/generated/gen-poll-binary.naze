@@ -1,0 +1,23 @@
+-- Yes/No binary poll
+app "Quick Poll" {
+  state yes-count = 0
+  state no-count = 0
+  computed total = yes-count + no-count
+
+  column padding: 24px, gap: 16px {
+    heading "Do you like declarative UI?" color: #0f172a
+
+    row gap: 16px {
+      rect width: 120px, height: 50px, color: #16a34a, radius: 8px {
+        text "Yes ({yes-count})" color: #ffffff, font-size: 18px
+        on click: set yes-count = yes-count + 1
+      }
+      rect width: 120px, height: 50px, color: #dc2626, radius: 8px {
+        text "No ({no-count})" color: #ffffff, font-size: 18px
+        on click: set no-count = no-count + 1
+      }
+    }
+
+    text "{total} total votes" color: #64748b
+  }
+}

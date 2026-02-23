@@ -1,0 +1,48 @@
+-- Technical support FAQ accordion
+app "Technical FAQ" {
+  state open-section = ""
+
+  column padding: 20px, gap: 8px {
+    heading "Technical FAQ"
+
+    rect padding: 12px, color: #f0f9ff, radius: 8px {
+      text "What browsers are supported?" font-weight: bold, color: #0369a1
+      on click: set open-section = "s1"
+    }
+    if open-section == "s1" {
+      rect padding: 12px, color: #e0f2fe {
+        text "Chrome, Firefox, Safari, and Edge." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f0f9ff, radius: 8px {
+      text "Is there an API?" font-weight: bold, color: #0369a1
+      on click: set open-section = "s2"
+    }
+    if open-section == "s2" {
+      rect padding: 12px, color: #e0f2fe {
+        text "Yes, a REST API with full documentation." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f0f9ff, radius: 8px {
+      text "How is data stored?" font-weight: bold, color: #0369a1
+      on click: set open-section = "s3"
+    }
+    if open-section == "s3" {
+      rect padding: 12px, color: #e0f2fe {
+        text "Encrypted at rest with AES-256." color: #475569
+      }
+    }
+
+    rect padding: 12px, color: #f0f9ff, radius: 8px {
+      text "What about uptime?" font-weight: bold, color: #0369a1
+      on click: set open-section = "s4"
+    }
+    if open-section == "s4" {
+      rect padding: 12px, color: #e0f2fe {
+        text "We guarantee 99.9 percent uptime SLA." color: #475569
+      }
+    }
+  }
+}

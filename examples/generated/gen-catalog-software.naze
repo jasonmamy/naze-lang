@@ -1,0 +1,23 @@
+-- Software applications catalog
+app "App Store" {
+  state items = [{name: "Photo Editor", price: "$9.99", category: "Creative"}, {name: "Task Manager", price: "Free", category: "Productivity"}, {name: "Code IDE", price: "$29", category: "Developer"}, {name: "Music Player", price: "$4.99", category: "Media"}]
+  computed item-count = items | count
+  state view = "grid"
+
+  column padding: 24px, gap: 16px {
+    heading "App Store" color: #7c3aed
+    text "{item-count} apps listed" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each item in items | sort-by name {
+        rect padding: 14px, color: #f5f3ff, radius: 10px {
+          column gap: 6px {
+            text "{item.name}" font-weight: bold, font-size: 16px
+            text "{item.price}" color: #7c3aed, font-size: 14px
+            text "{item.category}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

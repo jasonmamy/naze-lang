@@ -1,0 +1,29 @@
+-- Time entries with project and hours
+app "Time Tracker" {
+  state items = [{project: "Website", hours: "3.5h"}, {project: "API", hours: "2h"}, {project: "Design", hours: "1.5h"}, {project: "Meetings", hours: "1h"}]
+  state view = "today"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Time Tracker"
+    text "{total} entries" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #16a34a, radius: 4px {
+        text "Today" color: #ffffff
+        on click: set view = "today"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Week" color: #ffffff
+        on click: set view = "week"
+      }
+    }
+
+    each entry in items | sort-by project {
+      row padding: 12px, color: #ecfdf5, radius: 4px, gap: 12px {
+        text "{entry.project}" font-weight: bold
+        text "{entry.hours}" color: #16a34a
+      }
+    }
+  }
+}

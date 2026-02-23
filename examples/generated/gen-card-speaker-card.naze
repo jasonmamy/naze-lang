@@ -1,0 +1,21 @@
+-- Conference speaker bio card
+app "Speaker Card" {
+  state speaker = "Dr. Elena Ruiz"
+
+  column padding: 20px, gap: 16px {
+    heading "Speaker Card"
+
+    rect width: 320px, color: #fdf2f8, radius: 12px, padding: 20px {
+      column gap: 8px {
+        text "{speaker}" font-size: 22px, font-weight: bold
+        text "AI Researcher, Stanford" color: #64748b
+        separator
+        row gap: 12px {
+          text "Talks: 38" color: #be185d
+          text "Papers: 120" color: #be185d
+        }
+        text "Keynote: Future of ML" color: #94a3b8, font-size: 13px
+      }
+    }
+  }
+}

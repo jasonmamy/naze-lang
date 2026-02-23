@@ -1,0 +1,28 @@
+-- Image gallery with titles and dates
+app "Photo Gallery" {
+  state items = [{title: "Sunset Beach", date: "Jan 5"}, {title: "Mountain View", date: "Jan 12"}, {title: "City Lights", date: "Jan 20"}, {title: "Forest Trail", date: "Feb 3"}]
+  state now-playing = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Photo Gallery"
+    text "{total} photos" color: #64748b
+
+    if now-playing != "none" {
+      rect padding: 12px, color: #be185d, radius: 8px {
+        text "Now: {now-playing}" color: #ffffff, font-size: 18px
+      }
+    }
+
+    each photo in items {
+      row padding: 12px, color: #fdf2f8, radius: 8px, gap: 12px {
+        text "{photo.title}" font-weight: bold
+        text "{photo.date}" color: #64748b
+        rect width: 60px, height: 28px, color: #ec4899, radius: 4px {
+          text "View" color: #ffffff
+          on click: set now-playing = "{photo.title}"
+        }
+      }
+    }
+  }
+}

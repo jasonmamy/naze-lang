@@ -1,0 +1,31 @@
+-- Countdown with conditional display
+app "Countdown" {
+  state seconds = 10
+  state mode = "ready"
+
+  timer tick: every 1s {
+    set seconds = seconds - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Countdown Timer"
+
+    match mode {
+      "ready": text "Press Start" color: #64748b, font-size: 20px
+      "running": text "{seconds}s" font-size: 48px, color: #2563eb
+      "done": text "Complete!" color: #16a34a, font-size: 24px
+      _: text "Unknown"
+    }
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Start" color: #ffffff
+        on click: set mode = "running"
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set seconds = 10
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+-- Music library
+app "Music" {
+  state playing = "Nothing"
+  state songs = [{title: "Bohemian Rhapsody", artist: "Queen"}, {title: "Imagine", artist: "Lennon"}, {title: "Yesterday", artist: "Beatles"}]
+  computed song-count = songs | count
+
+  column padding: 20px, gap: 16px {
+    heading "My Music"
+    text "Now playing: {playing}" color: #2563eb
+    text "{song-count} songs" color: #64748b
+
+    each song in songs | sort-by artist {
+      row padding: 12px, color: #faf5ff, radius: 8px, gap: 12px {
+        column gap: 2px {
+          text "{song.title}" font-weight: bold
+          text "{song.artist}" color: #8b5cf6, font-size: 12px
+        }
+        rect width: 60px, height: 32px, color: #8b5cf6, radius: 4px {
+          text "Play" color: #ffffff
+          on click: set playing = "Playing"
+        }
+      }
+    }
+  }
+}

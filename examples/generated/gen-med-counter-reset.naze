@@ -1,0 +1,25 @@
+-- Counter with controls
+app "Counter Pro" {
+  state count = 0
+  computed is-positive = count
+
+  column padding: 20px, gap: 16px {
+    heading "Counter" color: #1e293b
+    text "{count}" font-size: 48px, color: #2563eb
+
+    row gap: 8px {
+      rect width: 60px, height: 40px, color: #16a34a, radius: 8px {
+        text "+" color: #ffffff
+        on click: set count = count + 1
+      }
+      rect width: 60px, height: 40px, color: #ef4444, radius: 8px {
+        text "-" color: #ffffff
+        on click: set count = count - 1
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set count = 0
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+-- Auction bid incrementer
+app "Bidding" {
+  state bid = 100
+  state bids = 0
+
+  column padding: 20px, gap: 16px {
+    heading "Bidding"
+    text "{bid}" font-size: 24px, color: #a855f7
+    text "{bids}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #a855f7, radius: 8px {
+        text "Bid +10" color: #ffffff
+        on click: set bid = bid + 10
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Bid +50" color: #ffffff
+        on click: set bids = bids + 1
+      }
+      rect width: 80px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set bid = 100
+      }
+    }
+  }
+}

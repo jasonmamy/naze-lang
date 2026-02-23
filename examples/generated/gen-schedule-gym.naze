@@ -1,0 +1,22 @@
+-- Gym workout schedule with time slots
+app "Gym Schedule" {
+  state events = [{day: "Mon", time: "06:00", activity: "Chest and Triceps", trainer: "Coach Mike"}, {day: "Tue", time: "06:00", activity: "Back and Biceps", trainer: "Coach Sarah"}, {day: "Wed", time: "07:00", activity: "Legs", trainer: "Coach Mike"}]
+  computed event-count = events | count
+
+  column padding: 20px, gap: 16px {
+    heading "Gym Schedule"
+    text "{event-count} workouts" color: #64748b
+
+    each evt in events | sort-by day {
+      row padding: 12px, color: #ecfdf5, radius: 8px, gap: 12px {
+        rect width: 60px, height: 40px, color: #16a34a, radius: 4px {
+          text "{evt.time}" color: #ffffff, font-size: 12px
+        }
+        column gap: 2px {
+          text "{evt.activity}" font-weight: bold
+          text "{evt.trainer}" color: #64748b
+        }
+      }
+    }
+  }
+}

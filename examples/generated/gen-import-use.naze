@@ -1,0 +1,16 @@
+-- Import external module
+import crypto from "./lib/crypto.wasm"
+
+app "Secure App" {
+  state token = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Secure Operations"
+    text "Token: {token}" color: #64748b
+
+    rect width: 140px, height: 40px, color: #7c3aed, radius: 8px {
+      text "Generate" color: #ffffff
+      on click: set token = "generated"
+    }
+  }
+}

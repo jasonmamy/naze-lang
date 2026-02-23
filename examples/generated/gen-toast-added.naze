@@ -1,0 +1,32 @@
+-- Toast after adding item to cart
+app "Cart Toast" {
+  state show-toast = false
+  state action-done = false
+
+  column padding: 24px, gap: 16px {
+    heading "Cart Toast"
+    text "Browse our product catalog." color: #64748b
+
+    row gap: 8px {
+      rect width: 120px, height: 40px, color: #7c3aed, radius: 8px {
+        text "Add to Cart" color: #ffffff
+        on click: set show-toast = true
+        on click: set action-done = true
+      }
+    }
+
+    if show-toast {
+      rect width: 340px, height: 48px, color: #f5f3ff, radius: 8px {
+        row padding: 12px, gap: 12px {
+          text "[+]" font-size: 16px
+          text "Item added to your cart!" color: #5b21b6, font-size: 14px
+          spacer
+          rect width: 24px, height: 24px, radius: 4px {
+            text "x" color: #5b21b6, font-size: 12px
+            on click: set show-toast = false
+          }
+        }
+      }
+    }
+  }
+}

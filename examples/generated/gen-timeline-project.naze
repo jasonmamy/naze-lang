@@ -1,0 +1,24 @@
+-- Software project milestone timeline
+app "Project Timeline" {
+  state events = [{time: "Jan 10", title: "Kickoff", detail: "Requirements gathered"}, {time: "Feb 15", title: "Alpha", detail: "Core features complete"}, {time: "Mar 20", title: "Beta", detail: "User testing begins"}, {time: "Apr 01", title: "Launch", detail: "Public release"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Project Timeline" color: #2563eb
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #3b82f6, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

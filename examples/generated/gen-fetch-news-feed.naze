@@ -1,0 +1,25 @@
+-- News articles from API
+app "News Feed" {
+  data articles: fetch "/api/news"
+
+  column padding: 20px, gap: 16px {
+    heading "News Feed"
+
+    if articles.loading {
+      text "Loading articles..." color: #64748b
+    }
+
+    if articles.error {
+      text "Failed to load articles" color: #dc2626
+    }
+
+    if articles.data {
+      text "articles loaded successfully" color: #16a34a
+      each article in articles.data {
+        row padding: 8px, color: #fefce8, radius: 4px {
+          text "{article.headline}"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+-- Support contact channels page
+app "Contact Support" {
+  column padding: 24px, gap: 16px {
+    heading "Contact Support" color: #16a34a
+    text "We are here to help" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        column gap: 4px {
+          text "Email Support" font-weight: bold
+          text "24h response time" color: #64748b, font-size: 14px
+          text "help@example.com" color: #16a34a, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        column gap: 4px {
+          text "Live Chat" font-weight: bold
+          text "Available 9-5 EST" color: #64748b, font-size: 14px
+          text "chat.example.com" color: #16a34a, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #f0fdf4, radius: 8px {
+        column gap: 4px {
+          text "Phone" font-weight: bold
+          text "Mon-Fri 9am-5pm" color: #64748b, font-size: 14px
+          text "+1 555-0100" color: #16a34a, font-size: 14px
+        }
+      }
+    }
+  }
+}

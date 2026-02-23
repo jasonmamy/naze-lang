@@ -1,0 +1,36 @@
+-- Task status badge labels
+app "Task Status" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Task Status"
+    text "Filter by status" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #dbeafe, radius: 12px {
+        text "Open" color: #1e40af, font-size: 13px
+        on click: set selected-tag = "Open"
+      }
+      rect padding: 8px, color: #fef3c7, radius: 12px {
+        text "In Progress" color: #92400e, font-size: 13px
+        on click: set selected-tag = "In Progress"
+      }
+      rect padding: 8px, color: #f3e8ff, radius: 12px {
+        text "Review" color: #7e22ce, font-size: 13px
+        on click: set selected-tag = "Review"
+      }
+      rect padding: 8px, color: #d1fae5, radius: 12px {
+        text "Done" color: #065f46, font-size: 13px
+        on click: set selected-tag = "Done"
+      }
+      rect padding: 8px, color: #fee2e2, radius: 12px {
+        text "Blocked" color: #991b1b, font-size: 13px
+        on click: set selected-tag = "Blocked"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

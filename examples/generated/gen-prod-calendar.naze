@@ -1,0 +1,27 @@
+-- Calendar events
+app "Calendar" {
+  state events = [{day: "Mon", event: "Team standup"}, {day: "Tue", event: "Design review"}, {day: "Wed", event: "Sprint demo"}, {day: "Thu", event: "1-on-1s"}, {day: "Fri", event: "Retrospective"}]
+  state selected-day = "Mon"
+
+  column padding: 20px, gap: 16px {
+    heading "This Week"
+
+    row gap: 4px {
+      each evt in events {
+        rect width: 60px, height: 40px, color: #e2e8f0, radius: 4px {
+          text "{evt.day}"
+          on click: set selected-day = "{evt.day}"
+        }
+      }
+    }
+
+    text "Selected: {selected-day}" color: #2563eb, font-size: 18px
+
+    each evt in events {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 8px {
+        text "{evt.day}" font-weight: bold, color: #64748b
+        text "{evt.event}"
+      }
+    }
+  }
+}

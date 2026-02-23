@@ -1,0 +1,21 @@
+-- Employee report
+app "HR Report" {
+  state employees = [{name: "Alice", dept: "eng", salary: 95000}, {name: "Bob", dept: "design", salary: 85000}, {name: "Carol", dept: "eng", salary: 105000}]
+  computed headcount = employees | count
+  computed total-salary = employees | map salary | sum
+  computed eng-count = employees | filter dept == "eng" | count
+
+  column padding: 20px, gap: 16px {
+    heading "HR Report"
+    text "{headcount} employees, {eng-count} engineers" color: #64748b
+    text "Payroll: ${total-salary}" color: #16a34a
+
+    each emp in employees | sort-by dept {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 8px {
+        text "{emp.name}" font-weight: bold
+        text "{emp.dept}" color: #8b5cf6, font-size: 12px
+        text "${emp.salary}" color: #16a34a
+      }
+    }
+  }
+}

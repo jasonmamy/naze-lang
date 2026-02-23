@@ -1,0 +1,44 @@
+-- Review summary dashboard
+app "Review Summary" {
+  state total = 124
+  state avg-rating = 4
+  state five-star = 68
+  state four-star = 32
+  state three-star = 14
+  state two-star = 7
+  state one-star = 3
+
+  column padding: 20px, gap: 16px {
+    heading "Review Summary"
+    text "Average: {avg-rating} / 5" font-size: 28px, color: #f59e0b
+    text "{total} total reviews" color: #64748b
+
+    column gap: 8px {
+      row gap: 8px {
+        text "5 stars" font-weight: bold
+        rect width: 200px, height: 16px, color: #fde68a, radius: 4px
+        text "{five-star}" color: #64748b
+      }
+      row gap: 8px {
+        text "4 stars" font-weight: bold
+        rect width: 150px, height: 16px, color: #fde68a, radius: 4px
+        text "{four-star}" color: #64748b
+      }
+      row gap: 8px {
+        text "3 stars" font-weight: bold
+        rect width: 80px, height: 16px, color: #fde68a, radius: 4px
+        text "{three-star}" color: #64748b
+      }
+      row gap: 8px {
+        text "2 stars" font-weight: bold
+        rect width: 40px, height: 16px, color: #fde68a, radius: 4px
+        text "{two-star}" color: #64748b
+      }
+      row gap: 8px {
+        text "1 star" font-weight: bold
+        rect width: 20px, height: 16px, color: #fde68a, radius: 4px
+        text "{one-star}" color: #64748b
+      }
+    }
+  }
+}

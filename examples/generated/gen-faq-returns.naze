@@ -1,0 +1,35 @@
+-- Product return policy questions
+app "Returns FAQ" {
+  state show-q1 = false
+  state show-q2 = false
+  state show-q3 = false
+
+  column padding: 24px, gap: 12px {
+    heading "Returns FAQ" color: #dc2626
+    text "Return policy details" color: #64748b
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "What is the return window?" font-weight: bold
+      on click: set show-q1 = true
+    }
+    if show-q1 {
+      text "You have 30 days to return unused items." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "How do I start a return?" font-weight: bold
+      on click: set show-q2 = true
+    }
+    if show-q2 {
+      text "Contact support with your order number." color: #475569
+    }
+
+    rect padding: 12px, color: #f8fafc, radius: 8px {
+      text "Who pays for return shipping?" font-weight: bold
+      on click: set show-q3 = true
+    }
+    if show-q3 {
+      text "We provide a prepaid return label." color: #475569
+    }
+  }
+}

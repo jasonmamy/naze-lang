@@ -1,0 +1,31 @@
+-- Push notification settings
+app "Push Notifications" {
+  state new-messages = true
+  state mentions = true
+  state promotions = false
+  state saved = false
+
+  column padding: 20px, gap: 16px {
+    heading "Push Notifications"
+    text "Manage push notifications" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      column gap: 12px {
+        checkbox bind: new-messages, label: "New messages"
+        checkbox bind: mentions, label: "Mentions and replies"
+        checkbox bind: promotions, label: "Promotional alerts"
+      }
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+    }
+
+    if saved {
+      text "Settings saved!" color: #16a34a
+    }
+  }
+}

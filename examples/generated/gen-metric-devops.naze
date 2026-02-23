@@ -1,0 +1,30 @@
+-- Infrastructure health dashboard
+app "DevOps Metrics" {
+  state uptime = 99
+  state latency = 45
+  state errors-today = 3
+  state deploys = 12
+
+  column padding: 24px, gap: 16px {
+    heading "DevOps Metrics" color: #0f172a
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #f0fdf4, radius: 10px {
+        text "Uptime %" color: #64748b, font-size: 13px
+        text "{uptime}" font-size: 28px, color: #15803d
+      }
+      rect padding: 16px, color: #eff6ff, radius: 10px {
+        text "Latency (ms)" color: #64748b, font-size: 13px
+        text "{latency}" font-size: 28px, color: #1d4ed8
+      }
+      rect padding: 16px, color: #fef2f2, radius: 10px {
+        text "Errors Today" color: #64748b, font-size: 13px
+        text "{errors-today}" font-size: 28px, color: #dc2626
+      }
+      rect padding: 16px, color: #f5f3ff, radius: 10px {
+        text "Deploys / Week" color: #64748b, font-size: 13px
+        text "{deploys}" font-size: 28px, color: #7c3aed
+      }
+    }
+  }
+}

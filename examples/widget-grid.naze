@@ -1,0 +1,56 @@
+-- Responsive widget grid
+app "Widgets" {
+  state active-widget = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Widget Dashboard"
+
+    row responsive: 768px, gap: 16px {
+      column gap: 12px, width: 200px {
+        text "Sidebar" font-weight: bold
+        rect padding: 8px, color: #f3f4f6, radius: 4px {
+          text "Widget A"
+          on click: set active-widget = "a"
+        }
+        rect padding: 8px, color: #f3f4f6, radius: 4px {
+          text "Widget B"
+          on click: set active-widget = "b"
+        }
+        rect padding: 8px, color: #f3f4f6, radius: 4px {
+          text "Widget C"
+          on click: set active-widget = "c"
+        }
+      }
+
+      column gap: 12px {
+        text "Active: {active-widget}" font-size: 20px
+        grid columns: 2, gap: 12px {
+          container padding: 16px, color: #eff6ff, radius: 8px {
+            column gap: 4px {
+              text "Metric 1"
+              heading "42" font-size: 24px
+            }
+          }
+          container padding: 16px, color: #f0fdf4, radius: 8px {
+            column gap: 4px {
+              text "Metric 2"
+              heading "128" font-size: 24px
+            }
+          }
+          container padding: 16px, color: #fef3c7, radius: 8px {
+            column gap: 4px {
+              text "Metric 3"
+              heading "7.2%" font-size: 24px
+            }
+          }
+          container padding: 16px, color: #fce7f3, radius: 8px {
+            column gap: 4px {
+              text "Metric 4"
+              heading "99.9%" font-size: 24px
+            }
+          }
+        }
+      }
+    }
+  }
+}

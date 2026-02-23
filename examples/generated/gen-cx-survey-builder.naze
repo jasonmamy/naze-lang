@@ -1,0 +1,39 @@
+-- Survey
+app "Survey" {
+  state step = 1
+  state answer1 = ""
+  state answer2 = ""
+  state submitted = false
+  computed progress = step * 50
+
+  column padding: 20px, gap: 16px {
+    heading "Customer Survey"
+    text "Progress: {progress}%" color: #64748b
+
+    if submitted == false {
+      match step {
+        1: column gap: 12px {
+          text "How did you hear about us?" font-weight: bold
+          input bind: answer1, placeholder: "Your answer..."
+          rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+            text "Next" color: #ffffff
+            on click: set step = 2
+          }
+        }
+        2: column gap: 12px {
+          text "Any suggestions?" font-weight: bold
+          textarea bind: answer2, placeholder: "Your suggestions..."
+          rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+            text "Submit" color: #ffffff
+            on click: set submitted = true
+          }
+        }
+        _: text "Complete"
+      }
+    }
+
+    if submitted {
+      text "Thank you for your feedback!" color: #16a34a, font-size: 20px
+    }
+  }
+}

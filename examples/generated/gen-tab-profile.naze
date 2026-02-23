@@ -1,0 +1,39 @@
+-- Profile tabs with info, activity, and settings
+app "User Profile" {
+  state tab = "info"
+
+  column padding: 20px, gap: 16px {
+    heading "User Profile"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #2563eb, radius: 0px {
+        text "Info" color: #ffffff
+        on click: set tab = "info"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Activity" color: #334155
+        on click: set tab = "activity"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Settings" color: #334155
+        on click: set tab = "settings"
+      }
+    }
+
+    match tab {
+      "info": column padding: 16px, gap: 8px {
+        text "Personal Information" font-weight: bold
+        text "Name, email, and bio details." color: #64748b
+      }
+      "activity": column padding: 16px, gap: 8px {
+        text "Recent Activity" font-weight: bold
+        text "Posts, comments, and likes." color: #64748b
+      }
+      "settings": column padding: 16px, gap: 8px {
+        text "Account Settings" font-weight: bold
+        text "Password, notifications, privacy." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

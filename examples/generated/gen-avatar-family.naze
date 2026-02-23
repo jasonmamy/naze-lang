@@ -1,0 +1,35 @@
+-- Family shared album member avatars
+app "Family Group" {
+  column padding: 24px, gap: 16px {
+    heading "Family Group"
+
+    row gap: 16px {
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #ec4899, radius: 24px {
+          text "MA" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Mom" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #3b82f6, radius: 24px {
+          text "DA" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Dad" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #f59e0b, radius: 24px {
+          text "SI" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Sis" font-size: 12px, color: #64748b
+      }
+      column gap: 4px {
+        rect width: 48px, height: 48px, color: #8b5cf6, radius: 24px {
+          text "BR" color: #ffffff, font-size: 18px, font-weight: bold
+        }
+        text "Bro" font-size: 12px, color: #64748b
+      }
+    }
+
+    text "Family photo album members" color: #94a3b8, font-size: 14px
+  }
+}

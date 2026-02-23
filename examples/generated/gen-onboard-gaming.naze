@@ -1,0 +1,54 @@
+-- Gaming platform onboarding
+app "Game Setup" {
+  state step = 1
+  state name = ""
+  state agreed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Game Setup" color: #9333ea
+
+    row gap: 8px {
+      rect width: 32px, height: 32px, color: #9333ea, radius: 16px {
+        text "1" color: #ffffff, font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "2" font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "3" font-size: 14px
+      }
+    }
+
+    match step {
+      1: column gap: 12px {
+        text "Ready to Play" font-size: 20px, font-weight: bold
+        text "Join millions of gamers worldwide." color: #64748b
+        rect width: 140px, height: 40px, color: #9333ea, radius: 8px {
+          text "Get Started" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Choose Your Tag" font-size: 20px, font-weight: bold
+        text "Pick a gamer tag that represents you." color: #64748b
+        input bind: name, placeholder: "Gamer tag"
+        rect width: 100px, height: 40px, color: #9333ea, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 3
+        }
+      }
+      3: column gap: 12px {
+        text "Fair Play Policy" font-size: 20px, font-weight: bold
+        text "We enforce a strict no-cheating policy." color: #64748b
+        checkbox bind: agreed, label: "I agree to play fair"
+        rect width: 120px, height: 40px, color: #9333ea, radius: 8px {
+          text "Complete" color: #ffffff
+          on click: set step = 1
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

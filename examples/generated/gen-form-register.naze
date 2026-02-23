@@ -1,0 +1,22 @@
+-- Registration form with name and email
+app "Register" {
+  state name = ""
+  state email = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Register"
+
+    input bind: name, placeholder: "Full Name"
+    input bind: email, placeholder: "Email Address"
+
+    rect width: 120px, height: 40px, color: #16a34a, radius: 8px {
+      text "Sign Up" color: #ffffff
+      on click: set submitted = true
+    }
+
+    if submitted {
+      text "Account created!" color: #16a34a
+    }
+  }
+}

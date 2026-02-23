@@ -1,0 +1,23 @@
+-- News ticker
+app "News Ticker" {
+  state headline-index = 0
+
+  timer rotate: every 3s {
+    set headline-index = headline-index + 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Live News"
+
+    rect width: 500px, height: 40px, color: #1e293b, radius: 4px {
+      match headline-index {
+        0: text "Markets close at record high" color: #fbbf24
+        1: text "Weather alert for eastern coast" color: #fbbf24
+        2: text "Tech conference keynote announced" color: #fbbf24
+        _: text "Sports: Championship finals tonight" color: #fbbf24
+      }
+    }
+
+    text "Headline #{headline-index}" color: #64748b, font-size: 12px
+  }
+}

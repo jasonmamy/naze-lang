@@ -1,0 +1,15 @@
+-- Context menu event
+app "Context Menu" {
+  state last-action = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Right-Click Demo"
+
+    rect width: 200px, height: 100px, color: #e2e8f0, radius: 8px {
+      text "Right-click me"
+      on context-menu: set last-action = "context-menu"
+    }
+
+    text "Last action: {last-action}" color: #64748b
+  }
+}

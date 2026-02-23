@@ -1,0 +1,20 @@
+-- Session storage
+app "Preferences" {
+  storage view-mode: session "view-mode" default: "list"
+
+  column padding: 20px, gap: 16px {
+    heading "View Settings"
+    text "Current mode: {view-mode}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "List" color: #ffffff
+        on click: set view-mode = "list"
+      }
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "Grid" color: #ffffff
+        on click: set view-mode = "grid"
+      }
+    }
+  }
+}

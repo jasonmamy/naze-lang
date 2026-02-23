@@ -1,0 +1,42 @@
+-- Profile editor
+app "My Profile" {
+  storage display-name: local "profile-name" default: "Anonymous"
+  state email = ""
+  state visibility = "public"
+  state show-email = true
+  state mode = "view"
+
+  column padding: 20px, gap: 16px {
+    heading "Profile"
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #2563eb, radius: 4px {
+        text "View" color: #ffffff
+        on click: set mode = "view"
+      }
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Edit" color: #ffffff
+        on click: set mode = "edit"
+      }
+    }
+
+    match mode {
+      "view": column gap: 8px {
+        text "Name: {display-name}" font-size: 20px
+        text "Visibility: {visibility}" color: #94a3b8
+        if show-email {
+          text "Email is public" color: #16a34a
+        }
+      }
+      "edit": column gap: 12px {
+        input bind: display-name, placeholder: "Display name"
+        input bind: email, placeholder: "Email"
+        select bind: visibility {
+          option "Public" value: "public"
+          option "Private" value: "private"
+        }
+        checkbox bind: show-email, label: "Show email publicly"
+      }
+      _: text "Error"
+    }
+  }
+}

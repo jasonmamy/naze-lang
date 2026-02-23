@@ -1,0 +1,30 @@
+-- Side-by-side product comparison view
+app "Compare Products" {
+  state items = [{name: "Phone A", price: "$799"}, {name: "Phone B", price: "$699"}, {name: "Phone C", price: "$599"}]
+  state selected = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Compare Products"
+    text "{total} phones" color: #64748b
+
+    grid columns: 3, gap: 12px {
+      each phone in items | sort-by name {
+        rect padding: 16px, color: #eff6ff, radius: 8px {
+          column gap: 4px {
+            text "{phone.name}" font-weight: bold
+            text "{phone.price}" color: #1e40af
+          }
+          rect width: 80px, height: 32px, color: #3b82f6, radius: 4px {
+            text "Pick" color: #ffffff
+            on click: set selected = "{phone.name}"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a
+    }
+  }
+}

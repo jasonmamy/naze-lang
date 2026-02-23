@@ -1,0 +1,46 @@
+-- Privacy and data sharing preferences
+app "Privacy Settings" {
+  state public-profile = false
+  state share-analytics = false
+  state data-region = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Privacy Settings"
+    text "Control your data" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "Profile Visibility" font-weight: bold, font-size: 14px
+        checkbox bind: public-profile, label: "Make profile public"
+      }
+
+      column gap: 4px {
+        text "Analytics Sharing" font-weight: bold, font-size: 14px
+        checkbox bind: share-analytics, label: "Share usage analytics"
+      }
+
+      column gap: 4px {
+        text "Data Region" font-weight: bold, font-size: 14px
+        input bind: data-region, placeholder: "Preferred data region"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #7c3aed, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Privacy settings updated!" color: #16a34a
+    }
+  }
+}

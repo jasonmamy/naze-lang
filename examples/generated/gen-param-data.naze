@@ -1,0 +1,17 @@
+-- URL parameter with data fetching
+app "User Profile" {
+  param user-id: number default: 1
+  data profile: fetch "/api/users/{user-id}"
+
+  column padding: 20px, gap: 16px {
+    heading "User Profile"
+
+    if profile.loading {
+      text "Loading..." color: #64748b
+    }
+
+    if profile.data {
+      text "Profile for user #{user-id}" font-size: 20px
+    }
+  }
+}

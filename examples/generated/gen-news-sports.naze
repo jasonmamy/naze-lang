@@ -1,0 +1,28 @@
+-- Sports news with live updates
+app "Sports News" {
+  state articles = [{headline: "Championship Final Set", source: "ESPN", time: "1h ago"}, {headline: "Record Transfer Fee Agreed", source: "Sky Sports", time: "3h ago"}, {headline: "Olympic Qualification Round Results", source: "NBC Sports", time: "5h ago"}]
+  state section = "live"
+
+  column padding: 20px, gap: 16px {
+    heading "Sports News"
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #16a34a, radius: 4px {
+        text "Live" color: #ffffff, font-size: 12px
+        on click: set section = "live"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "Scores" color: #ffffff, font-size: 12px
+        on click: set section = "scores"
+      }
+    }
+
+    each article in articles {
+      rect padding: 12px, color: #ecfdf5, radius: 8px {
+        text "{article.headline}" font-weight: bold, font-size: 16px
+        text "{article.source}" color: #64748b
+        text "{article.time}" color: #16a34a, font-size: 12px
+      }
+    }
+  }
+}

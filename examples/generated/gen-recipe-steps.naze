@@ -1,0 +1,31 @@
+-- Step by step recipe
+app "Banana Bread" {
+  state step = 1
+  state total-steps = 5
+
+  column padding: 20px, gap: 16px {
+    heading "Banana Bread"
+    text "Step {step} of {total-steps}" color: #64748b
+
+    rect width: 300px, height: 8px, color: #e2e8f0, radius: 4px
+
+    match step {
+      1: text "Preheat oven to 350F. Grease a loaf pan."
+      2: text "Mash 3 ripe bananas in a large bowl."
+      3: text "Mix in melted butter, sugar, egg, and vanilla."
+      4: text "Fold in flour, baking soda, and salt."
+      _: text "Pour into pan and bake 55-60 minutes."
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #64748b, radius: 4px {
+        text "Previous" color: #ffffff
+        on click: set step = step - 1
+      }
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Next" color: #ffffff
+        on click: set step = step + 1
+      }
+    }
+  }
+}

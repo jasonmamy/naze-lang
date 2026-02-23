@@ -1,0 +1,20 @@
+-- Footer with horizontal links
+app "Link Footer" {
+  column gap: 16px {
+    heading "Page Title"
+    text "Page content above the footer" color: #64748b
+
+    spacer height: 60px
+    separator
+
+    row gap: 24px {
+      link "Home" href: "/"
+      link "About" href: "/about"
+      link "Blog" href: "/blog"
+      link "Contact" href: "/contact"
+      link "Privacy" href: "/privacy"
+    }
+
+    text "Built with Naze" color: #94a3b8, font-size: 12px
+  }
+}

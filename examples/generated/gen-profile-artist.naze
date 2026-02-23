@@ -1,0 +1,43 @@
+-- Digital artist showcase profile
+app "Artist Profile" {
+  state username = "luna_art"
+  state bio = "Digital artist and animator"
+  state followers = 5600
+  state following = 95
+  computed ratio = followers / following
+
+  column padding: 24px, gap: 16px {
+    heading "Artist Profile"
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #f59e0b, radius: 40px {
+        text "L" color: #ffffff, font-size: 32px
+      }
+      column gap: 4px {
+        text "{username}" font-size: 22px, font-weight: bold
+        text "{bio}" color: #64748b
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Followers" color: #64748b, font-size: 12px
+        text "{followers}" font-size: 20px, color: #d97706
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Following" color: #64748b, font-size: 12px
+        text "{following}" font-size: 20px, color: #d97706
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Ratio" color: #64748b, font-size: 12px
+        text "{ratio}" font-size: 20px, color: #d97706
+      }
+    }
+
+    separator
+
+    rect padding: 12px, color: #fef3c7, radius: 8px {
+      link "Portfolio" href: "https://artstation.com"
+    }
+  }
+}

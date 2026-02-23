@@ -1,0 +1,17 @@
+-- Developer tools list sorted by name
+app "Dev Tools" {
+  state items = [{name: "VSCode", kind: "editor"}, {name: "Git", kind: "vcs"}, {name: "Docker", kind: "container"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Dev Tools"
+    text "{total} tools" color: #64748b
+
+    each tool in items | sort-by name {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 8px {
+        text "{tool.name}" font-weight: bold
+        text "{tool.kind}" color: #64748b
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+-- Product catalog from API
+app "Catalog" {
+  data catalog: fetch "/api/products"
+
+  column padding: 20px, gap: 16px {
+    heading "Catalog"
+
+    if catalog.loading {
+      text "Loading products..." color: #64748b
+    }
+
+    if catalog.error {
+      text "Failed to load products" color: #dc2626
+    }
+
+    if catalog.data {
+      text "products loaded successfully" color: #16a34a
+      each item in catalog.data {
+        row padding: 8px, color: #f0fdf4, radius: 4px {
+          text "{item.name}"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+-- Map navigation toolbar with view controls
+app "Map Controls" {
+  state active-tool = "pan"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #f8fafc {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #3b82f6, radius: 6px {
+          text "+" color: #ffffff, font-size: 14px
+          on click: set active-tool = "zoom-in"
+        }
+        rect width: 36px, height: 36px, color: #3b82f6, radius: 6px {
+          text "-" color: #ffffff, font-size: 14px
+          on click: set active-tool = "zoom-out"
+        }
+        rect width: 36px, height: 36px, color: #16a34a, radius: 6px {
+          text "M" color: #ffffff, font-size: 14px
+          on click: set active-tool = "pan"
+        }
+        rect width: 36px, height: 36px, color: #f59e0b, radius: 6px {
+          text "P" color: #ffffff, font-size: 14px
+          on click: set active-tool = "pin"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #8b5cf6, radius: 6px {
+          text "L" color: #ffffff, font-size: 14px
+          on click: set active-tool = "layers"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "zoom-in": text "Zoom in on the map." color: #64748b
+        "zoom-out": text "Zoom out on the map." color: #64748b
+        "pan": text "Pan across the map." color: #64748b
+        "pin": text "Drop a pin on the map." color: #64748b
+        "layers": text "Toggle map layer display." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

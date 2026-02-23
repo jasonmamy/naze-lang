@@ -1,0 +1,26 @@
+-- Zoom level control
+app "Zoom" {
+  state zoom = 100
+  state mode = "fit"
+
+  column padding: 20px, gap: 16px {
+    heading "Zoom"
+    text "{zoom}" font-size: 24px, color: #6366f1
+    text "{mode}" color: #64748b
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #6366f1, radius: 8px {
+        text "Zoom In" color: #ffffff
+        on click: set zoom = zoom + 25
+      }
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Zoom Out" color: #ffffff
+        on click: set mode = "manual"
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Reset"
+        on click: set zoom = 100
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+-- Footer with newsletter signup
+app "Newsletter Footer" {
+  state email = ""
+  state subscribed = false
+
+  column {
+    heading "Welcome"
+    text "Site content here" color: #64748b
+    spacer height: 80px
+
+    rect width: 800px, color: #1e293b {
+      column padding: 32px, gap: 16px {
+        row gap: 48px {
+          column gap: 8px {
+            text "Newsletter" color: #ffffff, font-weight: bold
+            text "Get updates in your inbox" color: #94a3b8, font-size: 14px
+            row gap: 8px {
+              input bind: email, placeholder: "Enter email"
+              rect width: 100px, height: 36px, color: #3b82f6, radius: 6px {
+                text "Join" color: #ffffff
+                on click: set subscribed = true
+              }
+            }
+            if subscribed {
+              text "Subscribed!" color: #4ade80, font-size: 14px
+            }
+          }
+          column gap: 6px {
+            text "Follow Us" color: #ffffff, font-weight: bold
+            text "Twitter" color: #94a3b8, font-size: 14px
+            text "GitHub" color: #94a3b8, font-size: 14px
+            text "Discord" color: #94a3b8, font-size: 14px
+          }
+        }
+        separator
+        text "2025 Company Inc." color: #64748b, font-size: 12px
+      }
+    }
+  }
+}

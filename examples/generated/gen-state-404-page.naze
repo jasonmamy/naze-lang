@@ -1,0 +1,26 @@
+-- 404 error page with return home action
+app "Page Not Found" {
+  state action-taken = false
+
+  column padding: 40px, gap: 16px {
+    rect width: 100px, height: 100px, color: #fef2f2, radius: 50px {
+      text "?" font-size: 40px, color: #dc2626
+    }
+
+    heading "Page Not Found" font-size: 22px
+    text "The page you are looking for does not exist or has been moved." color: #64748b
+
+    if action-taken == false {
+      rect width: 120px, height: 44px, color: #2563eb, radius: 8px {
+        text "Go Home" color: #ffffff
+        on click: set action-taken = true
+      }
+    }
+
+    if action-taken {
+      text "Redirecting home..." color: #16a34a
+    }
+
+    text "Error 404" color: #94a3b8, font-size: 13px
+  }
+}

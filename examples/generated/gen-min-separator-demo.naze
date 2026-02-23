@@ -1,0 +1,8 @@
+-- Two headings separated by a divider line
+app "Divider" {
+  column padding: 20px {
+    heading "Above"
+    separator
+    heading "Below"
+  }
+}

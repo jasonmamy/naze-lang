@@ -1,0 +1,18 @@
+-- User activity log with timestamps
+app "Activity Log" {
+  state entries = [{time: "09:15", action: "Logged in", user: "Alice"}, {time: "09:32", action: "Created project", user: "Alice"}, {time: "10:05", action: "Invited Bob", user: "Alice"}, {time: "10:20", action: "Joined team", user: "Bob"}]
+  computed total-entries = entries | count
+
+  column padding: 24px, gap: 16px {
+    heading "Activity Log" color: #2563eb
+    text "{total-entries} events logged" color: #64748b
+
+    each entry in entries {
+      row padding: 10px, color: #f8fafc, radius: 6px, gap: 12px {
+        text "{entry.time}" color: #94a3b8, font-size: 12px
+        text "{entry.action}" font-size: 14px
+        text "{entry.user}" color: #2563eb, font-size: 12px
+      }
+    }
+  }
+}

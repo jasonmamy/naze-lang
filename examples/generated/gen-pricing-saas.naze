@@ -1,0 +1,58 @@
+-- SaaS subscription pricing table
+app "SaaS Pricing" {
+  state selected = "none"
+
+  column padding: 24px, gap: 16px {
+    heading "SaaS Pricing" color: #0f172a
+    text "Choose the plan that fits your needs" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Starter" font-weight: bold, font-size: 18px
+          text "$9/mo" color: #2563eb, font-size: 28px
+          text "For individuals" color: #64748b, font-size: 14px
+          separator
+          text "5 projects" font-size: 14px
+          text "1GB storage" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Starter"
+          }
+        }
+      }
+      rect padding: 20px, color: #eff6ff, radius: 12px {
+        column gap: 8px {
+          text "Pro" font-weight: bold, font-size: 18px
+          text "$29/mo" color: #2563eb, font-size: 28px
+          text "For teams" color: #64748b, font-size: 14px
+          separator
+          text "Unlimited projects" font-size: 14px
+          text "50GB storage" font-size: 14px
+          rect width: 120px, height: 36px, color: #2563eb, radius: 6px {
+            text "Choose" color: #ffffff
+            on click: set selected = "Pro"
+          }
+        }
+      }
+      rect padding: 20px, color: #f8fafc, radius: 12px {
+        column gap: 8px {
+          text "Enterprise" font-weight: bold, font-size: 18px
+          text "$99/mo" color: #2563eb, font-size: 28px
+          text "For organizations" color: #64748b, font-size: 14px
+          separator
+          text "Custom limits" font-size: 14px
+          text "Priority support" font-size: 14px
+          rect width: 120px, height: 36px, color: #e2e8f0, radius: 6px {
+            text "Choose" color: #475569
+            on click: set selected = "Enterprise"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #2563eb, font-weight: bold
+    }
+  }
+}

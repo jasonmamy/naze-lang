@@ -1,0 +1,19 @@
+-- Pointer move tracking
+app "Pointer Tracker" {
+  state pos-x = 0
+  state pos-y = 0
+
+  column padding: 20px, gap: 16px {
+    heading "Pointer Position"
+
+    rect width: 400px, height: 300px, color: #f1f5f9, radius: 8px {
+      text "Move pointer here"
+      on pointer-move: set pos-x = pos-x + 1
+    }
+
+    row gap: 16px {
+      text "X: {pos-x}" color: #2563eb
+      text "Y: {pos-y}" color: #2563eb
+    }
+  }
+}

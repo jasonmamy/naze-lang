@@ -1,0 +1,29 @@
+-- Search with filters
+app "Search and Filter" {
+  state search-query = ""
+  state sort-order = "relevance"
+  state result-count = 42
+
+  column padding: 20px, gap: 16px {
+    heading "Search"
+
+    row gap: 8px {
+      input bind: search-query, placeholder: "Search items..."
+      rect width: 80px, height: 40px, color: #2563eb, radius: 8px {
+        text "Search" color: #ffffff
+        on click: set result-count = 10
+      }
+    }
+
+    row gap: 8px {
+      text "Sort by:" color: #64748b
+      select bind: sort-order {
+        option "Relevance" value: "relevance"
+        option "Newest" value: "newest"
+        option "Price" value: "price"
+      }
+    }
+
+    text "{result-count} results found" color: #64748b
+  }
+}

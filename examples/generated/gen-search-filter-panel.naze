@@ -1,0 +1,40 @@
+-- Product filter panel
+app "Product Filters" {
+  state in-stock = true
+  state on-sale = false
+  state free-shipping = false
+  state sort-mode = "relevance"
+
+  column padding: 20px, gap: 16px {
+    heading "Filter Products"
+
+    column gap: 8px {
+      text "Availability" font-weight: bold
+      checkbox bind: in-stock, label: "In Stock Only"
+      checkbox bind: on-sale, label: "On Sale"
+      checkbox bind: free-shipping, label: "Free Shipping"
+    }
+
+    separator
+
+    column gap: 8px {
+      text "Sort By" font-weight: bold
+      row gap: 8px {
+        rect width: 90px, height: 32px, color: #2563eb, radius: 4px {
+          text "Price" color: #ffffff, font-size: 13px
+          on click: set sort-mode = "price"
+        }
+        rect width: 90px, height: 32px, color: #64748b, radius: 4px {
+          text "Rating" color: #ffffff, font-size: 13px
+          on click: set sort-mode = "rating"
+        }
+        rect width: 90px, height: 32px, color: #64748b, radius: 4px {
+          text "Newest" color: #ffffff, font-size: 13px
+          on click: set sort-mode = "newest"
+        }
+      }
+    }
+
+    text "Sorting by: {sort-mode}" color: #64748b
+  }
+}

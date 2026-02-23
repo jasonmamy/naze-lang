@@ -1,0 +1,44 @@
+-- Expandable accordion sections
+app "FAQ" {
+  state open = ""
+
+  column padding: 20px, gap: 8px {
+    heading "FAQ"
+
+    column color: #f8fafc, radius: 8px {
+      rect padding: 12px {
+        text "What is Naze?" font-weight: bold
+        on click: set open = "q1"
+      }
+      if open == "q1" {
+        column padding: 12px {
+          text "Naze is a declarative UI language that compiles to Canvas2D via WASM."
+        }
+      }
+    }
+
+    column color: #f8fafc, radius: 8px {
+      rect padding: 12px {
+        text "How does it work?" font-weight: bold
+        on click: set open = "q2"
+      }
+      if open == "q2" {
+        column padding: 12px {
+          text "You write .naze files, the compiler generates a binary format, and a WASM runtime renders it."
+        }
+      }
+    }
+
+    column color: #f8fafc, radius: 8px {
+      rect padding: 12px {
+        text "Is it open source?" font-weight: bold
+        on click: set open = "q3"
+      }
+      if open == "q3" {
+        column padding: 12px {
+          text "Yes, Naze is open source."
+        }
+      }
+    }
+  }
+}

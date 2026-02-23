@@ -1,0 +1,25 @@
+-- 5-minute countdown timer
+app "5 Min Timer" {
+  state secs = 300
+  state active = false
+
+  timer tick: every 1s {
+    set secs = secs - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "5 Min Timer"
+    text "{secs} seconds" font-size: 48px, color: #f59e0b
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Start" color: #ffffff
+        on click: set active = true
+      }
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set secs = 300
+      }
+    }
+  }
+}

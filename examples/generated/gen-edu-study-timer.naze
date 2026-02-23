@@ -1,0 +1,38 @@
+-- Study timer
+app "Study Timer" {
+  state minutes = 25
+  state sessions = 0
+  state mode = "focus"
+
+  timer countdown: every 1s {
+    set minutes = minutes - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Study Timer"
+    text "{minutes} min remaining" font-size: 36px, color: #dc2626
+
+    match mode {
+      "focus": text "Focus Session" color: #dc2626, font-size: 18px
+      "break": text "Take a Break" color: #16a34a, font-size: 18px
+      _: text "Ready"
+    }
+
+    text "Sessions: {sessions}" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 40px, color: #dc2626, radius: 8px {
+        text "Focus" color: #ffffff
+        on click: set mode = "focus"
+      }
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Break" color: #ffffff
+        on click: set mode = "break"
+      }
+      rect width: 80px, height: 40px, color: #64748b, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set minutes = 25
+      }
+    }
+  }
+}

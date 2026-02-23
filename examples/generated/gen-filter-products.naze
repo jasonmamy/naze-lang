@@ -1,0 +1,35 @@
+-- Product filter panel with category and price
+app "Product Filters" {
+  state max-price = 100
+  state category = "all"
+  state results-count = 50
+
+  column padding: 20px, gap: 16px {
+    heading "Product Filters"
+    text "{results-count} results" color: #64748b
+
+    rect padding: 16px, color: #f8fafc, radius: 8px {
+      text "Filters" font-weight: bold, font-size: 16px
+
+      text "Category" font-weight: bold, color: #374151, font-size: 14px
+      select bind: category {
+      option "All" value: "all"
+      option "Electronics" value: "electronics"
+      option "Clothing" value: "clothing"
+    }
+
+      text "Max Price" font-weight: bold, color: #374151, font-size: 14px
+      input bind: max-price, placeholder: "Max price"
+    }
+
+    rect width: 120px, height: 36px, color: #2563eb, radius: 4px {
+      text "Apply Filters" color: #ffffff
+      on click: set results-count = 12
+    }
+
+    rect width: 100px, height: 36px, color: #e2e8f0, radius: 4px {
+      text "Clear All"
+      on click: set max-price = 100
+    }
+  }
+}

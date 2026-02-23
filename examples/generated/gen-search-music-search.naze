@@ -1,0 +1,30 @@
+-- Music library search by title and artist
+app "Song Search" {
+  state query = ""
+  state items = [{title: "Starlight", artist: "Muse", album: "Absolution"}, {title: "Creep", artist: "Radiohead", album: "Pablo Honey"}, {title: "Karma Police", artist: "Radiohead", album: "OK Computer"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Song Search"
+
+    row gap: 8px {
+      input bind: query, placeholder: "Search songs..."
+      rect width: 90px, height: 40px, color: #ec4899, radius: 8px {
+        text "Search" color: #ffffff
+        on click: set query = ""
+      }
+    }
+
+    text "{total} songs" color: #64748b
+
+    each song in items | sort-by title {
+      rect padding: 12px, color: #fdf2f8, radius: 6px {
+        row gap: 12px {
+          text "{song.title}" font-weight: bold
+          text "{song.artist}" color: #64748b, font-size: 13px
+          text "{song.album}" color: #be185d, font-size: 12px
+        }
+      }
+    }
+  }
+}

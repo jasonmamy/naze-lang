@@ -1,0 +1,33 @@
+-- Creative agency footer
+app "Agency Footer" {
+  column {
+    spacer height: 40px
+
+    rect width: 800px, color: #18181b {
+      column padding: 32px, gap: 16px {
+        row gap: 40px {
+          column gap: 6px {
+            text "Services" font-weight: bold, color: #fafafa
+            text "Web Design" color: #a1a1aa, font-size: 14px
+            text "Branding" color: #a1a1aa, font-size: 14px
+            text "Marketing" color: #a1a1aa, font-size: 14px
+          }
+          column gap: 6px {
+            text "Work" font-weight: bold, color: #fafafa
+            text "Portfolio" color: #a1a1aa, font-size: 14px
+            text "Case Studies" color: #a1a1aa, font-size: 14px
+            text "Testimonials" color: #a1a1aa, font-size: 14px
+          }
+          column gap: 6px {
+            text "Connect" font-weight: bold, color: #fafafa
+            text "Email Us" color: #a1a1aa, font-size: 14px
+            text "Twitter" color: #a1a1aa, font-size: 14px
+            text "Dribbble" color: #a1a1aa, font-size: 14px
+          }
+        }
+        separator
+        text "2025 Studio Creative. All rights reserved." color: #a1a1aa, font-size: 12px
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+-- Product review display with star ratings
+app "Customer Reviews" {
+  state items = [{name: "Great quality!", price: "5 stars"}, {name: "Good value", price: "4 stars"}, {name: "Decent product", price: "3 stars"}]
+  state selected = "none"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Customer Reviews"
+    text "{total} reviews" color: #64748b
+
+    grid columns: 1, gap: 12px {
+      each rev in items | sort-by name {
+        rect padding: 16px, color: #fefce8, radius: 8px {
+          column gap: 4px {
+            text "{rev.name}" font-weight: bold
+            text "{rev.price}" color: #f59e0b
+          }
+          rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+            text "Helpful" color: #ffffff
+            on click: set selected = "{rev.name}"
+          }
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a
+    }
+  }
+}

@@ -1,0 +1,19 @@
+-- Empty bookmarks collection state
+app "No Bookmarks" {
+  column padding: 40px, gap: 20px {
+    spacer height: 40px
+
+    rect width: 80px, height: 80px, color: #f1f5f9, radius: 40px {
+      text ">" font-size: 32px, color: #64748b
+    }
+
+    heading "No Bookmarks Saved" font-size: 22px, color: #1e293b
+    text "Save articles and pages for later reading." color: #64748b, font-size: 16px
+    text "Tap the bookmark icon on any article." color: #94a3b8, font-size: 14px
+
+    rect width: 160px, height: 44px, color: #64748b, radius: 8px {
+      text "Browse Articles" color: #ffffff, font-size: 15px
+      on click: navigate "/articles"
+    }
+  }
+}

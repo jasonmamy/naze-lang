@@ -1,0 +1,29 @@
+-- Daily meal tracking
+app "Diet Stats" {
+  state calories = 1850
+  state meals = 4
+
+  column padding: 20px, gap: 16px {
+    heading "Diet Stats"
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #fff7ed, radius: 8px {
+        text "Calories" color: #64748b, font-size: 12px
+        text "{calories}" font-size: 24px, color: #ea580c
+      }
+      rect padding: 16px, color: #faf5ff, radius: 8px {
+        text "Meals" color: #64748b, font-size: 12px
+        text "{meals}" font-size: 24px, color: #7c3aed
+      }
+    }
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #ea580c, radius: 4px {
+        text "+1" color: #ffffff
+        on click: set calories = calories + 1
+      }
+      rect width: 80px, height: 32px, color: #ef4444, radius: 4px {
+        text "Reset" color: #ffffff
+        on click: set calories = 1850
+      }
+    }
+  }
+}

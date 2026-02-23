@@ -1,0 +1,41 @@
+-- Activity heatmap grid
+app "Activity Heatmap" {
+  column padding: 24px, gap: 16px {
+    heading "Weekly Activity" color: #15803d
+
+    grid columns: 7, gap: 4px {
+      rect width: 24px, height: 24px, color: #dcfce7, radius: 4px
+      rect width: 24px, height: 24px, color: #86efac, radius: 4px
+      rect width: 24px, height: 24px, color: #22c55e, radius: 4px
+      rect width: 24px, height: 24px, color: #16a34a, radius: 4px
+      rect width: 24px, height: 24px, color: #22c55e, radius: 4px
+      rect width: 24px, height: 24px, color: #dcfce7, radius: 4px
+      rect width: 24px, height: 24px, color: #f0fdf4, radius: 4px
+
+      rect width: 24px, height: 24px, color: #86efac, radius: 4px
+      rect width: 24px, height: 24px, color: #16a34a, radius: 4px
+      rect width: 24px, height: 24px, color: #15803d, radius: 4px
+      rect width: 24px, height: 24px, color: #16a34a, radius: 4px
+      rect width: 24px, height: 24px, color: #86efac, radius: 4px
+      rect width: 24px, height: 24px, color: #22c55e, radius: 4px
+      rect width: 24px, height: 24px, color: #dcfce7, radius: 4px
+
+      rect width: 24px, height: 24px, color: #f0fdf4, radius: 4px
+      rect width: 24px, height: 24px, color: #dcfce7, radius: 4px
+      rect width: 24px, height: 24px, color: #86efac, radius: 4px
+      rect width: 24px, height: 24px, color: #22c55e, radius: 4px
+      rect width: 24px, height: 24px, color: #16a34a, radius: 4px
+      rect width: 24px, height: 24px, color: #22c55e, radius: 4px
+      rect width: 24px, height: 24px, color: #86efac, radius: 4px
+    }
+
+    row gap: 4px {
+      text "Less" color: #94a3b8, font-size: 11px
+      rect width: 12px, height: 12px, color: #dcfce7, radius: 2px
+      rect width: 12px, height: 12px, color: #86efac, radius: 2px
+      rect width: 12px, height: 12px, color: #22c55e, radius: 2px
+      rect width: 12px, height: 12px, color: #15803d, radius: 2px
+      text "More" color: #94a3b8, font-size: 11px
+    }
+  }
+}

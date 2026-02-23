@@ -1,0 +1,28 @@
+-- Warning notification about expiring trial
+app "Warning Alert" {
+  state dismissed = false
+
+  column padding: 20px, gap: 16px {
+    heading "Warning Alert"
+
+    if dismissed == false {
+      rect padding: 14px, color: #fefce8, radius: 8px {
+        row gap: 12px {
+          text "[!]" font-size: 20px
+          column gap: 4px {
+            text "Trial expiring soon" font-weight: bold, color: #854d0e
+            text "Your free trial expires in 3 days." color: #ca8a04, font-size: 13px
+          }
+        }
+        rect width: 70px, height: 28px, color: #ca8a04, radius: 4px {
+          text "Upgrade" color: #ffffff, font-size: 12px
+          on click: set dismissed = true
+        }
+      }
+    }
+
+    if dismissed {
+      text "Alert dismissed" color: #94a3b8
+    }
+  }
+}

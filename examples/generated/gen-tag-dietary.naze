@@ -1,0 +1,36 @@
+-- Recipe dietary filter tags
+app "Dietary Tags" {
+  state selected-tag = ""
+
+  column padding: 20px, gap: 16px {
+    heading "Dietary Tags"
+    text "Filter recipes by diet" color: #64748b
+
+    row gap: 8px {
+      rect padding: 8px, color: #d1fae5, radius: 12px {
+        text "Vegan" color: #065f46, font-size: 13px
+        on click: set selected-tag = "Vegan"
+      }
+      rect padding: 8px, color: #fef3c7, radius: 12px {
+        text "Gluten-Free" color: #92400e, font-size: 13px
+        on click: set selected-tag = "Gluten-Free"
+      }
+      rect padding: 8px, color: #fce7f3, radius: 12px {
+        text "Keto" color: #9d174d, font-size: 13px
+        on click: set selected-tag = "Keto"
+      }
+      rect padding: 8px, color: #e0f2fe, radius: 12px {
+        text "Paleo" color: #0369a1, font-size: 13px
+        on click: set selected-tag = "Paleo"
+      }
+      rect padding: 8px, color: #fef2f2, radius: 12px {
+        text "Dairy-Free" color: #991b1b, font-size: 13px
+        on click: set selected-tag = "Dairy-Free"
+      }
+    }
+
+    if selected-tag {
+      text "Selected: {selected-tag}" font-weight: bold, color: #334155
+    }
+  }
+}

@@ -1,0 +1,40 @@
+-- Thai restaurant menu with spice levels
+app "Thai Kitchen" {
+  state category = "Curries"
+  state items = [{name: "Green Curry", desc: "Coconut milk, bamboo shoots", price: "$15"}, {name: "Pad Thai", desc: "Rice noodles, shrimp, peanuts", price: "$14"}, {name: "Spring Rolls", desc: "Vegetables, sweet chili sauce", price: "$7"}]
+  computed total-items = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Thai Kitchen" color: #15803d
+
+    row gap: 8px {
+      rect padding: 8px, color: #15803d, radius: 4px {
+        text "Curries" color: #ffffff, font-size: 13px
+        on click: set category = "Curries"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Noodles" font-size: 13px
+        on click: set category = "Noodles"
+      }
+      rect padding: 8px, color: #e2e8f0, radius: 4px {
+        text "Appetizers" font-size: 13px
+        on click: set category = "Appetizers"
+      }
+    }
+
+    text "{total-items} items on the menu" color: #94a3b8, font-size: 12px
+
+    each item in items {
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        row gap: 8px {
+          column gap: 2px {
+            text "{item.name}" font-weight: bold
+            text "{item.desc}" color: #64748b, font-size: 13px
+          }
+          spacer
+          text "{item.price}" font-weight: bold, color: #15803d
+        }
+      }
+    }
+  }
+}

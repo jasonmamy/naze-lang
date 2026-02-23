@@ -1,0 +1,44 @@
+-- Drawing tool toolbar with brush selection
+app "Drawing Canvas" {
+  state active-tool = "pencil"
+
+  column gap: 0px {
+    rect width: 600px, height: 52px, color: #1e293b {
+      row padding: 8px, gap: 6px {
+        rect width: 36px, height: 36px, color: #3b82f6, radius: 6px {
+          text "/" color: #ffffff, font-size: 14px
+          on click: set active-tool = "pencil"
+        }
+        rect width: 36px, height: 36px, color: #ef4444, radius: 6px {
+          text "O" color: #ffffff, font-size: 14px
+          on click: set active-tool = "circle"
+        }
+        rect width: 36px, height: 36px, color: #16a34a, radius: 6px {
+          text "R" color: #ffffff, font-size: 14px
+          on click: set active-tool = "rect-tool"
+        }
+        rect width: 36px, height: 36px, color: #f59e0b, radius: 6px {
+          text "L" color: #ffffff, font-size: 14px
+          on click: set active-tool = "line"
+        }
+        spacer
+        rect width: 36px, height: 36px, color: #94a3b8, radius: 6px {
+          text "E" color: #ffffff, font-size: 14px
+          on click: set active-tool = "eraser"
+        }
+      }
+    }
+
+    column padding: 20px, gap: 8px {
+      text "Tool: {active-tool}" font-weight: bold, font-size: 16px
+      match active-tool {
+        "pencil": text "Freehand pencil drawing tool." color: #64748b
+        "circle": text "Draw circles and ellipses." color: #64748b
+        "rect-tool": text "Draw rectangles and squares." color: #64748b
+        "line": text "Draw straight lines." color: #64748b
+        "eraser": text "Erase drawn elements." color: #64748b
+        _: text "Select a tool" color: #94a3b8
+      }
+    }
+  }
+}

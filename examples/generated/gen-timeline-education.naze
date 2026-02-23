@@ -1,0 +1,24 @@
+-- Course progression timeline
+app "Learning Path" {
+  state events = [{time: "Module 1", title: "Basics", detail: "Syntax and variables"}, {time: "Module 2", title: "Functions", detail: "Closures and scoping"}, {time: "Module 3", title: "Data", detail: "Structures and algorithms"}, {time: "Module 4", title: "Project", detail: "Capstone assignment"}]
+  computed total = events | count
+
+  column padding: 24px, gap: 8px {
+    heading "Learning Path" color: #7c3aed
+    text "{total} events" color: #94a3b8, font-size: 12px
+
+    each evt in events {
+      row gap: 12px {
+        column gap: 0px {
+          rect width: 12px, height: 12px, color: #8b5cf6, radius: 6px
+          rect width: 2px, height: 40px, color: #e2e8f0
+        }
+        column gap: 2px {
+          text "{evt.time}" color: #94a3b8, font-size: 11px
+          text "{evt.title}" font-weight: bold
+          text "{evt.detail}" color: #64748b, font-size: 13px
+        }
+      }
+    }
+  }
+}

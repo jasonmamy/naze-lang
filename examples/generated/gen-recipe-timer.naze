@@ -1,0 +1,39 @@
+-- Recipe with timer
+app "Slow Roast Chicken" {
+  state cook-time = 90
+  state stage = "prep"
+
+  timer oven: every 1s {
+    set cook-time = cook-time - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Slow Roast Chicken"
+    text "Roast at 350F" color: #64748b
+
+    rect padding: 16px, color: #fef3c7, radius: 8px {
+      text "{cook-time} minutes remaining" font-size: 28px, color: #b45309
+    }
+
+    match stage {
+      "prep": text "Season and truss the chicken" font-size: 16px
+      "cooking": text "In the oven - do not open!" font-size: 16px, color: #ef4444
+      _: text "Let rest 15 minutes before carving" font-size: 16px
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #f59e0b, radius: 4px {
+        text "Prep" color: #ffffff
+        on click: set stage = "prep"
+      }
+      rect width: 80px, height: 36px, color: #ef4444, radius: 4px {
+        text "Cook" color: #ffffff
+        on click: set stage = "cooking"
+      }
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "Done" color: #ffffff
+        on click: set stage = "done"
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+-- Classical music playlist with composers
+app "Classical Collection" {
+  state tracks = [{title: "Moonlight Sonata", artist: "Beethoven", duration: "15:00"}, {title: "Four Seasons", artist: "Vivaldi", duration: "11:28"}, {title: "Clair de Lune", artist: "Debussy", duration: "5:00"}]
+  state current-track = 0
+  state playing = false
+  computed track-count = tracks | count
+
+  column padding: 20px, gap: 16px {
+    heading "Classical Collection"
+    text "{track-count} pieces" color: #64748b
+
+    if playing {
+      text "Now Playing" color: #475569, font-weight: bold
+    }
+
+    each track in tracks {
+      row padding: 10px, color: #f8fafc, radius: 8px, gap: 8px {
+        text "{track.title}" font-weight: bold
+        text "{track.artist}" color: #64748b
+        text "{track.duration}" color: #475569, font-size: 12px
+      }
+    }
+
+    row gap: 8px {
+      rect width: 60px, height: 36px, color: #475569, radius: 4px {
+        text "Prev" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track - 1
+      }
+      rect width: 60px, height: 36px, color: #475569, radius: 4px {
+        text "Play" color: #ffffff, font-size: 12px
+        on click: set playing = true
+      }
+      rect width: 60px, height: 36px, color: #475569, radius: 4px {
+        text "Next" color: #ffffff, font-size: 12px
+        on click: set current-track = current-track + 1
+      }
+    }
+  }
+}

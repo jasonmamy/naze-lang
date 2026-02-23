@@ -1,0 +1,26 @@
+-- Ocean-inspired blue color scheme
+theme ocean {
+  colors {
+    primary: #0077b6
+    secondary: #00b4d8
+    bg: #caf0f8
+    text-color: #03045e
+    accent: #0096c7
+  }
+}
+
+app "Ocean Theme" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Ocean Theme" color: theme.colors.text-color
+
+    rect padding: 16px, color: theme.colors.primary, radius: 8px {
+      text "Primary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.secondary, radius: 8px {
+      text "Secondary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.accent, radius: 8px {
+      text "Accent" color: #ffffff
+    }
+  }
+}

@@ -1,0 +1,41 @@
+-- Login form
+app "Login" {
+  state email = ""
+  state password = ""
+  state error = ""
+
+  column padding: 40px, gap: 16px {
+    heading "Welcome Back"
+    text "Sign in to your account" color: #64748b
+
+    column gap: 4px {
+      text "Email"
+      input bind: email, type: "email", placeholder: "you@example.com", validate: { required: true }
+      if email_error {
+        text "{email_error}" color: #dc2626, font-size: 14px
+      }
+    }
+
+    column gap: 4px {
+      text "Password"
+      input bind: password, type: "password", placeholder: "Enter password", validate: { required: true, min-length: 8 }
+      if password_error {
+        text "{password_error}" color: #dc2626, font-size: 14px
+      }
+    }
+
+    if error {
+      text "{error}" color: #dc2626
+    }
+
+    if email_valid {
+      if password_valid {
+        rect width: 200px, height: 44px, color: #2563eb, radius: 8px {
+          text "Sign In" color: #ffffff
+        }
+      }
+    }
+
+    text "Don't have an account?" color: #64748b, font-size: 14px
+  }
+}

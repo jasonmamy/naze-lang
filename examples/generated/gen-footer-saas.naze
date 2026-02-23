@@ -1,0 +1,33 @@
+-- SaaS application footer with resource links
+app "SaaS Footer" {
+  column {
+    spacer height: 40px
+
+    rect width: 800px, color: #1e293b {
+      column padding: 32px, gap: 16px {
+        row gap: 40px {
+          column gap: 6px {
+            text "Product" font-weight: bold, color: #e2e8f0
+            text "Dashboard" color: #94a3b8, font-size: 14px
+            text "API Docs" color: #94a3b8, font-size: 14px
+            text "Integrations" color: #94a3b8, font-size: 14px
+          }
+          column gap: 6px {
+            text "Resources" font-weight: bold, color: #e2e8f0
+            text "Documentation" color: #94a3b8, font-size: 14px
+            text "Tutorials" color: #94a3b8, font-size: 14px
+            text "Community" color: #94a3b8, font-size: 14px
+          }
+          column gap: 6px {
+            text "Company" font-weight: bold, color: #e2e8f0
+            text "About" color: #94a3b8, font-size: 14px
+            text "Press Kit" color: #94a3b8, font-size: 14px
+            text "Investors" color: #94a3b8, font-size: 14px
+          }
+        }
+        separator
+        text "2025 SaaSCo. Built with love." color: #94a3b8, font-size: 12px
+      }
+    }
+  }
+}

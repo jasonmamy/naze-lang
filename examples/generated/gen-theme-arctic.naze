@@ -1,0 +1,26 @@
+-- Cool arctic color scheme
+theme arctic {
+  colors {
+    primary: #48cae4
+    secondary: #90e0ef
+    bg: #f0f8ff
+    text-color: #023e8a
+    accent: #00b4d8
+  }
+}
+
+app "Arctic Theme" {
+  column padding: 20px, gap: 16px, color: theme.colors.bg {
+    heading "Arctic Theme" color: theme.colors.text-color
+
+    rect padding: 16px, color: theme.colors.primary, radius: 8px {
+      text "Primary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.secondary, radius: 8px {
+      text "Secondary" color: #ffffff
+    }
+    rect padding: 16px, color: theme.colors.accent, radius: 8px {
+      text "Accent" color: #ffffff
+    }
+  }
+}

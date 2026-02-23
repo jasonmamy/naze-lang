@@ -1,0 +1,22 @@
+-- Server metrics grid with CPU, memory, disk
+app "Server Metrics" {
+  state items = [{name: "CPU", value: "62%", detail: "4 cores"}, {name: "Memory", value: "4.2 GB", detail: "8 GB total"}, {name: "Disk", value: "120 GB", detail: "500 GB total"}, {name: "Network", value: "85 Mb/s", detail: "1 Gbps link"}]
+  computed total = items | count
+
+  column padding: 24px, gap: 16px {
+    heading "Server Metrics"
+    text "{total} metrics" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      each metric in items | sort-by name {
+        rect padding: 14px, color: #f0f9ff, radius: 8px {
+          column gap: 4px {
+            text "{metric.name}" font-weight: bold, font-size: 15px
+            text "{metric.value}" color: #0369a1, font-size: 22px
+            text "{metric.detail}" color: #94a3b8, font-size: 12px
+          }
+        }
+      }
+    }
+  }
+}

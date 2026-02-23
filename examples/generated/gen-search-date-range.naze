@@ -1,0 +1,28 @@
+-- Date range filter
+app "Event Filter" {
+  state start-date = ""
+  state end-date = ""
+  state events = [{title: "Tech Talk", date: "Jan 15"}, {title: "Workshop", date: "Feb 10"}, {title: "Hackathon", date: "Mar 05"}]
+
+  column padding: 20px, gap: 16px {
+    heading "Filter Events"
+
+    row gap: 8px {
+      column gap: 4px {
+        text "From" font-size: 12px, color: #64748b
+        input bind: start-date, placeholder: "Start date"
+      }
+      column gap: 4px {
+        text "To" font-size: 12px, color: #64748b
+        input bind: end-date, placeholder: "End date"
+      }
+    }
+
+    each evt in events | sort-by date {
+      row padding: 10px, color: #faf5ff, radius: 6px, gap: 12px {
+        text "{evt.title}" font-weight: bold
+        text "{evt.date}" color: #7c3aed
+      }
+    }
+  }
+}

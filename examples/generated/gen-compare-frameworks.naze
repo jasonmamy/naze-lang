@@ -1,0 +1,40 @@
+-- Compare web framework features
+app "Framework Comparison" {
+  state selected = "none"
+
+  column padding: 20px, gap: 16px {
+    heading "Framework Comparison"
+    text "Choose your stack" color: #64748b
+
+    grid columns: 2, gap: 12px {
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Framework A" font-weight: bold, font-size: 18px
+        text "Open Source" color: #64748b
+        separator
+        text "Fast builds"
+        text "Small bundle"
+        text "Growing community"
+        rect width: 100px, height: 32px, color: #16a34a, radius: 4px {
+          text "Select" color: #ffffff
+          on click: set selected = "Framework A"
+        }
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Framework B" font-weight: bold, font-size: 18px
+        text "Open Source" color: #64748b
+        separator
+        text "Mature ecosystem"
+        text "Large bundle"
+        text "Huge community"
+        rect width: 100px, height: 32px, color: #16a34a, radius: 4px {
+          text "Select" color: #ffffff
+          on click: set selected = "Framework B"
+        }
+      }
+    }
+
+    if selected != "none" {
+      text "Selected: {selected}" color: #16a34a, font-weight: bold
+    }
+  }
+}

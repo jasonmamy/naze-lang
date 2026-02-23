@@ -1,0 +1,25 @@
+-- Status page
+app "Status" {
+  state api-status = "operational"
+  state db-status = "operational"
+  state cdn-status = "degraded"
+
+  column padding: 20px, gap: 16px {
+    heading "System Status"
+
+    column gap: 8px {
+      row padding: 12px, color: #f0fdf4, radius: 4px, gap: 8px {
+        text "API" font-weight: bold
+        text "{api-status}" color: #16a34a
+      }
+      row padding: 12px, color: #f0fdf4, radius: 4px, gap: 8px {
+        text "Database" font-weight: bold
+        text "{db-status}" color: #16a34a
+      }
+      row padding: 12px, color: #fefce8, radius: 4px, gap: 8px {
+        text "CDN" font-weight: bold
+        text "{cdn-status}" color: #f59e0b
+      }
+    }
+  }
+}

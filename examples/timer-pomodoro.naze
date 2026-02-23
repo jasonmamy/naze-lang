@@ -1,0 +1,41 @@
+-- Pomodoro timer with work and break cycles
+app "Pomodoro" {
+  state minutes = 25
+  state seconds = 0
+  state mode = "work"
+  state running = false
+
+  timer tick: every 1s {
+    set seconds = seconds - 1
+  }
+
+  column padding: 20px, gap: 16px {
+    heading "Pomodoro Timer"
+
+    match mode {
+      "work": text "Work Time" color: #dc2626, font-size: 20px
+      "break": text "Break Time" color: #16a34a, font-size: 20px
+      _: text "Ready"
+    }
+
+    heading "{minutes}:{seconds}" font-size: 48px
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #16a34a, radius: 8px {
+        text "Work" color: #ffffff
+        on click: set mode = "work"
+        on click: set minutes = 25
+      }
+      rect width: 100px, height: 40px, color: #2563eb, radius: 8px {
+        text "Break" color: #ffffff
+        on click: set mode = "break"
+        on click: set minutes = 5
+      }
+      rect width: 100px, height: 40px, color: #64748b, radius: 8px {
+        text "Reset" color: #ffffff
+        on click: set minutes = 25
+        on click: set seconds = 0
+      }
+    }
+  }
+}

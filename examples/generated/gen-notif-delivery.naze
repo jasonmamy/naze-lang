@@ -1,0 +1,53 @@
+-- Food delivery order notifications
+app "Delivery Alerts" {
+  state unread = 2
+  state notifications = [{title: "Order confirmed", body: "Your order is being prepared", time: "5 min ago"}, {title: "Driver assigned", body: "Marco is picking up your food", time: "10 min ago"}, {title: "Arriving soon", body: "Your delivery is 3 min away", time: "Just now"}]
+  computed total = notifications | count
+  state filter = "all"
+
+  column padding: 24px, gap: 16px {
+    heading "Delivery Alerts" color: #15803d
+
+    row gap: 8px {
+      text "Notifications" font-size: 18px, font-weight: bold
+      rect padding: 4px, color: #dcfce7, radius: 10px {
+        text "{unread}" color: #166534, font-size: 12px
+      }
+      spacer
+      rect padding: 8px, color: #f1f5f9, radius: 4px {
+        text "Mark all read" font-size: 12px, color: #64748b
+        on click: set unread = 0
+      }
+    }
+
+    row gap: 8px {
+      rect padding: 6px, color: #15803d, radius: 4px {
+        text "All" color: #ffffff, font-size: 12px
+        on click: set filter = "all"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Active" font-size: 12px
+        on click: set filter = "Active"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Past" font-size: 12px
+        on click: set filter = "Past"
+      }
+    }
+
+    text "{total} notifications" color: #94a3b8, font-size: 12px
+
+    each notif in notifications {
+      rect padding: 12px, color: #f0fdf4, radius: 8px {
+        column gap: 4px {
+          row gap: 8px {
+            rect width: 8px, height: 8px, color: #22c55e, radius: 4px
+            text "{notif.title}" font-weight: bold, font-size: 14px
+          }
+          text "{notif.body}" color: #64748b, font-size: 13px
+          text "{notif.time}" color: #94a3b8, font-size: 11px
+        }
+      }
+    }
+  }
+}

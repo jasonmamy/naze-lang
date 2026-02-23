@@ -1,0 +1,8 @@
+-- Heading and text with a spacer between them
+app "Spaced" {
+  column padding: 20px {
+    heading "Top"
+    spacer height: 40px
+    text "Bottom" color: #94a3b8
+  }
+}

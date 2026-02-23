@@ -1,0 +1,53 @@
+-- Team collaboration notifications
+app "Team Updates" {
+  state unread = 6
+  state notifications = [{title: "Meeting invite", body: "Sprint planning at 2 PM", time: "10 min ago"}, {title: "Doc shared", body: "Sarah shared a design spec", time: "30 min ago"}, {title: "Task completed", body: "Mike finished the API docs", time: "2 hours ago"}]
+  computed total = notifications | count
+  state filter = "all"
+
+  column padding: 24px, gap: 16px {
+    heading "Team Updates" color: #7c3aed
+
+    row gap: 8px {
+      text "Notifications" font-size: 18px, font-weight: bold
+      rect padding: 4px, color: #f5f3ff, radius: 10px {
+        text "{unread}" color: #6d28d9, font-size: 12px
+      }
+      spacer
+      rect padding: 8px, color: #f1f5f9, radius: 4px {
+        text "Mark all read" font-size: 12px, color: #64748b
+        on click: set unread = 0
+      }
+    }
+
+    row gap: 8px {
+      rect padding: 6px, color: #7c3aed, radius: 4px {
+        text "All" color: #ffffff, font-size: 12px
+        on click: set filter = "all"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Meetings" font-size: 12px
+        on click: set filter = "Meetings"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Tasks" font-size: 12px
+        on click: set filter = "Tasks"
+      }
+    }
+
+    text "{total} notifications" color: #94a3b8, font-size: 12px
+
+    each notif in notifications {
+      rect padding: 12px, color: #faf5ff, radius: 8px {
+        column gap: 4px {
+          row gap: 8px {
+            rect width: 8px, height: 8px, color: #8b5cf6, radius: 4px
+            text "{notif.title}" font-weight: bold, font-size: 14px
+          }
+          text "{notif.body}" color: #64748b, font-size: 13px
+          text "{notif.time}" color: #94a3b8, font-size: 11px
+        }
+      }
+    }
+  }
+}

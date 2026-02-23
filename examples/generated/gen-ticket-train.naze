@@ -1,0 +1,51 @@
+-- Railway train ticket display
+app "Train Ticket" {
+  state ticket-id = "TRN-6619"
+  state status = "Validated"
+  state priority = "First Class"
+
+  column padding: 24px, gap: 16px {
+    heading "Train Ticket" color: #1d4ed8
+
+    rect padding: 20px, color: #ffffff, radius: 12px {
+      column gap: 12px {
+        row gap: 8px {
+          text "Rail Pass" font-weight: bold, font-size: 18px
+          spacer
+          rect padding: 6px, color: #eff6ff, radius: 4px {
+            text "{status}" color: #1d4ed8, font-size: 12px
+          }
+        }
+
+        separator
+
+        row gap: 16px {
+          column gap: 4px {
+            text "ID" color: #94a3b8, font-size: 11px
+            text "{ticket-id}" font-size: 14px
+          }
+          column gap: 4px {
+            text "Priority" color: #94a3b8, font-size: 11px
+            text "{priority}" font-size: 14px, color: #d97706
+          }
+          column gap: 4px {
+            text "Platform" color: #94a3b8, font-size: 11px
+            text "9A" font-size: 14px
+          }
+        }
+
+        separator
+
+        text "Paris Gare du Nord to Amsterdam Centraal" color: #334155
+        text "Eurostar 9143, Coach 8, Seat 42A" color: #64748b, font-size: 13px
+      }
+    }
+
+    match status {
+      "Validated": rect padding: 10px, color: #eff6ff, radius: 8px {
+        text "Board 15 minutes before departure" color: #1d4ed8, font-size: 13px
+      }
+      _: text "Unknown status" color: #94a3b8
+    }
+  }
+}

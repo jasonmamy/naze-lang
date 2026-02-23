@@ -1,0 +1,40 @@
+-- Content management sidebar navigation
+app "CMS Panel" {
+  state active-page = "posts"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #faf5ff {
+      column padding: 16px, gap: 4px {
+        text "CMS" font-weight: bold, font-size: 18px, color: #7c3aed
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Posts" color: #6b21a8
+          on click: set active-page = "posts"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Pages" color: #6b21a8
+          on click: set active-page = "pages"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Media" color: #6b21a8
+          on click: set active-page = "media"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Comments" color: #6b21a8
+          on click: set active-page = "comments"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "posts": heading "Posts"
+        "pages": heading "Pages"
+        "media": heading "Media"
+        "comments": heading "Comments"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

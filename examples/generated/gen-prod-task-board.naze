@@ -1,0 +1,29 @@
+-- Task board with status filtering
+app "Task Board" {
+  state items = [{title: "Fix login bug", status: "in-progress"}, {title: "Write tests", status: "todo"}, {title: "Deploy v2", status: "done"}, {title: "Update docs", status: "todo"}]
+  state view = "board"
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Task Board"
+    text "{total} tasks" color: #64748b
+
+    row gap: 8px {
+      rect width: 80px, height: 32px, color: #2563eb, radius: 4px {
+        text "Board" color: #ffffff
+        on click: set view = "board"
+      }
+      rect width: 80px, height: 32px, color: #64748b, radius: 4px {
+        text "List" color: #ffffff
+        on click: set view = "list"
+      }
+    }
+
+    each task in items | sort-by status {
+      row padding: 12px, color: #f8fafc, radius: 4px, gap: 12px {
+        text "{task.title}" font-weight: bold
+        text "{task.status}" color: #6366f1
+      }
+    }
+  }
+}

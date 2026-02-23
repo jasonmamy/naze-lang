@@ -1,0 +1,24 @@
+-- Specs comparison
+app "Spec Sheet" {
+  state specs = [{feature: "CPU", option-a: "8 cores", option-b: "12 cores"}, {feature: "RAM", option-a: "16 GB", option-b: "32 GB"}, {feature: "Storage", option-a: "512 GB", option-b: "1 TB"}, {feature: "Battery", option-a: "10 hrs", option-b: "8 hrs"}]
+
+  column padding: 20px, gap: 12px {
+    heading "Spec Comparison"
+
+    row padding: 8px, gap: 16px {
+      text "Feature" font-weight: bold, color: #64748b
+      text "Model A" font-weight: bold, color: #2563eb
+      text "Model B" font-weight: bold, color: #16a34a
+    }
+
+    separator
+
+    each s in specs {
+      row padding: 8px, color: #f8fafc, radius: 4px, gap: 16px {
+        text "{s.feature}" font-weight: bold
+        text "{s.option-a}" color: #2563eb
+        text "{s.option-b}" color: #16a34a
+      }
+    }
+  }
+}

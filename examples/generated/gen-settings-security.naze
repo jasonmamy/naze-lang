@@ -1,0 +1,46 @@
+-- Security and two-factor authentication settings
+app "Security Settings" {
+  state two-factor = false
+  state login-alerts = true
+  state recovery-email = ""
+  state saved = false
+
+  column padding: 24px, gap: 16px {
+    heading "Security Settings"
+    text "Protect your account" color: #64748b
+
+    column gap: 12px {
+      column gap: 4px {
+        text "Two-Factor Auth" font-weight: bold, font-size: 14px
+        checkbox bind: two-factor, label: "Enable 2FA"
+      }
+
+      column gap: 4px {
+        text "Login Alerts" font-weight: bold, font-size: 14px
+        checkbox bind: login-alerts, label: "Alert on new device login"
+      }
+
+      column gap: 4px {
+        text "Recovery Email" font-weight: bold, font-size: 14px
+        input bind: recovery-email, placeholder: "Recovery email address"
+      }
+    }
+
+    separator
+
+    row gap: 8px {
+      rect width: 100px, height: 40px, color: #dc2626, radius: 8px {
+        text "Save" color: #ffffff
+        on click: set saved = true
+      }
+      rect width: 100px, height: 40px, color: #e2e8f0, radius: 8px {
+        text "Cancel"
+        on click: set saved = false
+      }
+    }
+
+    if saved {
+      text "Security settings updated!" color: #16a34a
+    }
+  }
+}

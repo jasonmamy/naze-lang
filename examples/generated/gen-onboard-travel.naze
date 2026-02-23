@@ -1,0 +1,54 @@
+-- Travel booking app onboarding
+app "Travel App Setup" {
+  state step = 1
+  state name = ""
+  state agreed = false
+
+  column padding: 24px, gap: 16px {
+    heading "Travel App Setup" color: #0891b2
+
+    row gap: 8px {
+      rect width: 32px, height: 32px, color: #0891b2, radius: 16px {
+        text "1" color: #ffffff, font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "2" font-size: 14px
+      }
+      rect width: 60px, height: 2px, color: #e2e8f0
+      rect width: 32px, height: 32px, color: #e2e8f0, radius: 16px {
+        text "3" font-size: 14px
+      }
+    }
+
+    match step {
+      1: column gap: 12px {
+        text "Explore the World" font-size: 20px, font-weight: bold
+        text "Book flights, hotels, and adventures." color: #64748b
+        rect width: 140px, height: 40px, color: #0891b2, radius: 8px {
+          text "Get Started" color: #ffffff
+          on click: set step = 2
+        }
+      }
+      2: column gap: 12px {
+        text "Traveler Profile" font-size: 20px, font-weight: bold
+        text "How should we address you?" color: #64748b
+        input bind: name, placeholder: "Preferred name"
+        rect width: 100px, height: 40px, color: #0891b2, radius: 8px {
+          text "Next" color: #ffffff
+          on click: set step = 3
+        }
+      }
+      3: column gap: 12px {
+        text "Booking Terms" font-size: 20px, font-weight: bold
+        text "Review cancellation and refund policies." color: #64748b
+        checkbox bind: agreed, label: "I accept the booking terms"
+        rect width: 120px, height: 40px, color: #0891b2, radius: 8px {
+          text "Complete" color: #ffffff
+          on click: set step = 1
+        }
+      }
+      _: text "Unknown step"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+-- System monitoring notifications
+app "System Alerts" {
+  state unread = 2
+  state notifications = [{title: "CPU Alert", body: "CPU usage exceeded 90%", time: "5 min ago"}, {title: "Disk Warning", body: "Disk space below 10%", time: "1 hour ago"}, {title: "Update Available", body: "System update v2.5 ready", time: "Today"}]
+  computed total = notifications | count
+  state filter = "all"
+
+  column padding: 24px, gap: 16px {
+    heading "System Alerts" color: #dc2626
+
+    row gap: 8px {
+      text "Notifications" font-size: 18px, font-weight: bold
+      rect padding: 4px, color: #fef2f2, radius: 10px {
+        text "{unread}" color: #b91c1c, font-size: 12px
+      }
+      spacer
+      rect padding: 8px, color: #f1f5f9, radius: 4px {
+        text "Mark all read" font-size: 12px, color: #64748b
+        on click: set unread = 0
+      }
+    }
+
+    row gap: 8px {
+      rect padding: 6px, color: #dc2626, radius: 4px {
+        text "All" color: #ffffff, font-size: 12px
+        on click: set filter = "all"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Warnings" font-size: 12px
+        on click: set filter = "Warnings"
+      }
+      rect padding: 6px, color: #e2e8f0, radius: 4px {
+        text "Updates" font-size: 12px
+        on click: set filter = "Updates"
+      }
+    }
+
+    text "{total} notifications" color: #94a3b8, font-size: 12px
+
+    each notif in notifications {
+      rect padding: 12px, color: #fef2f2, radius: 8px {
+        column gap: 4px {
+          row gap: 8px {
+            rect width: 8px, height: 8px, color: #ef4444, radius: 4px
+            text "{notif.title}" font-weight: bold, font-size: 14px
+          }
+          text "{notif.body}" color: #64748b, font-size: 13px
+          text "{notif.time}" color: #94a3b8, font-size: 11px
+        }
+      }
+    }
+  }
+}

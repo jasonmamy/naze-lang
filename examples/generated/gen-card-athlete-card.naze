@@ -1,0 +1,21 @@
+-- Athlete stats card
+app "Athlete Card" {
+  state athlete = "Maria Santos"
+
+  column padding: 20px, gap: 16px {
+    heading "Athlete Card"
+
+    rect width: 320px, color: #ecfdf5, radius: 12px, padding: 20px {
+      column gap: 8px {
+        text "{athlete}" font-size: 22px, font-weight: bold
+        text "Marathon Runner" color: #64748b
+        separator
+        row gap: 12px {
+          text "Races: 56" color: #059669
+          text "Best: 2:48" color: #059669
+        }
+        text "Olympic qualifier 2024" color: #94a3b8, font-size: 13px
+      }
+    }
+  }
+}

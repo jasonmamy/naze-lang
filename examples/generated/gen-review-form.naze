@@ -1,0 +1,32 @@
+-- Review submission form
+app "Write a Review" {
+  state reviewer = ""
+  state rating = "5"
+  state comment = ""
+  state submitted = false
+
+  column padding: 20px, gap: 16px {
+    heading "Write a Review"
+
+    input bind: reviewer, placeholder: "Your name"
+
+    select bind: rating {
+      option "5 Stars" value: "5"
+      option "4 Stars" value: "4"
+      option "3 Stars" value: "3"
+      option "2 Stars" value: "2"
+      option "1 Star" value: "1"
+    }
+
+    input bind: comment, placeholder: "Write your review..."
+
+    rect width: 140px, height: 40px, color: #f59e0b, radius: 8px {
+      text "Submit Review" color: #ffffff
+      on click: set submitted = true
+    }
+
+    if submitted {
+      text "Thank you for your review!" color: #16a34a
+    }
+  }
+}

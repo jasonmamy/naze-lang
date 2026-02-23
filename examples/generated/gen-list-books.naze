@@ -1,0 +1,17 @@
+-- Book collection sorted by title
+app "Books" {
+  state items = [{title: "Dune", author: "Herbert"}, {title: "1984", author: "Orwell"}, {title: "Foundation", author: "Asimov"}]
+  computed total = items | count
+
+  column padding: 20px, gap: 16px {
+    heading "Books"
+    text "{total} books" color: #64748b
+
+    each book in items | sort-by title {
+      row padding: 8px, color: #fef3c7, radius: 4px, gap: 8px {
+        text "{book.title}" font-weight: bold
+        text "{book.author}" color: #64748b
+      }
+    }
+  }
+}

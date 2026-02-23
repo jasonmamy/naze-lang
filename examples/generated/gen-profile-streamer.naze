@@ -1,0 +1,43 @@
+-- Live streamer profile page
+app "Streamer Profile" {
+  state username = "live_zoe"
+  state bio = "Variety streamer and content creator"
+  state followers = 18500
+  state following = 75
+  computed ratio = followers / following
+
+  column padding: 24px, gap: 16px {
+    heading "Streamer Profile"
+
+    row gap: 16px {
+      rect width: 80px, height: 80px, color: #d946ef, radius: 40px {
+        text "Z" color: #ffffff, font-size: 32px
+      }
+      column gap: 4px {
+        text "{username}" font-size: 22px, font-weight: bold
+        text "{bio}" color: #64748b
+      }
+    }
+
+    grid columns: 3, gap: 12px {
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Followers" color: #64748b, font-size: 12px
+        text "{followers}" font-size: 20px, color: #c026d3
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Following" color: #64748b, font-size: 12px
+        text "{following}" font-size: 20px, color: #c026d3
+      }
+      rect padding: 12px, color: #f1f5f9, radius: 8px {
+        text "Ratio" color: #64748b, font-size: 12px
+        text "{ratio}" font-size: 20px, color: #c026d3
+      }
+    }
+
+    separator
+
+    rect padding: 12px, color: #fdf4ff, radius: 8px {
+      link "YouTube" href: "https://youtube.com"
+    }
+  }
+}

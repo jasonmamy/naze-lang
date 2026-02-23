@@ -1,0 +1,39 @@
+-- Course tabs with lessons, resources, and discussion
+app "Course Content" {
+  state tab = "lessons"
+
+  column padding: 20px, gap: 16px {
+    heading "Course Content"
+
+    row gap: 0px {
+      rect width: 100px, height: 36px, color: #f59e0b, radius: 0px {
+        text "Lessons" color: #ffffff
+        on click: set tab = "lessons"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Resources" color: #334155
+        on click: set tab = "resources"
+      }
+      rect width: 100px, height: 36px, color: #e2e8f0, radius: 0px {
+        text "Discussion" color: #334155
+        on click: set tab = "discussion"
+      }
+    }
+
+    match tab {
+      "lessons": column padding: 16px, gap: 8px {
+        text "Module 1: Getting Started" font-weight: bold
+        text "5 lessons, estimated 2 hours." color: #64748b
+      }
+      "resources": column padding: 16px, gap: 8px {
+        text "Downloadable Materials" font-weight: bold
+        text "Slides, cheat sheets, and exercises." color: #64748b
+      }
+      "discussion": column padding: 16px, gap: 8px {
+        text "Student Discussion" font-weight: bold
+        text "23 threads, 5 new posts today." color: #64748b
+      }
+      _: text "Select a tab"
+    }
+  }
+}

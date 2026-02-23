@@ -1,0 +1,30 @@
+-- Social media metrics dashboard
+app "Social" {
+  state followers = 12500
+  state likes = 3400
+  state shares = 890
+  state comments = 456
+
+  column padding: 20px, gap: 16px {
+    heading "Social"
+
+    grid columns: 2, gap: 16px {
+      rect padding: 16px, color: #f0f9ff, radius: 8px {
+        text "Followers" color: #64748b, font-size: 14px
+        text "{followers}" font-size: 28px
+      }
+      rect padding: 16px, color: #fce7f3, radius: 8px {
+        text "Likes" color: #64748b, font-size: 14px
+        text "{likes}" font-size: 28px
+      }
+      rect padding: 16px, color: #ecfdf5, radius: 8px {
+        text "Shares" color: #64748b, font-size: 14px
+        text "{shares}" font-size: 28px
+      }
+      rect padding: 16px, color: #fef3c7, radius: 8px {
+        text "Comments" color: #64748b, font-size: 14px
+        text "{comments}" font-size: 28px
+      }
+    }
+  }
+}

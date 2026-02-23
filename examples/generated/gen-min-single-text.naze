@@ -1,0 +1,6 @@
+-- App displaying a single styled text element
+app "Just Text" {
+  column padding: 16px {
+    text "Naze is declarative" color: #2563eb, font-size: 18px
+  }
+}

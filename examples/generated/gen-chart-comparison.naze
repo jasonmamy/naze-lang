@@ -1,0 +1,33 @@
+-- Product comparison bars
+app "Feature Comparison" {
+  column padding: 24px, gap: 16px {
+    heading "Product Comparison" color: #475569
+
+    row gap: 8px {
+      rect width: 12px, height: 12px, color: #3b82f6, radius: 2px
+      text "Product A" font-size: 13px
+      rect width: 12px, height: 12px, color: #f97316, radius: 2px
+      text "Product B" font-size: 13px
+    }
+
+    column gap: 8px {
+      text "Performance" font-size: 13px, color: #64748b
+      row gap: 4px {
+        rect width: 180px, height: 16px, color: #3b82f6, radius: 2px
+        rect width: 140px, height: 16px, color: #f97316, radius: 2px
+      }
+
+      text "Reliability" font-size: 13px, color: #64748b
+      row gap: 4px {
+        rect width: 160px, height: 16px, color: #3b82f6, radius: 2px
+        rect width: 190px, height: 16px, color: #f97316, radius: 2px
+      }
+
+      text "Price Value" font-size: 13px, color: #64748b
+      row gap: 4px {
+        rect width: 120px, height: 16px, color: #3b82f6, radius: 2px
+        rect width: 170px, height: 16px, color: #f97316, radius: 2px
+      }
+    }
+  }
+}

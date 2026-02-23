@@ -1,0 +1,29 @@
+-- Todo app
+app "Todos" {
+  state task = ""
+  state tasks = []
+  computed pending = tasks | count
+
+  column padding: 20px, gap: 16px {
+    heading "Todo List"
+    text "{pending} tasks" color: #64748b
+
+    row gap: 8px {
+      input bind: task, placeholder: "New task..."
+      rect width: 80px, height: 40px, color: #16a34a, radius: 8px {
+        text "Add" color: #ffffff
+        on click: append task to tasks
+      }
+    }
+
+    each t in tasks {
+      row padding: 8px, color: #f3f4f6, radius: 4px, gap: 8px {
+        text "{t}"
+        rect width: 60px, height: 28px, color: #ef4444, radius: 4px {
+          text "Del" color: #ffffff
+          on click: remove t from tasks
+        }
+      }
+    }
+  }
+}

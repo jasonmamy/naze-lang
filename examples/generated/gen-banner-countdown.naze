@@ -1,0 +1,22 @@
+-- Sale countdown banner
+app "Flash Sale" {
+  state hours-left = 23
+  state minutes-left = 59
+
+  timer sale-tick: every 1s {
+    set minutes-left = minutes-left - 1
+  }
+
+  column {
+    rect width: 800px, height: 240px, color: #dc2626, radius: 0px {
+      column padding: 40px, gap: 12px {
+        text "FLASH SALE" color: #ffffff, font-size: 40px, font-weight: bold
+        text "Ends in {hours-left}h {minutes-left}m" color: #fecaca, font-size: 20px
+        text "Up to 50% off everything" color: #fca5a5, font-size: 16px
+        rect width: 140px, height: 44px, color: #ffffff, radius: 8px {
+          text "Shop Sale" color: #dc2626, font-weight: bold
+        }
+      }
+    }
+  }
+}

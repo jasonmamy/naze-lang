@@ -1,0 +1,40 @@
+-- Analytics dashboard sidebar navigation
+app "Analytics Hub" {
+  state active-page = "overview"
+
+  row gap: 0px {
+    rect width: 220px, height: 500px, color: #ecfeff {
+      column padding: 16px, gap: 4px {
+        text "Analytics" font-weight: bold, font-size: 18px, color: #0891b2
+        spacer height: 16px
+        rect padding: 10px, radius: 6px {
+          text "Overview" color: #155e75
+          on click: set active-page = "overview"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Traffic" color: #155e75
+          on click: set active-page = "traffic"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Conversions" color: #155e75
+          on click: set active-page = "conversions"
+        }
+        rect padding: 10px, radius: 6px {
+          text "Audience" color: #155e75
+          on click: set active-page = "audience"
+        }
+      }
+    }
+
+    column padding: 24px, gap: 16px {
+      match active-page {
+        "overview": heading "Overview"
+        "traffic": heading "Traffic"
+        "conversions": heading "Conversions"
+        "audience": heading "Audience"
+        _: heading "Select a page"
+      }
+      text "Active: {active-page}" color: #64748b
+    }
+  }
+}

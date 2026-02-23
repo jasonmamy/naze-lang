@@ -1,0 +1,54 @@
+-- Recipe app
+app "Recipe Book" {
+  state servings = 4
+  state active-step = 1
+  state ingredients = [{name: "Flour", qty: "2 cups"}, {name: "Eggs", qty: "3"}, {name: "Butter", qty: "100g"}, {name: "Sugar", qty: "1 cup"}, {name: "Vanilla", qty: "1 tsp"}]
+  computed ing-count = ingredients | count
+
+  column padding: 20px, gap: 16px {
+    heading "Chocolate Cake Recipe"
+    text "Servings: {servings}" color: #64748b
+
+    row gap: 8px {
+      rect width: 40px, height: 32px, color: #2563eb, radius: 4px {
+        text "-" color: #ffffff
+        on click: set servings = servings - 1
+      }
+      rect width: 40px, height: 32px, color: #2563eb, radius: 4px {
+        text "+" color: #ffffff
+        on click: set servings = servings + 1
+      }
+    }
+
+    separator
+
+    text "Ingredients ({ing-count}):" font-weight: bold
+    each ing in ingredients {
+      row padding: 4px, gap: 8px {
+        text "{ing.qty}" color: #2563eb, font-weight: bold
+        text "{ing.name}" color: #374151
+      }
+    }
+
+    separator
+
+    text "Step {active-step}:" font-weight: bold
+    match active-step {
+      1: text "Preheat oven to 180C" color: #374151
+      2: text "Mix dry ingredients" color: #374151
+      3: text "Add wet ingredients and combine" color: #374151
+      _: text "Bake for 30 minutes"
+    }
+
+    row gap: 8px {
+      rect width: 80px, height: 36px, color: #64748b, radius: 4px {
+        text "Prev" color: #ffffff
+        on click: set active-step = active-step - 1
+      }
+      rect width: 80px, height: 36px, color: #16a34a, radius: 4px {
+        text "Next" color: #ffffff
+        on click: set active-step = active-step + 1
+      }
+    }
+  }
+}

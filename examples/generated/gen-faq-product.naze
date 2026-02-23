@@ -1,0 +1,45 @@
+-- Product FAQ with categories
+app "Product FAQ" {
+  state show-size = false
+  state show-material = false
+  state show-care = false
+  state show-warranty = false
+
+  column padding: 24px, gap: 12px {
+    heading "Product Questions" color: #1e293b
+    text "Everything about our products" color: #64748b
+    separator
+
+    rect padding: 14px, color: #fef3c7, radius: 8px {
+      text "What sizes are available?" font-weight: bold
+      on click: set show-size = true
+    }
+    if show-size {
+      text "We offer XS through XXL in all styles." color: #475569
+    }
+
+    rect padding: 14px, color: #fef3c7, radius: 8px {
+      text "What materials do you use?" font-weight: bold
+      on click: set show-material = true
+    }
+    if show-material {
+      text "100% organic cotton and recycled polyester." color: #475569
+    }
+
+    rect padding: 14px, color: #fef3c7, radius: 8px {
+      text "How do I care for the product?" font-weight: bold
+      on click: set show-care = true
+    }
+    if show-care {
+      text "Machine wash cold, tumble dry low." color: #475569
+    }
+
+    rect padding: 14px, color: #fef3c7, radius: 8px {
+      text "Is there a warranty?" font-weight: bold
+      on click: set show-warranty = true
+    }
+    if show-warranty {
+      text "All products carry a 1-year warranty." color: #475569
+    }
+  }
+}

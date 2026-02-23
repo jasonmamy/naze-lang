@@ -1,0 +1,39 @@
+-- Plan comparison table
+app "Plan Comparison" {
+  column padding: 24px, gap: 16px {
+    heading "Compare Plans"
+
+    grid columns: 3, gap: 12px {
+      rect padding: 16px, color: #f8fafc, radius: 8px {
+        column gap: 6px {
+          text "Starter" font-weight: bold, font-size: 18px
+          text "$0/mo" font-size: 24px, color: #64748b
+          separator
+          text "5 projects" color: #64748b
+          text "1 GB storage" color: #64748b
+          text "Community support" color: #64748b
+        }
+      }
+      rect padding: 16px, color: #eff6ff, radius: 8px {
+        column gap: 6px {
+          text "Pro" font-weight: bold, font-size: 18px
+          text "$19/mo" font-size: 24px, color: #2563eb
+          separator
+          text "Unlimited projects" color: #64748b
+          text "50 GB storage" color: #64748b
+          text "Priority support" color: #64748b
+        }
+      }
+      rect padding: 16px, color: #faf5ff, radius: 8px {
+        column gap: 6px {
+          text "Enterprise" font-weight: bold, font-size: 18px
+          text "Custom" font-size: 24px, color: #7c3aed
+          separator
+          text "Everything in Pro" color: #64748b
+          text "Unlimited storage" color: #64748b
+          text "Dedicated support" color: #64748b
+        }
+      }
+    }
+  }
+}

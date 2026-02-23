@@ -1,0 +1,31 @@
+-- Advisory board listing
+app "Advisors" {
+  column padding: 24px, gap: 16px {
+    heading "Advisors" color: #d946ef
+    text "Our advisors and mentors" color: #64748b
+
+    grid columns: 3, gap: 16px {
+      rect padding: 16px, color: #fdf2f8, radius: 8px {
+        column gap: 4px {
+          text "Dr. Jane Smith" font-weight: bold
+          text "AI Research" color: #64748b, font-size: 14px
+          text "Stanford University" color: #d946ef, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #fdf2f8, radius: 8px {
+        column gap: 4px {
+          text "Mark Johnson" font-weight: bold
+          text "VC Partner" color: #64748b, font-size: 14px
+          text "Acme Ventures" color: #d946ef, font-size: 14px
+        }
+      }
+      rect padding: 16px, color: #fdf2f8, radius: 8px {
+        column gap: 4px {
+          text "Lisa Park" font-weight: bold
+          text "Product Strategy" color: #64748b, font-size: 14px
+          text "Ex-Google" color: #d946ef, font-size: 14px
+        }
+      }
+    }
+  }
+}
