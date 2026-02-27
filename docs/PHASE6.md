@@ -49,7 +49,7 @@ Automated quality gates on every commit. Foundation for binary distribution (M46
 A public documentation website — the primary entry point for new developers. Use a static site generator (Docusaurus, mdBook, or VitePress).
 
 - [ ] Getting Started guide: install → `nazec new` → `nazec dev` → first app running in 2 minutes
-- [ ] Language Reference: complete syntax for all ~140 grammar rules with examples
+- [ ] Language Reference: complete syntax for all ~157 grammar rules with examples
 - [ ] Tutorial: "Build a Todo App" — state, events, conditionals, each, data fetching, pages
 - [ ] Tutorial: "Build a Dashboard" — templates, computed, pipelines, theming
 - [ ] Concepts: compile pipeline, render tree model, Canvas2D rendering, SSR/SSG modes

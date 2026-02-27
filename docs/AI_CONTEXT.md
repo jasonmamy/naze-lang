@@ -759,7 +759,7 @@ When proposing a new language feature, verify against this checklist:
 2. **Does the feature introduce a new reference that points outside the file?** If yes, the reference name must encode enough type/role information that the AI doesn't need to resolve it (e.g., `theme.colors.*` encodes "this is a color token").
 3. **Does the feature require a new file type?** If yes, that file's contents must be summarizable in <20 tokens per entry for inclusion in context bundles.
 4. **Is there exactly one canonical form?** Multiple valid forms increase r. If the feature can be expressed in more than one way, choose one and reject the others.
-5. **Does the feature push grammar rules past the 200-rule hard limit?** (Currently at ~153 rules.) If yes, consider whether it can reuse existing grammar patterns.
+5. **Does the feature push grammar rules past the 200-rule hard limit?** (Currently at ~157 rules.) If yes, consider whether it can reuse existing grammar patterns.
 
 ## Appendix C: Implementation Sketches
 

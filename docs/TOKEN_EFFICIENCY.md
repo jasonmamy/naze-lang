@@ -132,7 +132,7 @@ Factors that decrease r:
 
 **Constrained decoding: the mechanism for r → 0.** The factors above describe *what* drives r up or down. Constrained decoding is the *mechanism* — the engineering technique that exploits language properties to suppress incorrect generation at decode time, before the model finishes producing output.
 
-**Syntactic constrained decoding** (grammar-constrained decoding, or GCD) masks illegal tokens at each generation step, forcing the model to produce only syntactically valid programs. This requires a formal grammar. Naze's PEG grammar (~150 rules, LL(1)-compatible) makes syntactic GCD straightforward — the grammar is small enough that token masking is fast and the valid token set at any point is unambiguous. Naze already plans GBNF and CFG grammar export for this purpose (Phase 4 M28).
+**Syntactic constrained decoding** (grammar-constrained decoding, or GCD) masks illegal tokens at each generation step, forcing the model to produce only syntactically valid programs. This requires a formal grammar. Naze's PEG grammar (~157 rules, LL(1)-compatible) makes syntactic GCD straightforward — the grammar is small enough that token masking is fast and the valid token set at any point is unambiguous. Naze already plans GBNF and CFG grammar export for this purpose (Phase 4 M28).
 
 **Semantic constrained decoding** goes further, enforcing type safety, scope validity, and program invariants during generation. This is the frontier addressed by ChopChop and related work. For complex languages (Python, TypeScript), the gap between "syntactically valid" and "semantically correct" is large — many syntactically valid programs have type errors, undefined variables, or violated invariants. For Naze, this gap is small by design:
 
@@ -147,7 +147,7 @@ The practical result is that **language design determines GCD tractability:**
 
 | Factor | Python / TypeScript | React + TypeScript | Naze |
 |---|---|---|---|
-| Grammar size (rules) | ~300–2,000+ | TypeScript + JSX | ~150 rules |
+| Grammar size (rules) | ~300–2,000+ | TypeScript + JSX | ~157 rules |
 | Syntactic → semantic gap | Large (dynamic typing, runtime errors, many valid forms) | Medium-large (type system helps, but hooks/closures/async add complexity) | Small (4 types, flat scope, no closures, one form per concept) |
 | Semantic GCD complexity | Requires ChopChop-class machinery (coinductive realizability) | Requires type-aware decoding + framework-specific rules | Lightweight extension of syntactic GCD |
 | Projected r with full GCD | 0.08–0.15 | 0.05–0.12 | 0.02–0.08 |
@@ -191,7 +191,7 @@ Estimated Token Complexity parameters for common languages and frameworks. Value
 
 **Notes on specific languages:**
 
-- **Naze** achieves Λ-Linear through single-file components with inline styling, co-located state, one canonical form per concept, and compile-time validation. σ = 1 because understanding any component requires reading only that component's file. The grammar has grown from ~56 to ~150 rules since initial design (due to visual properties, overlays, pipelines, pattern matching, and server functions), increasing λ and μ modestly, but σ = 1 and Λ-Linear class are preserved.
+- **Naze** achieves Λ-Linear through single-file components with inline styling, co-located state, one canonical form per concept, and compile-time validation. σ = 1 because understanding any component requires reading only that component's file. The grammar has grown from ~56 to ~157 rules since initial design (due to visual properties, overlays, pipelines, pattern matching, and server functions), increasing λ and μ modestly, but σ = 1 and Λ-Linear class are preserved.
 
 - **Svelte** is close to Λ-Linear thanks to single-file components (`.svelte` files contain markup, styling, and logic). However, scoped CSS within `<style>` blocks, external Svelte stores, and SvelteKit's file-system routing conventions add slight scatter (σ ≈ 1.5). Retry rate is lower than React due to less API surface and fewer hook-like gotchas.
 
@@ -266,7 +266,7 @@ This parallels the relationship between Big O and wall-clock time: Big O counts 
 
 | Factor | Naze | React + TypeScript | Python / TypeScript (general) |
 |---|---|---|---|
-| Grammar rules | ~150 | TS (~2,000) + JSX + framework | ~300–2,000+ |
+| Grammar rules | ~157 | TS (~2,000) + JSX + framework | ~300–2,000+ |
 | Minimum viable model | 7–13B fine-tuned | 70B+ general-purpose | 70B+ general-purpose |
 | Deployment | Local (Ollama, llama.cpp) | Cloud API required | Cloud API required |
 | Cost per 1M tokens | ~$0.02–0.08 (local inference) | ~$1–15 (cloud API) | ~$1–15 (cloud API) |
@@ -326,7 +326,7 @@ Using midpoint values for each parameter (from the ranges in the Language Evalua
 | **Angular + TypeScript** | 1,850 | 4.0 | 1.35 | 100 | 100M | **~1,920x** |
 | **Java Spring MVC** | 3,000 | 10.0 | 1.40 | 200 | 840M | **~16,150x** |
 
-*σ values at n=100: 1.0 for Naze (constant), 1.5 for Svelte, log(100) ≈ 4.6 for LogLinear languages, 100^0.3 ≈ 4.0 for Angular, √100 = 10 for Java Spring. μ uses representative midpoints. Naze's μ has increased from 1.0 to 1.3 since baseline due to grammar growth from ~56 to ~150 rules (see "Current State" section below).*
+*σ values at n=100: 1.0 for Naze (constant), 1.5 for Svelte, log(100) ≈ 4.6 for LogLinear languages, 100^0.3 ≈ 4.0 for Angular, √100 = 10 for Java Spring. μ uses representative midpoints. Naze's μ has increased from 1.0 to 1.3 since baseline due to grammar growth from ~56 to ~157 rules (see "Current State" section below).*
 
 ### What Drives the Score
 
@@ -390,9 +390,9 @@ Every proposed Naze feature should be evaluated against the unified equation bef
 - **Does it increase σ?** Adding cross-file imports, shared state stores, or external configuration files would break Λ-Linear. Any feature that requires reading a second file to understand the first pushes σ above 1.
 - **Does it increase λ?** Verbose syntax, boilerplate requirements, or redundant declarations raise the token weight per functional unit.
 - **Does it increase r?** Multiple valid forms for the same concept, implicit behavior, or context-dependent semantics raise the retry rate.
-- **Does it increase μ?** Grammar complexity that pushes the rule count toward the 200-rule hard limit may require larger models, raising the cost per token. The grammar has grown from ~56 rules at initial design to ~150 rules after Phase 3 and Phase 4 additions (see "Current State" section below).
+- **Does it increase μ?** Grammar complexity that pushes the rule count toward the 200-rule hard limit may require larger models, raising the cost per token. The grammar has grown from ~56 rules at initial design to ~157 rules after Phases 3–5 (see "Current State" section below).
 
-Phase 3 and Phase 4 features — pipeline operators, pattern matching, overlays, visual properties, server functions — have been implemented while maintaining σ = 1. However, the grammar grew from ~56 to ~150 rules, increasing μ from 1.0x to ~1.3x. Future features must stay within the 200-rule hard limit. The Ψ framework provides a quantitative check: if a proposed feature would move σ > 1 or push grammar rules past 200, the feature needs redesign or deferral.
+Phases 3–5 features — pipeline operators, pattern matching, overlays, visual properties, server functions, database queries, JS interop, device APIs — have been implemented while maintaining σ = 1. However, the grammar grew from ~56 to ~157 rules, increasing μ from 1.0x to ~1.3x. Future features must stay within the 200-rule hard limit. The Ψ framework provides a quantitative check: if a proposed feature would move σ > 1 or push grammar rules past 200, the feature needs redesign or deferral.
 
 ### 2. Competitive Positioning — The Only Λ-Linear Language
 
@@ -423,13 +423,13 @@ The Ψ framework transforms language design from intuition-driven ("this feels c
 
 ---
 
-## Current State — Post-Phase 3/4 Assessment
+## Current State — Post-Phase 5 Assessment
 
-This section documents how Naze's Token Complexity metrics have evolved since the initial design baseline, following the implementation of Phase 3 (M15–M22) and Phase 4 (M23–M30) features.
+This section documents how Naze's Token Complexity metrics have evolved since the initial design baseline, following the implementation of Phases 3–5 (M15–M41).
 
 ### Grammar Growth
 
-The PEG grammar (`crates/naze-parser/src/naze.pest`) has grown from ~56 rules to **~150 rules**. The LL(1) property is preserved. Major contributors:
+The PEG grammar (`crates/naze-parser/src/naze.pest`) has grown from ~56 rules to **~157 rules**. The LL(1) property is preserved. Major contributors:
 
 | Feature | Rules Added | Milestone |
 |---|---|---|
@@ -440,6 +440,9 @@ The PEG grammar (`crates/naze-parser/src/naze.pest`) has grown from ~56 rules to
 | Pattern matching (match_stmt, match_arm, match_pattern) | ~5 | M16 |
 | Templates & responsive (template_def, responsive props) | ~6 | M17 |
 | Server functions & data enhancements | ~10 | M24/M19d/M19e |
+| Database queries (model_def, find/insert/update/delete expressions) | ~8 | M39 |
+| Browser APIs (textarea, JS interop, device APIs) | ~5 | M40 |
+| List operations (index_access, set_index_action, conditional_action) | ~5 | M41 |
 
 **Guardrail:** Hard limit of **200 grammar rules**. Beyond this, the minimum viable model shifts from 7–13B to 13B+, significantly increasing μ.
 
@@ -517,7 +520,7 @@ Despite the architectural similarity, four parameter differences compound to a 1
 | σ (scatter) | 1.0 | 1.5 | Svelte stores (`writable()`, `readable()`) live in separate `.ts`/`.js` files. SvelteKit file-system routing (`+page.svelte`, `+layout.svelte`, `+server.ts`) forces the AI to understand directory conventions. TypeScript imports pull in external type definitions and utilities. |
 | λ (verbosity) | 350 | 650 | A `.svelte` file is still HTML + CSS + JS — three languages with three syntaxes. Naze's declarative DSL expresses the same intent in ~54% of the tokens. |
 | r (retry rate) | 0.14 | 0.20 | Multiple valid patterns increase generation errors: CSS classes vs inline styles, Svelte stores vs context, `$:` reactive declarations vs `$derived` runes, and Svelte 4 vs Svelte 5 syntax differences that coexist in training data. |
-| **μ (model cost)** | **1.3x** | **50x** | **The dominant factor.** Svelte requires cloud-tier models (GPT-4, Claude) for reliable generation. Its grammar surface area (HTML + CSS + JS + Svelte-specific template syntax) is too large for grammar-constrained decoding on 7-13B local models. Naze's ~150-rule PEG grammar enables GBNF-constrained decoding on small local models, keeping μ near 1x. |
+| **μ (model cost)** | **1.3x** | **50x** | **The dominant factor.** Svelte requires cloud-tier models (GPT-4, Claude) for reliable generation. Its grammar surface area (HTML + CSS + JS + Svelte-specific template syntax) is too large for grammar-constrained decoding on 7-13B local models. Naze's ~157-rule PEG grammar enables GBNF-constrained decoding on small local models, keeping μ near 1x. |
 
 ### The takeaway
 

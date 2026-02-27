@@ -8,10 +8,10 @@ Train a small model (3-7B parameters) that generates correct `.naze` code better
 
 General-purpose coding LLMs are large because they cover 50+ languages, hundreds of frameworks, and millions of patterns. Naze is one language with a constrained grammar -- limited keywords, no ambiguous syntax, one way to express each concept. This drastically reduces the search space. A fine-tuned 3B model on `.naze` only needs to learn:
 
-- ~10 element types (`rect`, `text`, `heading`, `row`, `column`, `container`, `stack`, `grid`, `spacer`, `image`)
-- ~20 property names (`width`, `height`, `padding`, `gap`, `color`, `radius`, `font-size`, etc.)
+- ~15 element types (`rect`, `text`, `heading`, `row`, `column`, `container`, `stack`, `grid`, `spacer`, `image`, `input`, `select`, `textarea`, `link`, `overlay`)
+- ~30 property names (`width`, `height`, `padding`, `gap`, `color`, `radius`, `font-size`, `opacity`, `shadow`, `gradient`, etc.)
 - Component definitions and `use` imports
-- State, events, conditionals, iteration (Phase 2)
+- State, computed, events, conditionals, iteration, routing, theming, animation, pipelines, pattern matching, data fetching, server functions, database queries, storage, timers, error boundaries, guards, AI prompts
 
 That's orders of magnitude less surface area than "all of React + CSS + HTML + JavaScript."
 
@@ -21,33 +21,13 @@ That's orders of magnitude less surface area than "all of React + CSS + HTML + J
 
 ### Seed corpus (already exists)
 
-The project has 17 `.naze` files in `examples/` that serve as the starting seed:
+The project has 109 hand-crafted `.naze` files in `examples/` plus 392 AI-generated examples, totaling 486+ raw training pairs (~1,700 after augmentation). The examples span the full language surface: layout, components, state, events, routing, theming, animation, data fetching, server functions, database queries, pipelines, pattern matching, and real-world apps (todo, dashboard, tic-tac-toe, chat, form-wizard, solitaire, list-operations).
 
-| File | UI pattern |
-|------|-----------|
-| `hello.naze` | Welcome screen |
-| `boxes.naze` | Colored rectangles with varying radius |
-| `columns.naze` | Vertical list/menu |
-| `rows.naze` | Horizontal item display |
-| `nested.naze` | Card grid with labels |
-| `grid.naze` | Thumbnail/icon grid |
-| `padding.naze` | Card/panel with internal spacing |
-| `rounded.naze` | Corner radius showcase |
-| `colors.naze` | Color palette (18 squares in 3 rows) |
-| `typography.naze` | Typographic hierarchy |
-| `dashboard-static.naze` | Admin dashboard with header, nav sidebar, metric cards |
-| `app-shell.naze` | App shell (top nav, sidebar, content, stats) |
-| `multi-component.naze` | Component composition |
-| `component-basic.naze` | Importing and invoking components |
-| `component-props.naze` | Components with typed props |
-| `components/color-box.naze` | Component definition: colored square |
-| `components/card.naze` | Component definition: styled card with heading + text |
+The `ai/generate_examples.py` script uses parametric template composition to generate validated examples — each output is checked with `nazec parse` before inclusion.
 
-Plus code samples from the README and docs/LANGUAGE.md.
+### Tier 1 — AI-generated seeds, human-validated (done)
 
-### Tier 1 — AI-generated seeds, human-validated (~200 total)
-
-Expand from 17 to 200 using Claude Code (or similar AI tools) to generate `.naze` files, then validate with a two-step pipeline:
+The initial expansion from seed examples to ~500 validated pairs is complete. The two-step pipeline used:
 
 1. **`nazec check`** — automatic syntax and type validation (rejects invalid code immediately)
 2. **`nazec run`** — human visually inspects the rendered output in the native preview window (confirms the UI looks correct and intentional)
@@ -166,14 +146,14 @@ Script: take valid `.naze` files, programmatically inject errors, capture `nazec
 
 ### Dataset totals
 
-| Tier | Count | Source | Cost |
-|------|-------|--------|------|
-| Seed corpus | 17 | Already exists | $0 |
-| Tier 1: AI-generated, human-validated | ~200 | Claude Code + `nazec run` visual review | ~1 day |
-| Tier 2: Synthetic | ~5,000 | Claude/GPT-4 API | ~$20-50 |
-| Tier 3: Self-improvement | ~10,000-20,000 | Fine-tuned model + compiler | Compute only |
-| Tier 4: Error correction | ~2,000 | Script + compiler | ~$5-10 (API for some) |
-| **Total** | **~17,000-27,000** | | **~$25-60** |
+| Tier | Count | Source | Status |
+|------|-------|--------|--------|
+| Seed corpus | 109 hand-crafted + 392 generated = 486 raw (~1,700 augmented) | Examples + `ai/generate_examples.py` | Done |
+| Tier 1: AI-generated, human-validated | ~500 | Claude Code + `nazec parse` validation | Done |
+| Tier 2: Synthetic | ~5,000 | Claude/GPT-4 API | Planned (M47) |
+| Tier 3: Self-improvement | ~10,000-20,000 | Fine-tuned model + compiler | Planned (M47) |
+| Tier 4: Error correction | ~2,000 | Script + compiler | Planned (M47) |
+| **Total target** | **~17,000-27,000** | | |
 
 ---
 

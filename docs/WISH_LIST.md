@@ -59,10 +59,10 @@ The loop:
 
 ### What needs to exist first
 
-- Phase 2 state and events (so generated apps are interactive)
-- A fine-tuned Naze LLM -- see [LLM.md](LLM.md) for the full training plan, dataset strategy, hardware requirements, and cost estimates
+- ~~Phase 2 state and events (so generated apps are interactive)~~ Done
+- A fine-tuned Naze LLM -- see [LLM.md](LLM.md) for the full training plan, dataset strategy, hardware requirements, and cost estimates (M47 in Phase 6)
 - An orchestration layer that pipes STT → LLM → file write → TTS
-- The hot-reload pipeline (already built)
+- ~~The hot-reload pipeline~~ Done (`nazec dev` and `nazec run` both support hot reload)
 
 ### Why this matters
 

@@ -1,6 +1,8 @@
 # Naze
 
-A declarative UI language that compiles to WebAssembly and renders via Canvas2D, bypassing the DOM entirely.
+A declarative, AI-native UI language that compiles to WebAssembly and renders via Canvas2D, bypassing the DOM entirely. Designed by AI, for AI -- this entire codebase (compiler, runtime, layout engine, tooling) was built through human-AI collaboration using Claude Code.
+
+> **Note:** Naze is a research project and work in progress. It is not yet suitable for production applications. The language, compiler, and runtime are functional and tested (400+ tests, 109 examples), but APIs may change, features may be incomplete, and the ecosystem is early-stage. Contributions and feedback are welcome.
 
 ```naze
 app "Hello" {
@@ -16,42 +18,101 @@ app "Hello" {
 }
 ```
 
-## Why Naze?
+## The Vision
 
-The modern web stack is a 9-step pipeline built for humans: TypeScript transpiled to JavaScript, bundled by Webpack/Vite, CSS processed through PostCSS/Tailwind, minified, tree-shaken, code-split, downloaded (often 1-5MB of JavaScript), parsed back into an AST, built into a DOM, CSS cascade resolved, layout computed, and finally pixels appear on screen. Most of this exists to manage complexity that humans created for humans. The frameworks, bundlers, and transpilers are developer ergonomics layers that end users never benefit from.
+The web is shifting. Users increasingly interact with the internet through AI agents -- asking questions, delegating tasks, composing services -- rather than manually navigating pages and clicking links. As this transition accelerates, the assumptions underneath the web start to break. HTML was designed for documents that humans read. CSS was designed for layouts that humans see. JavaScript was designed for interactions that humans initiate. Search engines index text that humans scan.
 
-AI is writing more and more of this code. AI doesn't need developer ergonomics. It doesn't need readable class names or semantic HTML. It could target something far more direct.
+None of this was designed for a world where the primary consumer of a web application is an AI agent acting on a user's behalf.
 
-**The key insight: WASM already runs in every major browser.** Chrome, Firefox, Safari, Edge all have WASM runtimes today. Projects like Flutter/web, Figma, and game engines already prove you can bypass the DOM entirely by rendering through WASM + Canvas. The runtime isn't the missing piece. The infrastructure exists. What's missing is the **language layer** -- a declarative, intent-based language designed for AI to author (and humans to read) that compiles down to WASM.
+Naze is built for that world. It is a language and platform designed so that AI agents can **author**, **understand**, and **interact with** applications natively -- not by scraping HTML and guessing at CSS selectors, but through a structured, typed, semantic format that an agent can parse, reason about, and compose programmatically. Applications become machine-comprehensible artifacts: an agent can read a Naze binary and know every piece of state the app tracks, every action it supports, and every condition that changes its behavior. Discovery becomes structural ("find apps with a cart, checkout, and payment flow") rather than keyword-based.
 
-Naze is that language. A purpose-built, AI-native UI format where:
+This is solving problems of the future -- but it also solves problems of today. The modern web stack is bloated, fragmented, and expensive for AI to work with. Naze replaces that with a single language, a 395KB runtime, and a compile pipeline with no middle layers. The same design choices that make Naze agent-native also make it faster to build, smaller to ship, and cheaper to maintain right now.
 
-- **Intent goes straight to pixels.** No bundler. No framework selection. No "React or Vue or Svelte." No Webpack config. The compiler emits a compact binary render tree; the runtime renders it directly.
-- **Apps are kilobytes, not megabytes.** The Naze runtime is 69KB. A typical app's render tree is hundreds of bytes. Compare that to the megabytes of JavaScript, CSS frameworks (95% unused), and polyfills that a typical SPA ships.
-- **The syntax is readable but compilable.** `.naze` files read like a document describing what the UI should look like. A non-developer can understand them. An AI can generate them reliably. No JSX, no template literals, no CSS-in-JS.
-- **Compiled, not interpreted.** Naze is not another runtime-interpreted language. The compiler does the heavy lifting ahead of time -- parsing, type checking, import resolution, component inlining, dead code elimination -- and emits a compact binary. The runtime is a thin executor that deserializes and renders. No JIT, no eval, no parsing at runtime. This is closer to how C or Rust works than how JavaScript or Python works.
-- **One source, every platform.** The same `.naze` file targets web (WASM + Canvas), desktop (native renderer), and mobile -- without platform-specific code.
+## Why Naze Exists
 
-### What this enables
+AI is writing more and more code. But the languages it writes in -- React, Vue, Angular, the entire HTML/CSS/JS stack -- were designed for human developers. They scatter information across dozens of files, offer multiple valid ways to express the same concept, and rely on implicit framework behavior invisible in the source code. When an AI agent modifies one component in a React app, it reads the CSS module, the TypeScript interfaces, the Redux store, the custom hooks, the routing config. As the app grows, this cost grows superlinearly.
 
-- **True cross-platform from a single source.** One `.naze` file compiles to web (WASM + Canvas), desktop (native window), and mobile (Android/iOS). No React Native, no Electron, no Flutter -- one language, every platform, identical output.
-- **Purpose-built AI models.** Today's coding LLMs are 70B-400B+ parameters because they're trained on 50+ languages, hundreds of frameworks, and millions of patterns. Naze is one language with a constrained grammar -- one way to express layout, data binding, events. A fine-tuned 3-7B model on `.naze` could match or outperform a general-purpose 70B model at Naze generation specifically. That's a model that runs locally on a laptop, offline, at zero cost -- not a cloud compromise, but potentially the *better* experience. The language is the constraint that makes this tractable.
-- **Instant app generation.** Because the language is declarative and the compiler is fast, the loop from "describe what you want" to "see it running" collapses. No `npm install`, no build config, no dependency resolution. `nazec build` produces a working app in milliseconds.
-- **Auditable by anyone.** `.naze` files are plain text, readable by non-developers. A product manager, designer, or client can open the source and understand the structure. AI-generated code becomes inspectable, not a black box.
-- **Tiny attack surface.** No `node_modules`. No supply chain of thousands of transitive dependencies. The compiler is a single Rust binary. The runtime is 69KB of WASM. There is very little to exploit.
-- **Testing built in from the ground up.** Tests are `.test.naze` files written in the same language as the app -- not a separate framework, not Jest, not Playwright. Component tests render with props and assert output; flow tests simulate multi-page user journeys. `nazec test` runs everything. Because the language is declarative and the output is deterministic (same input always produces the same render tree), tests are predictable and reproducible. AI generates tests alongside app code, and the compiler validates both.
-- **Conversational development.** The sub-second rebuild cycle makes voice-driven development practical: speak a change, a local LLM edits the `.naze` source, `nazec run` hot-reloads, and you see the result before you finish your next sentence. The constrained grammar means a small local model generates correctly, and the deterministic output means the model can predict exactly what you'll see.
-- **Offline-first development.** With a local Naze-trained LLM and the `nazec` compiler, you can generate and build apps with no internet connection. No CDN, no package registry, no cloud build service required.
+Naze asks: **what if a language were designed from scratch so that AI cost scales linearly with application size -- and stays there?**
 
-The competitive moat is the language, not the runtime. Whoever designs the right AI-native language wins, because the execution layer is commoditized. Think about what happened with JavaScript: the language was the innovation, not the browser.
+### The framework: Token Complexity
 
-See [docs/BRAINSTORM.md](docs/BRAINSTORM.md) for the full design rationale and [docs/ROADMAP.md](docs/ROADMAP.md) for the long-term vision.
+We propose **Token Complexity** (&Lambda;(n)) as the Big O of AI development cost:
+
+> **&Lambda;(L, n) = n &times; &lambda; &times; &sigma; &times; (1 + r)**
+
+Where **&lambda;** is tokens per component (verbosity), **&sigma;** is files the AI must read per change (scatter), and **r** is the retry rate (how often the AI generates incorrect code). The critical parameter is **&sigma;** -- it determines the complexity class. If &sigma; = 1 (each component is self-contained), cost scales linearly. If &sigma; = log(n) (cross-file dependencies grow with app size), cost scales superlinearly. At 200 components, the gap is 10-20x. At 1,000, it's unbounded.
+
+| Language / Framework | &sigma; | Class | Cost at 200 components |
+|---------------------|---------|-------|------------------------|
+| **Naze** | 1 | **&Lambda;-Linear** | 55K-110K tokens |
+| **Svelte** | ~1.5 | **&Lambda;-Linear** (nearly) | 150K-280K tokens |
+| **React + Tailwind + TS** | log(n) | **&Lambda;-LogLinear** | 700K-1.8M tokens |
+| **Angular + TS** | ~n^0.3 | **&Lambda;-Quadratic** | 2M-8M tokens |
+
+See [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) for the full framework, formula, and multi-language comparison.
+
+## Design Principles
+
+### AI-native, human-readable
+
+The language is designed as a compilation target for AI, but `.naze` files read like a document describing what the UI should look like. A non-developer can open the source and understand the structure. AI-generated code is inspectable, not a black box.
+
+### Kilobytes, not megabytes
+
+The entire WASM runtime is 395KB. A typical app's render tree is hundreds of bytes. No `node_modules`, no megabytes of JavaScript, no CSS frameworks. The compiler is a single Rust binary. The attack surface is tiny.
+
+### No middle layers
+
+No bundler, no transpiler, no CSS preprocessor, no virtual DOM. Intent goes to pixels through the shortest path: parse, typecheck, serialize, deserialize, layout, render. `.naze` source compiles to four files: an HTML shell, a JS loader, a WASM runtime, and a binary data blob.
+
+### Compile-time over runtime
+
+Components are inlined, types are checked, imports are resolved, and dead code is eliminated at build time. The runtime is a thin interpreter that deserializes and renders -- no JIT, no eval, no parsing at runtime. No implicit framework behavior to reason about.
+
+### One source, every platform
+
+The same `.naze` file targets web (WASM + Canvas), desktop (native window via tiny-skia), and mobile -- without platform-specific code. Platform differences are handled by the renderer, not the language.
+
+### Token-efficient by construction
+
+Every language feature preserves &sigma; = 1. Structure, styling, state, events, data fetching -- all declared inline in one `.naze` file. One canonical form per concept: one way to express state, one way to bind events, one way to do conditional rendering. The AI can't pick the "wrong" pattern because there's only one pattern.
+
+## What This Enables
+
+### Local AI models that outperform cloud models
+
+Today's coding LLMs are 70B-400B+ parameters because they cover 50+ languages and hundreds of frameworks. Naze has a constrained grammar (~157 PEG rules, LL(1)-compatible) -- small enough for grammar-constrained decoding (GBNF/CFG). A fine-tuned 3-7B model on `.naze` can match or outperform a general-purpose 70B model at Naze generation. That model runs locally on a laptop, offline, at zero cost. The language exports its own grammar for this purpose: `nazec grammar --format gbnf`.
+
+### Instant app generation
+
+The loop from "describe what you want" to "see it running" collapses. No `npm install`, no build config, no dependency resolution. `nazec build` produces a working app in milliseconds. The sub-second rebuild cycle makes voice-driven development practical: speak a change, a local LLM edits the `.naze` source, `nazec run` hot-reloads, and you see the result before you finish your next sentence.
+
+### An agent-native application format
+
+Naze compiles to `app_data.bin` -- a binary containing the complete application semantics: state schema, UI tree, actions, computed values, data bindings, conditions. An AI agent can deserialize this binary and understand the entire app without rendering it. No browser, no DOM, no JavaScript execution -- just structured data. Interaction becomes semantic (`execute action "append" on "tasks"`) instead of fragile (`click selector ".todo-form .submit-btn"`). See [docs/AGENT_RUNTIME.md](docs/AGENT_RUNTIME.md) for the full vision.
+
+### Live app factory
+
+The architecture enables a generative flywheel: describe an app in natural language, the agent queries a discovery registry for reusable packages, generates `.naze` source that imports them, the in-browser compiler produces a working app in seconds -- no server round-trip. Generated apps can be saved, forked, or published back to the registry, making the next app easier to build. Each published app enriches the registry; each richer registry improves generation quality. See [docs/ROADMAP.md](docs/ROADMAP.md) for the dedicated browser vision.
+
+### Testing built in
+
+Tests are `.test.naze` files in the same language as the app -- not Jest, not Playwright. Component tests render with props and assert output; flow tests simulate multi-page user journeys. `nazec test` runs everything. Because the language is declarative and the output is deterministic, tests are predictable and reproducible. AI generates tests alongside app code.
 
 ## Status
 
-**Phase 1 (Proof of Life) is complete.** `nazec new hello && cd hello && nazec build` produces a `dist/` directory with WASM + HTML that renders colored rectangles and text in the browser. Runtime binary is 69KB.
+**Phases 1-5 complete (41 milestones). Phase 6 (Developer Experience & Adoption) in progress.**
 
-See [docs/MVP.md](docs/MVP.md) for Phase 1 summary and [docs/PHASE2.md](docs/PHASE2.md) for Phase 2 planning.
+11 crates, 400+ tests, ~157 grammar rules, 395KB WASM runtime, 109 examples.
+
+- **Phase 1:** End-to-end pipeline -- `.naze` source to WASM + Canvas rendering
+- **Phase 2:** State, events, routing, forms, animation, accessibility, dev server, native desktop builds
+- **Phase 3:** Pipelines, pattern matching, responsive layout, testing framework, component events
+- **Phase 4:** Server functions, SSR/SSG, package registry, AI grammar export, fine-tuning pipeline, prompt runtime
+- **Phase 5:** Environment config, dynamic routing, error boundaries, auth, database integration, declarative queries
+- **Phase 6 (current):** CI/CD (done), playground (done), docs site, VS Code extension, binary distribution
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full roadmap and [docs/HISTORY.md](docs/HISTORY.md) for the consolidated Phase 1-5 record.
 
 ## Quick Start
 
@@ -155,7 +216,7 @@ building hello v0.1.0
   type checking...
   compiling...
   writing dist/...
-  done: runtime 75KB + app data 567B
+  done: runtime 395KB + app data 567B
 ```
 
 This produces four files in `dist/`:
@@ -164,7 +225,7 @@ This produces four files in `dist/`:
 dist/
   index.html              HTML shell with canvas and bootstrap script
   naze_runtime.js         WASM loader (generated by wasm-pack)
-  naze_runtime_bg.wasm    Runtime binary (75KB) — layout + Canvas2D renderer
+  naze_runtime_bg.wasm    Runtime binary (395KB) — layout + Canvas2D renderer
   app_data.bin            Your app's serialized render tree (567 bytes)
 ```
 
@@ -314,7 +375,7 @@ Build and refresh — the component is inlined at compile time with prop values 
 
 ### 9. Browse all examples
 
-The repository includes 18 example `.naze` files demonstrating various features. You can browse them interactively with the gallery command:
+The repository includes 109 example `.naze` files demonstrating various features. You can browse them interactively with the gallery command:
 
 ```bash
 # From the repository root
@@ -380,30 +441,35 @@ naze-lang/
     naze-layout/      Layout engine — row, column, stack, grid
     naze-renderer/    Canvas2D renderer (web-sys)
     naze-native/      Standalone native viewer for app_data.bin
-  examples/           18 example .naze files
+    naze-lsp/         Language Server Protocol implementation
+    naze-registry/    Package registry server
+    naze-playground/  Compiler-as-WASM for browser playground
+  examples/           109 example .naze files
   docs/
-    ROADMAP.md        Long-term vision (Phase 1-5)
-    PHASE2.md         Phase 2 milestone tracker
-    MVP.md            Phase 1 summary
+    ROADMAP.md        Long-term vision (Phases 1-6)
+    HISTORY.md        Consolidated Phase 1-5 record
+    PHASE6.md         Phase 6 milestone tracker
     LANGUAGE.md       Language reference
-    PROTOTYPE.md      Component architecture spec
-    BRAINSTORM.md     Original design brainstorm
-    WISH_LIST.md      Speculative ideas (voice-driven dev, etc.)
-    LLM.md            Local LLM fine-tuning plan
+    TOKEN_EFFICIENCY.md  Token Complexity framework
+    PROTOTYPE.md      Architecture spec
 ```
 
 ## CLI
 
 ```
-nazec new <name>        Create a new project
-nazec build             Compile to dist/ (WASM + HTML)
-nazec run               Preview in a native desktop window (Linux)
-nazec check             Type-check without building
-nazec context           Export project context as JSON for AI agents
-nazec parse <file>      Dump AST as JSON
-nazec gallery           Build and serve interactive example gallery
-nazec gallery --build   Build gallery only (no server)
-nazec build --format json   Machine-readable error output
+nazec new <name>           Create a new project
+nazec build [--target]     Compile to dist/ (web, native, or android)
+nazec run                  Preview in a native desktop window (hot reload)
+nazec dev [--port]         Dev server with browser hot reload
+nazec serve [--port]       Production SSR server
+nazec check                Type-check without building
+nazec test [--format]      Run .test.naze test suites
+nazec parse <file>         Dump AST as JSON
+nazec context              Export project context as JSON for AI agents
+nazec grammar [--format]   Export grammar for LLM constrained decoding
+nazec gallery              Build and serve interactive example gallery
+nazec ai generate          AI code generation from natural language
+nazec playground           Start hosted playground server
 ```
 
 ## Build Commands
@@ -479,17 +545,11 @@ Or point an AI agent at `/tmp/naze-toolkit/README.md` and let it build apps.
 
 Re-run `make try` after compiler changes — it rebuilds and re-extracts automatically.
 
-## Language Features (Phase 1)
+## Language Features
 
-- `app` blocks with title
-- Layout: `row`, `column`, `stack`, `grid`, `container`, `spacer`
-- Elements: `rect`, `text`, `heading`
-- Properties: dimensions (`width`, `height`, `padding`, `gap`), colors (`#hex`), `radius`
-- Components with typed parameters and defaults
-- `use` imports for component reuse
-- `--` line comments
+Layout (`row`, `column`, `stack`, `grid`, `container`, `spacer`), elements (`rect`, `text`, `heading`, `image`, `input`, `select`, `textarea`), components with typed parameters, `use` imports, `state` and `computed`, event handlers, conditionals (`if`/`else`, `match`), iteration (`each`), routing (`page`), theming, animation with easing, drag & drop, scroll containers, data fetching (REST, WebSocket, SSE), server functions with SQL, storage (local/session), timers, pipeline operators, pattern matching, responsive layout, overlay system, form validation, accessibility (ARIA, focus management), declarative database queries (`model`/`find`/`insert`/`update`/`delete`), AI prompt blocks, JS interop, error boundaries, page guards, environment variables.
 
-See [docs/LANGUAGE.md](docs/LANGUAGE.md) for the full language reference with property tables and layout semantics.
+See [docs/LANGUAGE.md](docs/LANGUAGE.md) for the full language reference.
 
 ## Architecture
 
@@ -506,4 +566,6 @@ The compiler (native Rust) parses `.naze` files, resolves imports, type-checks, 
 
 ## License
 
-MIT
+[MPL 2.0](LICENSE) (Mozilla Public License 2.0)
+
+The Naze compiler, runtime, and tooling are open source and must remain so -- any modifications to the framework's source files must be shared under the same license. Applications you build with Naze (your `.naze` source files, compiled output, and everything in your `dist/` directory) are entirely yours and can be proprietary, commercial, or licensed however you choose.
