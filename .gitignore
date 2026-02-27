@@ -35,4 +35,15 @@ ai/.venv/
 ai/data/*.jsonl
 ai/data/naze-coder-lora/
 ai/data/naze-coder-gguf/
+ai/data/naze-coder-gguf_gguf/
 ai/llama.cpp/
+ai/__pycache__/
+ai/unsloth_compiled_cache/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Large binary files that shouldn't be in git
+*.gguf
+*.pdf
