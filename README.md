@@ -24,13 +24,35 @@ The web is shifting. Users increasingly interact with the internet through AI ag
 
 None of this was designed for a world where the primary consumer of a web application is an AI agent acting on a user's behalf.
 
-Naze is built for that world. It is a language and platform designed so that AI agents can **author**, **understand**, and **interact with** applications natively -- not by scraping HTML and guessing at CSS selectors, but through a structured, typed, semantic format that an agent can parse, reason about, and compose programmatically. Applications become machine-comprehensible artifacts: an agent can read a Naze binary and know every piece of state the app tracks, every action it supports, and every condition that changes its behavior. Discovery becomes structural ("find apps with a cart, checkout, and payment flow") rather than keyword-based.
+Naze is built for that world. We call the paradigm **FAAD -- Fully Autonomous AI Development** -- where AI agents handle the entire software lifecycle (build, test, debug, deploy, maintain) and humans provide direction, requirements, and approval. FAAD isn't a distant future; it's already emerging in tools like Claude Code, Cursor, and Devin. But the languages these tools write in weren't designed for them. Naze is.
+
+It is a language and platform designed so that AI agents can **author**, **understand**, and **interact with** applications natively -- not by scraping HTML and guessing at CSS selectors, but through a structured, typed, semantic format that an agent can parse, reason about, and compose programmatically.
+
+### Three layers, one artifact
+
+Every Naze application compiles to a single binary that contains three cleanly separated layers:
+
+```
+Layer 3: Presentation  — UI tree, themes, animations, layout, colors, typography
+Layer 2: Interaction   — event handlers, navigation, actions, validation
+Layer 1: Data          — state, computed values, server functions, data bindings
+```
+
+Humans need all three layers. AI agents typically need only Layer 1, occasionally Layer 2 to understand what operations are available. Layer 3 is pure human overhead in agent-to-agent communication.
+
+The traditional web has no equivalent separation. HTML, CSS, and JavaScript are three intertwined languages that all serve presentation. To extract what a web app *does* -- its data, state, and operations -- an AI must parse all three languages, execute JavaScript, and reverse-engineer semantics from DOM structure and CSS class names. With Naze, an agent reads the binary directly: here are the state variables, here are the actions, here are the computed values. A todo app's entire data layer is ~500 bytes. The presentation layer that wraps it is ~6KB. An agent doing discovery or composition can skip 93% of the binary and work with just the parts that matter.
+
+This also means one source file produces three consumption formats automatically -- a full interactive app for browsers (~7KB), a lightweight manifest for agent discovery (~1KB), and a headless binary for agent-to-agent computation (~500 bytes). Nothing can drift because all three are projections of the same compiled data structure. The developer (human or AI) doesn't design for this -- they just write a `.naze` file. The compiler handles the separation.
 
 This is solving problems of the future -- but it also solves problems of today. The modern web stack is bloated, fragmented, and expensive for AI to work with. Naze replaces that with a single language, a 395KB runtime, and a compile pipeline with no middle layers. The same design choices that make Naze agent-native also make it faster to build, smaller to ship, and cheaper to maintain right now.
 
+See [docs/AGENT_RUNTIME.md](docs/AGENT_RUNTIME.md) for the full agent runtime vision.
+
 ## Why Naze Exists
 
-AI is writing more and more code. But the languages it writes in -- React, Vue, Angular, the entire HTML/CSS/JS stack -- were designed for human developers. They scatter information across dozens of files, offer multiple valid ways to express the same concept, and rely on implicit framework behavior invisible in the source code. When an AI agent modifies one component in a React app, it reads the CSS module, the TypeScript interfaces, the Redux store, the custom hooks, the routing config. As the app grows, this cost grows superlinearly.
+AI is writing more and more code. The trajectory points toward FAAD, where AI agents build, test, and maintain entire applications autonomously. But the languages they write in -- React, Vue, Angular, the entire HTML/CSS/JS stack -- were designed for human developers. They scatter information across dozens of files, offer multiple valid ways to express the same concept, and rely on implicit framework behavior invisible in the source code. When an AI agent modifies one component in a React app, it reads the CSS module, the TypeScript interfaces, the Redux store, the custom hooks, the routing config. As the app grows, this cost grows superlinearly.
+
+Under FAAD, this isn't a minor inconvenience -- it's the dominant infrastructure cost. An autonomous agent pipeline processes tens of thousands of interactions per week. At that volume, language choice stops being a developer preference and becomes a cost-of-goods decision.
 
 Naze asks: **what if a language were designed from scratch so that AI cost scales linearly with application size -- and stays there?**
 
@@ -49,7 +71,9 @@ Where **&lambda;** is tokens per component (verbosity), **&sigma;** is files the
 | **React + Tailwind + TS** | log(n) | **&Lambda;-LogLinear** | 700K-1.8M tokens |
 | **Angular + TS** | ~n^0.3 | **&Lambda;-Quadratic** | 2M-8M tokens |
 
-See [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) for the full framework, formula, and multi-language comparison.
+At enterprise scale under FAAD (50 apps, 5 years, ~2M interactions), the cumulative cost difference between a &Lambda;-Linear and &Lambda;-LogLinear language is $500K-$1.1M. &Lambda;-Quadratic languages become economically impractical for autonomous development entirely.
+
+See [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) for the full framework, formula, and multi-language comparison. See [docs/PARITY.md](docs/PARITY.md) for detailed FAAD cost projections.
 
 ## Design Principles
 
@@ -81,11 +105,37 @@ Every language feature preserves &sigma; = 1. Structure, styling, state, events,
 
 ### Local AI models that outperform cloud models
 
-Today's coding LLMs are 70B-400B+ parameters because they cover 50+ languages and hundreds of frameworks. Naze has a constrained grammar (~157 PEG rules, LL(1)-compatible) -- small enough for grammar-constrained decoding (GBNF/CFG). A fine-tuned 3-7B model on `.naze` can match or outperform a general-purpose 70B model at Naze generation. That model runs locally on a laptop, offline, at zero cost. The language exports its own grammar for this purpose: `nazec grammar --format gbnf`.
+FAAD at scale requires cheap, fast inference. Today's coding LLMs are 70B-400B+ parameters because they cover 50+ languages and hundreds of frameworks. Naze has a constrained grammar (~157 PEG rules, LL(1)-compatible) -- small enough for grammar-constrained decoding (GBNF/CFG). A fine-tuned 3-7B model on `.naze` can match or outperform a general-purpose 70B model at Naze generation. That model runs locally on a laptop, offline, at zero cost per interaction. The language exports its own grammar for this purpose: `nazec grammar --format gbnf`.
+
+### Pay for only what you use
+
+The grammar is partitioned into tiers -- each tier is a self-contained subset that can be exported, trained, and deployed independently:
+
+| Tier | Scope | Example |
+|------|-------|---------|
+| 0 | Core UI | Layout, elements, state, events, themes, components |
+| 1 | Data | Fetch, streams, server functions, storage, timers |
+| 2 | Database | Models, declarative queries |
+| 3 | AI | Prompt blocks, provider config |
+| 4 | Systems | (future) Concurrency, file IO, networking |
+
+A UI-only agent needs only Tier 0 -- a 3B model trained on ~60 grammar rules. A fullstack agent uses Tiers 0-2 with a 7B model. Lower tiers never depend on higher ones, so each subset is a valid, complete language. This means smaller models, smaller runtimes, and faster inference -- you train and ship only the language surface your use case requires. An agent building dashboards doesn't pay the cost of database query syntax it will never generate.
+
+The tier architecture also points toward a longer-term vision: Naze as a general-purpose language, not just a UI language. Tier 4 (Systems) would add concurrency, file IO, and networking -- enough to cover the ~80-90% of software that doesn't require low-level hardware access. You'd still write device drivers in C and kernels in Rust, but application-layer software -- APIs, CLIs, data pipelines, automation -- could be written in the same language as the UI, by the same AI agent, with the same toolchain. Each tier remains an independent plugin: an agent that only builds web UIs never loads the systems tier, and an agent building a CLI tool never loads the UI tier. One language, many surfaces, pay for what you use.
 
 ### Instant app generation
 
-The loop from "describe what you want" to "see it running" collapses. No `npm install`, no build config, no dependency resolution. `nazec build` produces a working app in milliseconds. The sub-second rebuild cycle makes voice-driven development practical: speak a change, a local LLM edits the `.naze` source, `nazec run` hot-reloads, and you see the result before you finish your next sentence.
+Under FAAD, the loop from "describe what you want" to "see it running" collapses. No `npm install`, no build config, no dependency resolution. `nazec build` produces a working app in milliseconds. The sub-second rebuild cycle makes voice-driven development practical: speak a change, a local LLM edits the `.naze` source, `nazec run` hot-reloads, and you see the result before you finish your next sentence.
+
+### Cloud-scale FAAD: speculative but directional
+
+The local story is a 3-7B model on a laptop generating a component in 2-4 seconds. But consider what happens when a cloud provider trains large Naze-specialized models and runs hundreds of agents in parallel.
+
+A single Naze component is 200-500 tokens. A cloud-optimized model on dedicated hardware can generate that in under a second. A 50-page application is ~50 components. With 50 agents generating in parallel -- each working on one component, each needing only its own file (σ = 1, no cross-file dependencies to coordinate) -- the entire application could be generated, compiled, and tested in seconds. Not minutes. Seconds.
+
+This is where Naze's design compounds. In React, you can't safely parallelize generation across 50 agents because components share state stores, CSS files, type definitions, and routing config -- agent B's output depends on what agent A wrote. σ > 1 means coordination overhead, merge conflicts, and sequential bottlenecks. In Naze, σ = 1 means every component is self-contained. Fifty agents, zero coordination, linear speedup.
+
+A cloud FAAD provider could offer "describe your app, get a running deployment in 30 seconds" -- not as a toy demo, but as production software with tests, multiple pages, data bindings, and themes. The language's structural properties make embarrassingly parallel generation viable in a way that no existing web framework allows.
 
 ### An agent-native application format
 
@@ -563,6 +613,40 @@ The compiler (native Rust) parses `.naze` files, resolves imports, type-checks, 
                  nazec run (Linux)                 browser (all platforms)
                  deserialize → layout → tiny-skia   runtime.wasm → layout → Canvas2D
 ```
+
+## FAQ
+
+**If themes live in a separate `theme.naze` file, doesn't that break σ = 1?**
+
+No. An AI writing a component never needs to open `theme.naze`. It just writes `color: @theme.colors.primary` -- a complete, correct reference regardless of what `primary` resolves to. The compiler loads theme tokens and inlines them as literal values at compile time (or keeps them as runtime bindings when multiple themes exist for light/dark switching). The theme file is project-level configuration, like environment variables. The AI doesn't need to read it to generate or modify any component.
+
+**Why not just use React/Svelte with AI tools like Cursor or Claude Code?**
+
+You can, and they work well today. The difference shows up at scale. React's σ = log(n) means that as an app grows, each AI interaction requires reading more files -- CSS modules, type definitions, state stores, routing config. At 50 components this is manageable. At 500, the AI is reading thousands of tokens of context per change, and the cost grows superlinearly. Naze's σ = 1 means the cost per change stays flat regardless of app size. For a single developer building a small app, the difference is marginal. For FAAD pipelines processing thousands of interactions per week, it's the dominant cost factor.
+
+**Why Canvas2D instead of the DOM?**
+
+Three reasons. First, pixel-perfect consistency -- the same `.naze` source renders identically on every browser and platform, no CSS quirks or browser-specific rendering differences. Second, the rendering pipeline is simpler: parse → layout → draw, with no virtual DOM diffing, no CSS cascade resolution, no layout thrashing. Third, it enables the native desktop target (`nazec run`) to use the exact same layout engine with a different renderer (tiny-skia instead of Canvas2D), so one language genuinely targets multiple platforms without a webview wrapper.
+
+**How does Naze handle accessibility without the DOM?**
+
+A hidden DOM overlay mirrors the canvas content with ARIA attributes. This overlay is invisible to sighted users but accessible to screen readers. ARIA roles are automatically inferred from element types (`heading` → `role="heading"`, `input` → `role="textbox"`, `image` → `role="img"`). Developers can override with explicit `role` and `label` props. Keyboard navigation (Tab, Enter, Escape, arrow keys) is built in. This is the same approach Flutter Web uses.
+
+**Can I use existing JavaScript libraries?**
+
+Yes, via JS interop. Naze supports calling JavaScript functions from event handlers using `js "Math.random()"` syntax with dotted path resolution. For more complex cases, WASM library imports let you call pre-compiled WebAssembly modules. The interop boundary is type-checked at compile time -- the compiler verifies the call is well-formed, and the runtime handles marshaling. You won't get access to the full npm ecosystem, but you can bridge to specific JS APIs when needed.
+
+**Why a new language instead of a DSL on top of TypeScript/Python/etc?**
+
+A DSL inherits its host language's complexity. A TypeScript DSL still has TypeScript's grammar (~2,000+ rules), TypeScript's type system, TypeScript's module resolution, and TypeScript's multiple ways to express the same concept. The AI still needs a 70B+ model to handle the host language. Naze's ~157-rule grammar is small enough for grammar-constrained decoding on a 3-7B model. That's only possible because it's a standalone language, not a layer on top of a complex one.
+
+**Is this production-ready?**
+
+No. Naze is a research project. The language, compiler, and runtime are functional and tested (400+ tests, 109 examples), but APIs may change, features may be incomplete, and the ecosystem is early-stage. See the [Status](#status) section for what's been built so far.
+
+**What's the relationship between Naze and FAAD?**
+
+FAAD (Fully Autonomous AI Development) is the paradigm -- AI agents handling the entire software lifecycle. Naze is a language designed for that paradigm. Other languages could also optimize for FAAD; Naze is the first to make it a primary design goal. The [Token Complexity framework](docs/TOKEN_EFFICIENCY.md) is language-agnostic -- it can evaluate any language's FAAD fitness.
 
 ## License
 
