@@ -6,7 +6,7 @@
 
 **Architecture shift:** Phases 1-5 built the language, compiler, runtime, and server infrastructure. Phase 6 builds the adoption infrastructure around it. No major language changes — the focus is CI/CD, documentation, distribution, tooling polish, and ecosystem seeding.
 
-**Prerequisite:** Phases 1-5 complete (M1-M41). 385 workspace tests. WASM binary: 374KB.
+**Prerequisite:** Phases 1-5 complete (M1-M41). See [HISTORY.md](HISTORY.md) for the consolidated record. 389 workspace tests. WASM binary: 395KB (budget: 405KB).
 
 ---
 
@@ -113,8 +113,8 @@ Validate the core differentiator: Naze is the most token-efficient language for 
 
 - [ ] Benchmark: generate 50 UI specs in Naze vs React/HTML, measure token count, success rate, retry rate
 - [ ] Benchmark: test grammar-constrained decoding (GBNF) with llama.cpp on Llama 3 8B / Mistral 7B
-- [ ] Seed dataset: hand-write 200 instruction/code pairs covering all major features
-- [ ] Expanded dataset: use `nazec ai dataset export` on all 75 examples to generate JSONL
+- [ ] Seed dataset: hand-write 200 instruction/code pairs covering all major features (486 seed examples already exist: 392 generated + 94 hand-crafted)
+- [ ] Expanded dataset: use `nazec ai dataset export` on all 109 examples to generate JSONL
 - [ ] Fine-tune: QLoRA on Llama 3 8B with Naze dataset, evaluate on held-out test set
 - [ ] Publish model to HuggingFace and Ollama library
 - [ ] Integration: `nazec ai generate --provider ollama --model naze-7b` uses the fine-tuned model
@@ -129,11 +129,11 @@ Seed the package ecosystem with official packages that demonstrate best practice
 
 - [ ] Deploy registry to a hosted environment (Fly.io, Railway, or VPS — SQLite is fine for low traffic)
 - [ ] Add auth to registry: API key-based publish authentication
-- [x] `@naze/ui-kit`: button, card, badge, avatar, alert, progress, divider, tooltip, chip, accordion, tabs, skeleton (12 components)
-- [x] `@naze/forms`: form-field, text-field, select-field, checkbox-field, radio-group, search-input (6 components)
+- [x] `@naze/ui-kit`: button, card, badge, avatar, alert, progress, divider, tooltip, chip, accordion, tabs, skeleton (12 components) — local packages exist
+- [x] `@naze/forms`: form-field, text-field, select-field, checkbox-field, radio-group, search-input (6 components) — local packages exist
 - [ ] `@naze/icons`: icon system — either embedded SVG-to-image pipeline or glyph font approach
-- [x] `@naze/layouts`: navbar, sidebar-layout, hero, footer, page-shell, center-card (6 templates)
-- [ ] Publish all packages to deployed registry
+- [x] `@naze/layouts`: navbar, sidebar-layout, hero, footer, page-shell, center-card (6 templates) — local packages exist
+- [ ] Publish all packages to deployed registry (blocked on registry deployment)
 - [ ] Update docs site with package catalog and usage examples
 
 ---
@@ -198,6 +198,6 @@ These items are tracked but intentionally deferred beyond Phase 6:
 | Metric | Value |
 |--------|-------|
 | Milestones | 8 (M42-M49) |
-| Current workspace tests | 385 |
-| Current WASM binary | 374KB |
-| Current grammar rules | ~140 |
+| Current workspace tests | 389 |
+| Current WASM binary | 395KB (budget: 405KB) |
+| Current grammar rules | ~157 |

@@ -56,12 +56,12 @@ export interface InitOutput {
     readonly inspector_set_highlight: (a: number, b: number) => void;
     readonly reset_and_reload: (a: number, b: number) => [number, number];
     readonly start: (a: number, b: number, c: number, d: number) => [number, number];
-    readonly wasm_bindgen__closure__destroy__h2141726e50f10748: (a: number, b: number) => void;
+    readonly wasm_bindgen__closure__destroy__h3c9f0f8639636239: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__hc393ba3cd147b0ee: (a: number, b: number) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h0c730d0e3e2a348e: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h0f6e25d9f64793bc: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__hf407c1039d5710ce: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h80219dffc57f851b: (a: number, b: number) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h99fb71317c0b1f25: (a: number, b: number) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h74cfe9d38cf7e65b: (a: number, b: number) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h4e9bd5dd71c23415: (a: number, b: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;

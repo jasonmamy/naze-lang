@@ -155,7 +155,9 @@ impl ApplicationHandler<AppEvent> for App {
                                 } else {
                                     // For regular inputs, unfocus
                                     for handler in &focus.change_handlers {
-                                        execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes);
+                                        for action in &handler.actions {
+                                        execute_action(action, &mut self.state_store, &self.render_tree.themes);
+                                    }
                                     }
                                     self.focused_input = None;
                                     changed = true;
@@ -166,7 +168,9 @@ impl ApplicationHandler<AppEvent> for App {
                             // Execute change handlers before unfocusing
                             if let Some(ref focus) = self.focused_input {
                                 for handler in &focus.change_handlers {
-                                    execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes);
+                                    for action in &handler.actions {
+                                        execute_action(action, &mut self.state_store, &self.render_tree.themes);
+                                    }
                                 }
                             }
                             self.focused_input = None;
@@ -306,7 +310,9 @@ impl App {
             if let Some(ref old_focus) = self.focused_input {
                 if old_focus.node_id != node_id {
                     for handler in &old_focus.change_handlers {
-                        execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes);
+                        for action in &handler.actions {
+                                        execute_action(action, &mut self.state_store, &self.render_tree.themes);
+                                    }
                     }
                 }
             }
@@ -324,7 +330,9 @@ impl App {
         if self.focused_input.is_some() {
             if let Some(ref focus) = self.focused_input {
                 for handler in &focus.change_handlers {
-                    execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes);
+                    for action in &handler.actions {
+                                        execute_action(action, &mut self.state_store, &self.render_tree.themes);
+                                    }
                 }
             }
             self.focused_input = None;
@@ -334,8 +342,10 @@ impl App {
         // Handle click handlers (buttons, checkbox, radio, etc.)
         let handlers = find_click_handlers(&layout.root, x, y, &self.state_store);
         for handler in &handlers {
-            if execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes) {
-                changed = true;
+            for action in &handler.actions {
+                if execute_action(action, &mut self.state_store, &self.render_tree.themes) {
+                    changed = true;
+                }
             }
         }
 
@@ -673,10 +683,10 @@ fn find_click_handlers(
                 };
                 let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
                     event: "click".to_string(),
-                    action: IrAction::Set {
+                    actions: vec![IrAction::Set {
                         target: var.clone(),
                         expr: IrExpression::Bool(!current),
-                    },
+                    }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 }];
@@ -699,10 +709,10 @@ fn find_click_handlers(
                 };
                 let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
                     event: "click".to_string(),
-                    action: IrAction::Set {
+                    actions: vec![IrAction::Set {
                         target: var.clone(),
                         expr: IrExpression::Str(value_str),
-                    },
+                    }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 }];
@@ -897,6 +907,31 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
                 .map(|(k, v)| (k.clone(), evaluate_expr(v, state)))
                 .collect(),
         ),
+        IrExpression::Index { list, index } => {
+            let list_val = evaluate_expr(list, state);
+            let index_val = evaluate_expr(index, state);
+            if let (RenderValue::List(items), RenderValue::Num(i, _)) = (&list_val, &index_val) {
+                let idx = *i as usize;
+                items.get(idx).cloned().unwrap_or(RenderValue::Num(0.0, None))
+            } else {
+                RenderValue::Num(0.0, None)
+            }
+        }
+        IrExpression::FunctionCall { name, args } => {
+            let evaluated_args: Vec<RenderValue> = args.iter().map(|a| evaluate_expr(a, state)).collect();
+            match name.as_str() {
+                "length" => {
+                    if let Some(RenderValue::List(items)) = evaluated_args.first() {
+                        RenderValue::Num(items.len() as f64, None)
+                    } else if let Some(RenderValue::Str(s)) = evaluated_args.first() {
+                        RenderValue::Num(s.len() as f64, None)
+                    } else {
+                        RenderValue::Num(0.0, None)
+                    }
+                }
+                _ => RenderValue::Num(0.0, None),
+            }
+        }
     }
 }
 

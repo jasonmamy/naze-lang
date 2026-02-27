@@ -138,7 +138,9 @@ async fn run_async(
         .with_state(state);
 
     let addr = format!("{}:{}", host, port);
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
+        format!("failed to start server on {}:{}: {} (is another process using this port? try --port <number>)", host, port, e)
+    })?;
 
     eprintln!();
     eprintln!("  ┌─────────────────────────────────────────┐");

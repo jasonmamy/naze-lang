@@ -511,6 +511,32 @@ pub mod canvas {
             }
         }
 
+        /// Draw an SVG path using Path2D at the given position.
+        pub fn draw_path(
+            &self,
+            x: f64,
+            y: f64,
+            d: &str,
+            fill: &str,
+            stroke: &str,
+            stroke_width: f64,
+        ) {
+            if let Ok(path) = web_sys::Path2d::new_with_path_string(d) {
+                self.ctx.save();
+                let _ = self.ctx.translate(x, y);
+                if !fill.is_empty() {
+                    self.ctx.set_fill_style_str(fill);
+                    self.ctx.fill_with_path_2d(&path);
+                }
+                if !stroke.is_empty() {
+                    self.ctx.set_stroke_style_str(stroke);
+                    self.ctx.set_line_width(stroke_width);
+                    self.ctx.stroke_with_path(&path);
+                }
+                self.ctx.restore();
+            }
+        }
+
         /// Draw a checkbox with optional label.
         pub fn draw_checkbox(&self, x: f64, y: f64, checked: bool, label: &str) {
             // Box dimensions

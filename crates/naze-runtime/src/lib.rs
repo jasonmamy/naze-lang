@@ -2195,17 +2195,42 @@ fn resolve_nodes(nodes: &[RenderNode], state: &HashMap<String, RenderValue>) -> 
     out
 }
 
+/// Convert a RenderValue to an IrExpression (for each-binding resolution).
+fn render_value_to_ir(val: &RenderValue) -> IrExpression {
+    match val {
+        RenderValue::Num(n, _) => IrExpression::Num(*n),
+        RenderValue::Str(s) => IrExpression::Str(s.clone()),
+        RenderValue::Bool(b) => IrExpression::Bool(*b),
+        RenderValue::Object(entries) => IrExpression::Object(
+            entries.iter().map(|(k, v)| (k.clone(), render_value_to_ir(v))).collect(),
+        ),
+        RenderValue::List(items) => {
+            IrExpression::List(items.iter().map(render_value_to_ir).collect())
+        }
+        _ => IrExpression::Str(String::new()),
+    }
+}
+
 /// Resolve state refs in an IrExpression, substituting known values from state.
 fn resolve_expr_state(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> IrExpression {
     match expr {
         IrExpression::StateRef(name) => {
+            // Direct lookup — handles all types including Object/List
             if let Some(val) = state.get(name.as_str()) {
-                match val {
-                    RenderValue::Num(n, _) => IrExpression::Num(*n),
-                    RenderValue::Str(s) => IrExpression::Str(s.clone()),
-                    RenderValue::Bool(b) => IrExpression::Bool(*b),
-                    _ => expr.clone(),
+                render_value_to_ir(val)
+            }
+            // Dotted path: "card.r" → lookup "card", extract field "r"
+            else if let Some(dot) = name.find('.') {
+                let root = &name[..dot];
+                let field = &name[dot + 1..];
+                if let Some(RenderValue::Object(entries)) = state.get(root) {
+                    for (k, v) in entries {
+                        if k == field {
+                            return render_value_to_ir(v);
+                        }
+                    }
                 }
+                expr.clone()
             } else {
                 expr.clone()
             }
@@ -2224,6 +2249,14 @@ fn resolve_expr_state(expr: &IrExpression, state: &HashMap<String, RenderValue>)
         IrExpression::List(items) => {
             IrExpression::List(items.iter().map(|v| resolve_expr_state(v, state)).collect())
         }
+        IrExpression::Index { list, index } => IrExpression::Index {
+            list: Box::new(resolve_expr_state(list, state)),
+            index: Box::new(resolve_expr_state(index, state)),
+        },
+        IrExpression::FunctionCall { name, args } => IrExpression::FunctionCall {
+            name: name.clone(),
+            args: args.iter().map(|a| resolve_expr_state(a, state)).collect(),
+        },
         _ => expr.clone(),
     }
 }
@@ -2237,7 +2270,7 @@ fn resolve_handlers(
         .iter()
         .map(|h| IrEventHandler {
             event: h.event.clone(),
-            action: resolve_action_state(&h.action, state),
+            actions: h.actions.iter().map(|a| resolve_action_state(a, state)).collect(),
             modifier_kind: h.modifier_kind,
             modifier_ms: h.modifier_ms,
         })
@@ -2258,6 +2291,16 @@ fn resolve_action_state(action: &IrAction, state: &HashMap<String, RenderValue>)
         IrAction::Remove { index, target } => IrAction::Remove {
             index: resolve_expr_state(index, state),
             target: target.clone(),
+        },
+        IrAction::SetIndex { target, index, expr } => IrAction::SetIndex {
+            target: target.clone(),
+            index: resolve_expr_state(index, state),
+            expr: resolve_expr_state(expr, state),
+        },
+        IrAction::Conditional { condition, then_actions, else_actions } => IrAction::Conditional {
+            condition: resolve_expr_state(condition, state),
+            then_actions: then_actions.iter().map(|a| resolve_action_state(a, state)).collect(),
+            else_actions: else_actions.iter().map(|a| resolve_action_state(a, state)).collect(),
         },
         _ => action.clone(),
     }
@@ -2583,6 +2626,15 @@ fn draw_node(
                     // Draw placeholder
                     renderer.draw_rect(x, y, w, h, "#e5e5e5", 0.0);
                 }
+            }
+        }
+        "path" => {
+            let d = naze_renderer::get_str_prop(&node.props, "d", "");
+            let fill = naze_renderer::get_color_prop(&node.props, "fill", "");
+            let stroke = naze_renderer::get_color_prop(&node.props, "stroke", "");
+            let sw = naze_renderer::get_num_prop(&node.props, "stroke-width", 1.0);
+            if !d.is_empty() {
+                renderer.draw_path(x, y, &d, &fill, &stroke, sw);
             }
         }
         "link" => {
@@ -3102,7 +3154,7 @@ fn handle_click(x: f32, y: f32) -> bool {
                 if !handlers.is_empty() {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                        if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -3121,7 +3173,7 @@ fn handle_click(x: f32, y: f32) -> bool {
                 if !outside_handlers.is_empty() {
                     let mut changed = false;
                     for handler in &outside_handlers {
-                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                        if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -3178,7 +3230,7 @@ fn handle_click(x: f32, y: f32) -> bool {
                 app.open_select_id = None;
                 // Execute change handlers
                 for handler in &change_handlers {
-                    execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                    execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
                 }
                 return true;
             }
@@ -3216,7 +3268,7 @@ fn handle_click(x: f32, y: f32) -> bool {
 
         let mut changed = false;
         for handler in &handlers {
-            if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+            if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                 changed = true;
             }
         }
@@ -3442,7 +3494,7 @@ fn handle_contextmenu(x: f32, y: f32) -> bool {
                 if !handlers.is_empty() {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                        if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -3459,7 +3511,7 @@ fn handle_contextmenu(x: f32, y: f32) -> bool {
         }
         let mut changed = false;
         for handler in &handlers {
-            if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+            if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                 changed = true;
             }
         }
@@ -3493,6 +3545,17 @@ fn find_handlers_in_layout(
 }
 
 // ─── Action execution ────────────────────────────────────────────────────────
+
+/// Execute all actions in an event handler. Returns true if any action changed state.
+fn execute_handler_actions(handler: &IrEventHandler, state: &mut HashMap<String, RenderValue>, themes: &[naze_ir::ThemeDef]) -> bool {
+    let mut changed = false;
+    for action in &handler.actions {
+        if execute_action(action, state, themes) {
+            changed = true;
+        }
+    }
+    changed
+}
 
 /// Execute an action, mutating the state store. Returns true if state was changed.
 fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>, themes: &[naze_ir::ThemeDef]) -> bool {
@@ -3737,6 +3800,39 @@ fn execute_action(action: &IrAction, state: &mut HashMap<String, RenderValue>, t
                 }
             }
             false
+        }
+        IrAction::SetIndex { target, index, expr } => {
+            let idx_val = evaluate_expr(index, state);
+            let new_val = evaluate_expr(expr, state);
+            let idx = match &idx_val {
+                RenderValue::Num(n, _) => *n as usize,
+                _ => return false,
+            };
+            if let Some(RenderValue::List(items)) = state.get(target) {
+                let mut new_items = items.clone();
+                if idx < new_items.len() {
+                    new_items[idx] = new_val;
+                    state.insert(target.clone(), RenderValue::List(new_items));
+                }
+            }
+            false
+        }
+        IrAction::Conditional { condition, then_actions, else_actions } => {
+            let cond = evaluate_expr(condition, state);
+            let truthy = match &cond {
+                RenderValue::Bool(b) => *b,
+                RenderValue::Str(s) => !s.is_empty(),
+                RenderValue::Num(n, _) => *n != 0.0,
+                _ => false,
+            };
+            let actions = if truthy { then_actions } else { else_actions };
+            let mut navigated = false;
+            for action in actions {
+                if execute_action(action, state, themes) {
+                    navigated = true;
+                }
+            }
+            navigated
         }
     }
 }
@@ -4327,6 +4423,55 @@ fn evaluate_expr(expr: &IrExpression, state: &HashMap<String, RenderValue>) -> R
                 .map(|(k, v)| (k.clone(), evaluate_expr(v, state)))
                 .collect(),
         ),
+        IrExpression::Index { list, index } => {
+            let list_val = evaluate_expr(list, state);
+            let idx_val = evaluate_expr(index, state);
+            let idx = match &idx_val {
+                RenderValue::Num(n, _) => *n as usize,
+                _ => return RenderValue::Str(String::new()),
+            };
+            match &list_val {
+                RenderValue::List(items) => {
+                    items.get(idx).cloned().unwrap_or(RenderValue::Str(String::new()))
+                }
+                _ => RenderValue::Str(String::new()),
+            }
+        }
+        IrExpression::FunctionCall { name, args } => {
+            match name.as_str() {
+                "length" => {
+                    if let Some(arg) = args.first() {
+                        let val = evaluate_expr(arg, state);
+                        match &val {
+                            RenderValue::List(items) => RenderValue::Num(items.len() as f64, None),
+                            RenderValue::Str(s) => RenderValue::Num(s.len() as f64, None),
+                            _ => RenderValue::Num(0.0, None),
+                        }
+                    } else {
+                        RenderValue::Num(0.0, None)
+                    }
+                }
+                "random" => {
+                    let min = args.first().map(|a| {
+                        match evaluate_expr(a, state) {
+                            RenderValue::Num(n, _) => n,
+                            _ => 0.0,
+                        }
+                    }).unwrap_or(0.0);
+                    let max = args.get(1).map(|a| {
+                        match evaluate_expr(a, state) {
+                            RenderValue::Num(n, _) => n,
+                            _ => 1.0,
+                        }
+                    }).unwrap_or(1.0);
+                    let r = js_sys::Math::random();
+                    let val = min + (r * (max - min + 1.0)).floor();
+                    let val = val.min(max); // clamp to max
+                    RenderValue::Num(val, None)
+                }
+                _ => RenderValue::Str(String::new()),
+            }
+        }
     }
 }
 
@@ -4547,6 +4692,16 @@ fn eval_pipeline_stage(
                 }
             }
             RenderValue::List(result)
+        }
+        10 => {
+            // shuffle: Fisher-Yates using js_sys::Math::random()
+            let mut shuffled = items;
+            let len = shuffled.len();
+            for i in (1..len).rev() {
+                let j = (js_sys::Math::random() * (i as f64 + 1.0)).floor() as usize;
+                shuffled.swap(i, j);
+            }
+            RenderValue::List(shuffled)
         }
         _ => RenderValue::List(items),
     }
@@ -4889,7 +5044,7 @@ fn create_hidden_input(_canvas_id: &str) -> Result<(), JsValue> {
                                     );
                                     // Execute change handlers
                                     for handler in &focused.change_handlers {
-                                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                                        execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
                                     }
                                     return true;
                                 }
@@ -4980,7 +5135,7 @@ fn create_hidden_textarea(_canvas_id: &str) -> Result<(), JsValue> {
                                         &focused.input_type,
                                     );
                                     for handler in &focused.change_handlers {
-                                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                                        execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
                                     }
                                     return true;
                                 }
@@ -5194,7 +5349,7 @@ fn open_file_picker(
                     .insert(bind.clone(), RenderValue::Object(obj));
                 // Execute change handlers
                 for handler in &change_h {
-                    execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                    execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
                 }
             }
         });
@@ -5450,7 +5605,7 @@ fn handle_mousedown(x: f32, y: f32) -> bool {
 
             // Execute drag-start handlers
             for handler in &info.drag_start_handlers {
-                execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
             }
 
             return true; // Needs render for visual feedback
@@ -5487,7 +5642,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
             if new_target_id != drag.over_target_id {
                 if let Some(info) = target {
                     for handler in &info.drag_over_handlers {
-                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                        execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
                     }
                 }
                 drag.over_target_id = new_target_id;
@@ -5522,7 +5677,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
                 let pm_handlers =
                     find_event_handlers_at_point(&overlay.children, x, y, "pointer-move");
                 for handler in &pm_handlers {
-                    if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                    if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                         needs_render = true;
                     }
                 }
@@ -5533,7 +5688,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
         if !pointer_move_nodes.is_empty() {
             let pm_handlers = find_event_handlers_at_point(&layout.root, x, y, "pointer-move");
             for handler in &pm_handlers {
-                if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                     needs_render = true;
                 }
             }
@@ -5560,7 +5715,7 @@ fn handle_mousemove(x: f32, y: f32) -> bool {
             // Fire hover handlers when entering a new element
             if let Some((_, handlers)) = hover_info {
                 for handler in &handlers {
-                    if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                    if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                         needs_render = true;
                     }
                 }
@@ -5622,7 +5777,7 @@ fn handle_mouseup(x: f32, y: f32) -> bool {
                 if let Some(info) = find_drop_target_at_point(&layout.root, x, y) {
                     // Execute drop handlers
                     for handler in &info.drop_handlers {
-                        execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                        execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
                     }
                 }
             }
@@ -5799,7 +5954,7 @@ fn apply_scroll_delta(
     if changed {
         if let Some(handlers) = find_scroll_handlers(&layout.root, scroll_id) {
             for handler in &handlers {
-                execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes);
+                execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes);
             }
         }
     }
@@ -6154,7 +6309,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
                 {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                        if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -6183,7 +6338,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
                     if !outside_handlers.is_empty() {
                         let mut changed = false;
                         for handler in &outside_handlers {
-                            if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                            if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                                 changed = true;
                             }
                         }
@@ -6215,7 +6370,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
                 if let Some(handlers) = handlers {
                     let mut changed = false;
                     for handler in &handlers {
-                        if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                        if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                             changed = true;
                         }
                     }
@@ -6231,7 +6386,7 @@ fn handle_keydown(key: &str, shift: bool) -> bool {
             {
                 let mut changed = false;
                 for handler in &handlers {
-                    if execute_action(&handler.action, &mut app.state_store, &app.render_tree.themes) {
+                    if execute_handler_actions(handler, &mut app.state_store, &app.render_tree.themes) {
                         changed = true;
                     }
                 }

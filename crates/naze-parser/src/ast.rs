@@ -188,7 +188,7 @@ pub enum Node {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventHandler {
     pub event: String,
-    pub action: Action,
+    pub actions: Vec<Action>,
     pub modifier: Option<EventModifier>,
     pub span: Span,
 }
@@ -306,6 +306,18 @@ pub enum Action {
         target: String,
         span: Span,
     },
+    SetIndex {
+        target: String,
+        index: Expression,
+        expr: Expression,
+        span: Span,
+    },
+    Conditional {
+        condition: Expression,
+        then_actions: Vec<Action>,
+        else_actions: Vec<Action>,
+        span: Span,
+    },
 }
 
 /// Pipeline function identifiers.
@@ -321,6 +333,7 @@ pub enum PipelineFn {
     GroupBy,
     Flatten,
     Distinct,
+    Shuffle,
 }
 
 /// A single stage in a pipeline expression.
@@ -348,6 +361,10 @@ pub enum Expression {
     FunctionCall {
         name: String,
         args: Vec<Expression>,
+    },
+    Index {
+        list: String,
+        index: Box<Expression>,
     },
 }
 

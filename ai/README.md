@@ -215,3 +215,21 @@ The 94 example files in `examples/` cover:
 **Small dataset demands strong priors.** With ~94 base examples (expanded to ~400 via augmentation), there isn't enough data to teach a model programming from scratch. The code model's pre-existing understanding of structure, indentation, and programming semantics fills the gap.
 
 **Alternative:** If training time or VRAM is a constraint, `Qwen2.5-Coder-3B-Instruct` can be substituted. It trains faster and uses less memory, at the cost of somewhat lower generation quality. Edit `BASE_MODEL` in `train.py` to switch.
+
+## GBNF Constrained Decoding (Experimental)
+
+Naze's PEG grammar can be exported as GBNF for use with llama.cpp's grammar-constrained decoding. This forces the model to only output tokens that form valid `.naze` syntax — pushing first-attempt pass rates toward 100%.
+
+```bash
+# Export the grammar
+nazec grammar --format gbnf > naze.gbnf
+
+# Clone llama.cpp (not included in repo — gitignored)
+git clone https://github.com/ggerganov/llama.cpp ai/llama.cpp
+cd ai/llama.cpp && make -j
+
+# Use with a GGUF model
+./ai/llama.cpp/llama-cli -m <model.gguf> --grammar-file naze.gbnf -p "Create a counter app"
+```
+
+This is separate from the fine-tuning pipeline (which uses unsloth/Ollama). See `docs/PHASE6.md` for the benchmarking roadmap.

@@ -1,0 +1,6 @@
+[app]
+name = "list-operations"
+version = "0.1.0"
+
+[build]
+entry = "app.naze"

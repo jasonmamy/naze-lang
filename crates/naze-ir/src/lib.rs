@@ -156,6 +156,16 @@ pub enum IrExpression {
     List(Vec<IrExpression>),
     /// Object literal in expressions (e.g., {text: "hello", done: false})
     Object(Vec<(String, IrExpression)>),
+    /// Index access: items[0], items[count]
+    Index {
+        list: Box<IrExpression>,
+        index: Box<IrExpression>,
+    },
+    /// Built-in function call: length(items), random(1, 6)
+    FunctionCall {
+        name: String,
+        args: Vec<IrExpression>,
+    },
 }
 
 /// An action triggered by an event handler.
@@ -206,6 +216,18 @@ pub enum IrAction {
         index: IrExpression,
         target: String,
     },
+    /// Set a list element by index: set items[2] = "new"
+    SetIndex {
+        target: String,
+        index: IrExpression,
+        expr: IrExpression,
+    },
+    /// Conditional action: if cond { actions } else { actions }
+    Conditional {
+        condition: IrExpression,
+        then_actions: Vec<IrAction>,
+        else_actions: Vec<IrAction>,
+    },
 }
 
 /// An event handler on a render node.
@@ -213,7 +235,7 @@ pub enum IrAction {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct IrEventHandler {
     pub event: String,
-    pub action: IrAction,
+    pub actions: Vec<IrAction>,
     pub modifier_kind: u8, // 0 = none, 1 = debounce, 2 = throttle
     pub modifier_ms: u64,  // 0 if no modifier
 }
@@ -1334,7 +1356,10 @@ fn write_node(buf: &mut Vec<u8>, node: &RenderNode) {
 
 fn write_handler(buf: &mut Vec<u8>, handler: &IrEventHandler) {
     write_string(buf, &handler.event);
-    write_action(buf, &handler.action);
+    write_u32(buf, handler.actions.len() as u32);
+    for action in &handler.actions {
+        write_action(buf, action);
+    }
     buf.push(handler.modifier_kind);
     write_u64(buf, handler.modifier_ms);
 }
@@ -1409,6 +1434,32 @@ fn write_action(buf: &mut Vec<u8>, action: &IrAction) {
             buf.push(11);
             write_expression(buf, index);
             write_string(buf, target);
+        }
+        IrAction::SetIndex {
+            target,
+            index,
+            expr,
+        } => {
+            buf.push(12);
+            write_string(buf, target);
+            write_expression(buf, index);
+            write_expression(buf, expr);
+        }
+        IrAction::Conditional {
+            condition,
+            then_actions,
+            else_actions,
+        } => {
+            buf.push(13);
+            write_expression(buf, condition);
+            write_u32(buf, then_actions.len() as u32);
+            for a in then_actions {
+                write_action(buf, a);
+            }
+            write_u32(buf, else_actions.len() as u32);
+            for a in else_actions {
+                write_action(buf, a);
+            }
         }
     }
 }
@@ -1489,6 +1540,19 @@ fn write_expression(buf: &mut Vec<u8>, expr: &IrExpression) {
             for (key, val) in entries {
                 write_string(buf, key);
                 write_expression(buf, val);
+            }
+        }
+        IrExpression::Index { list, index } => {
+            buf.push(10);
+            write_expression(buf, list);
+            write_expression(buf, index);
+        }
+        IrExpression::FunctionCall { name, args } => {
+            buf.push(11);
+            write_string(buf, name);
+            write_u32(buf, args.len() as u32);
+            for arg in args {
+                write_expression(buf, arg);
             }
         }
     }
@@ -1670,12 +1734,16 @@ impl<'a> Cursor<'a> {
 
     fn read_handler(&mut self) -> Result<IrEventHandler, String> {
         let event = self.read_string()?;
-        let action = self.read_action()?;
+        let action_count = self.read_u32()? as usize;
+        let mut actions = Vec::with_capacity(action_count);
+        for _ in 0..action_count {
+            actions.push(self.read_action()?);
+        }
         let modifier_kind = self.read_u8()?;
         let modifier_ms = self.read_u64()?;
         Ok(IrEventHandler {
             event,
-            action,
+            actions,
             modifier_kind,
             modifier_ms,
         })
@@ -1752,6 +1820,34 @@ impl<'a> Cursor<'a> {
                 let index = self.read_expression()?;
                 let target = self.read_string()?;
                 Ok(IrAction::Remove { index, target })
+            }
+            12 => {
+                let target = self.read_string()?;
+                let index = self.read_expression()?;
+                let expr = self.read_expression()?;
+                Ok(IrAction::SetIndex {
+                    target,
+                    index,
+                    expr,
+                })
+            }
+            13 => {
+                let condition = self.read_expression()?;
+                let then_count = self.read_u32()? as usize;
+                let mut then_actions = Vec::with_capacity(then_count);
+                for _ in 0..then_count {
+                    then_actions.push(self.read_action()?);
+                }
+                let else_count = self.read_u32()? as usize;
+                let mut else_actions = Vec::with_capacity(else_count);
+                for _ in 0..else_count {
+                    else_actions.push(self.read_action()?);
+                }
+                Ok(IrAction::Conditional {
+                    condition,
+                    then_actions,
+                    else_actions,
+                })
             }
             _ => Err(format!("unknown action tag: {}", tag)),
         }
@@ -1835,6 +1931,23 @@ impl<'a> Cursor<'a> {
                     entries.push((key, val));
                 }
                 Ok(IrExpression::Object(entries))
+            }
+            10 => {
+                let list = self.read_expression()?;
+                let index = self.read_expression()?;
+                Ok(IrExpression::Index {
+                    list: Box::new(list),
+                    index: Box::new(index),
+                })
+            }
+            11 => {
+                let name = self.read_string()?;
+                let arg_count = self.read_u32()? as usize;
+                let mut args = Vec::with_capacity(arg_count);
+                for _ in 0..arg_count {
+                    args.push(self.read_expression()?);
+                }
+                Ok(IrExpression::FunctionCall { name, args })
             }
             _ => Err(format!("unknown expression tag: {}", tag)),
         }
@@ -1977,14 +2090,14 @@ mod tests {
                 children: vec![],
                 handlers: vec![IrEventHandler {
                     event: "click".to_string(),
-                    action: IrAction::Set {
+                    actions: vec![IrAction::Set {
                         target: "agreed".to_string(),
                         expr: IrExpression::BinOp {
                             left: Box::new(IrExpression::StateRef("agreed".to_string())),
                             op: IrBinOp::Eq,
                             right: Box::new(IrExpression::Bool(false)),
                         },
-                    },
+                    }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 }],
@@ -2120,10 +2233,10 @@ mod tests {
                 }],
                 handlers: vec![IrEventHandler {
                     event: "click-outside".to_string(),
-                    action: IrAction::Set {
+                    actions: vec![IrAction::Set {
                         target: "dialog-open".to_string(),
                         expr: IrExpression::Bool(false),
-                    },
+                    }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 }],

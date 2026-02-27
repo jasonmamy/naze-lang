@@ -1364,13 +1364,17 @@ fn parse_on_handler(pair: pest::iterators::Pair<Rule>, file: &str) -> EventHandl
     } else {
         (None, next)
     };
-    let action = parse_action(action_pair, file);
+    let actions = parse_action_list(action_pair, file);
     EventHandler {
         event,
-        action,
+        actions,
         modifier,
         span,
     }
+}
+
+fn parse_action_list(pair: pest::iterators::Pair<Rule>, file: &str) -> Vec<Action> {
+    pair.into_inner().map(|p| parse_action(p, file)).collect()
 }
 
 fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
@@ -1379,7 +1383,7 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
         Rule::set_action => {
             let mut inner = pair.into_inner();
             let target = inner.next().unwrap().as_str().to_string();
-            let expr = parse_expression(inner.next().unwrap());
+            let expr = parse_pipe_expression(inner.next().unwrap());
             Action::Set { target, expr, span }
         }
         Rule::navigate_action => {
@@ -1513,6 +1517,33 @@ fn parse_action(pair: pest::iterators::Pair<Rule>, file: &str) -> Action {
             let target = inner.next().unwrap().as_str().to_string();
             Action::Remove { index, target, span }
         }
+        Rule::set_index_action => {
+            let mut inner = pair.into_inner();
+            let target = inner.next().unwrap().as_str().to_string();
+            let index = parse_expression(inner.next().unwrap());
+            let expr = parse_pipe_expression(inner.next().unwrap());
+            Action::SetIndex {
+                target,
+                index,
+                expr,
+                span,
+            }
+        }
+        Rule::conditional_action => {
+            let mut inner = pair.into_inner();
+            let condition = parse_expression(inner.next().unwrap());
+            let then_actions = parse_action_list(inner.next().unwrap(), file);
+            let else_actions = match inner.next() {
+                Some(else_pair) => parse_action_list(else_pair, file),
+                None => vec![],
+            };
+            Action::Conditional {
+                condition,
+                then_actions,
+                else_actions,
+                span,
+            }
+        }
         _ => panic!("unexpected action rule: {:?}", pair.as_rule()),
     }
 }
@@ -1557,6 +1588,7 @@ fn parse_pipe_stage(pair: pest::iterators::Pair<Rule>) -> PipelineStage {
         "group-by" => PipelineFn::GroupBy,
         "flatten" => PipelineFn::Flatten,
         "distinct" => PipelineFn::Distinct,
+        "shuffle" => PipelineFn::Shuffle,
         _ => panic!("unknown pipeline function: {}", fn_pair.as_str()),
     };
     let argument = inner.next().map(|arg_pair| {
@@ -1635,6 +1667,12 @@ fn parse_expr_atom(pair: pest::iterators::Pair<Rule>) -> Expression {
         Rule::list_lit => {
             let items: Vec<Value> = inner.into_inner().map(parse_value).collect();
             Expression::Literal(Value::List(items))
+        }
+        Rule::index_access => {
+            let mut idx_inner = inner.into_inner();
+            let list = idx_inner.next().unwrap().as_str().to_string();
+            let index = Box::new(parse_expression(idx_inner.next().unwrap()));
+            Expression::Index { list, index }
         }
         Rule::ident => Expression::StateRef(inner.as_str().to_string()),
         Rule::expression => parse_expression(inner), // parenthesized
@@ -2076,7 +2114,7 @@ mod tests {
                 Node::Element { handlers, .. } => {
                     assert_eq!(handlers.len(), 1);
                     assert_eq!(handlers[0].event, "click");
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::Emit { event_name, .. } => {
                             assert_eq!(event_name, "toggled");
                         }
@@ -2302,7 +2340,7 @@ mod tests {
                         assert_eq!(name, "rect");
                         assert_eq!(handlers.len(), 1);
                         assert_eq!(handlers[0].event, "click");
-                        match &handlers[0].action {
+                        match &handlers[0].actions[0] {
                             Action::Set { target, expr, .. } => {
                                 assert_eq!(target, "count");
                                 // expr should be count + 1
@@ -2342,7 +2380,7 @@ mod tests {
         let nodes = parse(source, "test.naze").unwrap();
         match &nodes[0] {
             Node::App { children, .. } => match &children[1] {
-                Node::Element { handlers, .. } => match &handlers[0].action {
+                Node::Element { handlers, .. } => match &handlers[0].actions[0] {
                     Action::Set { expr, .. } => match expr {
                         Expression::BinOp { left, op, right } => {
                             // Top-level should be Add: x + (2 * 3)
@@ -2380,7 +2418,7 @@ mod tests {
             Node::App { children, .. } => match &children[1] {
                 Node::Element { handlers, .. } => {
                     assert_eq!(handlers.len(), 1);
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::Set { target, expr, .. } => {
                             assert_eq!(target, "count");
                             assert!(
@@ -2411,7 +2449,7 @@ mod tests {
                 Node::Element { handlers, .. } => {
                     assert_eq!(handlers.len(), 1);
                     assert_eq!(handlers[0].event, "click");
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::Log { expr, .. } => {
                             assert!(matches!(expr, Expression::StateRef(s) if s == "count"));
                         }
@@ -2957,7 +2995,7 @@ mod tests {
             Node::App { children, .. } => match &children[0] {
                 Node::Element { handlers, .. } => {
                     assert_eq!(handlers.len(), 1);
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::SetTheme { theme_name, .. } => {
                             assert_eq!(theme_name, "dark");
                         }
@@ -3182,7 +3220,7 @@ mod tests {
                     assert_eq!(name, "overlay");
                     assert_eq!(handlers.len(), 1);
                     assert_eq!(handlers[0].event, "click-outside");
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::Set { target, .. } => assert_eq!(target, "open"),
                         other => panic!("expected Set action, got {:?}", other),
                     }
@@ -3297,7 +3335,7 @@ mod tests {
             Node::App { children, .. } => match &children[1] {
                 Node::Element { handlers, .. } => {
                     assert_eq!(handlers.len(), 1);
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::Trigger { data_name, .. } => assert_eq!(data_name, "items"),
                         other => panic!("expected Trigger action, got {:?}", other),
                     }
@@ -3316,7 +3354,7 @@ mod tests {
             Node::App { children, .. } => match &children[1] {
                 Node::Element { handlers, .. } => {
                     assert_eq!(handlers.len(), 1);
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::Copy { expr, .. } => {
                             assert!(matches!(expr, Expression::StateRef(n) if n == "url"));
                         }
@@ -3354,7 +3392,7 @@ mod tests {
             Node::App { children, .. } => match &children[1] {
                 Node::Element { handlers, .. } => {
                     assert_eq!(handlers.len(), 1);
-                    match &handlers[0].action {
+                    match &handlers[0].actions[0] {
                         Action::Send {
                             stream_name, expr, ..
                         } => {

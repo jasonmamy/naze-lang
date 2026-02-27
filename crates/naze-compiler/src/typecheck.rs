@@ -99,6 +99,14 @@ fn builtin_prop_type(element: &str, prop: &str) -> Option<Expected> {
             "width" | "height" | "opacity" => Some(Expected::Number),
             _ => None,
         },
+        "path" => match prop {
+            "d" | "cursor" | "transform" => Some(Expected::Text),
+            "width" | "height" | "opacity" | "stroke-width" | "tab-index" => {
+                Some(Expected::Number)
+            }
+            "fill" | "stroke" => Some(Expected::Color),
+            _ => None,
+        },
         "link" => match prop {
             "__text" | "to" | "cursor" | "text-decoration" | "text-align" => Some(Expected::Text),
             "color" => Some(Expected::Color),
@@ -671,7 +679,21 @@ fn check_handler(
     data_names: &HashSet<String>,
     errors: &mut Vec<CompileError>,
 ) {
-    match &handler.action {
+    for action in &handler.actions {
+        check_action(action, handler, state_names, computed_names, data_names, errors);
+    }
+}
+
+/// Type-check a single action within an event handler.
+fn check_action(
+    action: &Action,
+    handler: &EventHandler,
+    state_names: &HashSet<String>,
+    computed_names: &HashSet<String>,
+    data_names: &HashSet<String>,
+    errors: &mut Vec<CompileError>,
+) {
+    match action {
         Action::Set { target, expr, span } => {
             if computed_names.contains(target) {
                 errors.push(CompileError::new(
@@ -728,6 +750,24 @@ fn check_handler(
         Action::Remove { index, .. } => {
             check_expression(index, state_names, &handler.span, errors);
         }
+        Action::SetIndex { index, expr, .. } => {
+            check_expression(index, state_names, &handler.span, errors);
+            check_expression(expr, state_names, &handler.span, errors);
+        }
+        Action::Conditional {
+            condition,
+            then_actions,
+            else_actions,
+            ..
+        } => {
+            check_expression(condition, state_names, &handler.span, errors);
+            for a in then_actions {
+                check_action(a, handler, state_names, computed_names, data_names, errors);
+            }
+            for a in else_actions {
+                check_action(a, handler, state_names, computed_names, data_names, errors);
+            }
+        }
     }
 }
 
@@ -757,13 +797,19 @@ fn check_expression_inner(
             // Inside pipeline stages, bare identifiers may refer to item fields
             // rather than state variables, so skip strict validation there
             if !in_pipeline_stage && !state_names.contains(name) {
-                errors.push(CompileError::new(
-                    format!("unknown state variable '{}' in expression", name),
-                    span.file.clone(),
-                    span.line,
-                    span.col,
-                    Severity::Error,
-                ));
+                // Allow dotted paths where the root is a known variable (e.g. card.r from each-binding)
+                let root_known = name.find('.').map_or(false, |dot| {
+                    state_names.contains(&name[..dot])
+                });
+                if !root_known {
+                    errors.push(CompileError::new(
+                        format!("unknown state variable '{}' in expression", name),
+                        span.file.clone(),
+                        span.line,
+                        span.col,
+                        Severity::Error,
+                    ));
+                }
             }
         }
         Expression::BinOp { left, right, .. } => {
@@ -827,7 +873,7 @@ fn check_expression_inner(
                             ));
                         }
                     }
-                    PipelineFn::Sum | PipelineFn::Count | PipelineFn::Flatten => {
+                    PipelineFn::Sum | PipelineFn::Count | PipelineFn::Flatten | PipelineFn::Shuffle => {
                         // No argument required
                     }
                     PipelineFn::Distinct => {
@@ -847,6 +893,20 @@ fn check_expression_inner(
             for arg in args {
                 check_expression_inner(arg, state_names, span, errors, in_pipeline_stage);
             }
+        }
+        Expression::Index { list, index } => {
+            // Validate the list reference exists as a state variable
+            if !in_pipeline_stage && !state_names.contains(list) {
+                errors.push(CompileError::new(
+                    format!("unknown state variable '{}' in index expression", list),
+                    span.file.clone(),
+                    span.line,
+                    span.col,
+                    Severity::Error,
+                ));
+            }
+            // Validate the index expression
+            check_expression_inner(index, state_names, span, errors, in_pipeline_stage);
         }
     }
 }
@@ -1348,7 +1408,9 @@ fn check_wasm_calls_in_nodes(
                 ..
             } => {
                 for handler in handlers {
-                    check_wasm_calls_in_action(&handler.action, export_map, errors);
+                    for action in &handler.actions {
+                        check_wasm_calls_in_action(action, export_map, errors);
+                    }
                 }
                 for prop in props {
                     check_wasm_calls_in_value(&prop.value, export_map, errors);
@@ -1426,6 +1488,9 @@ fn check_wasm_calls_in_expr(
                 }
             }
         }
+        Expression::Index { index, .. } => {
+            check_wasm_calls_in_expr(index, export_map, errors);
+        }
         _ => {}
     }
 }
@@ -1440,6 +1505,24 @@ fn check_wasm_calls_in_action(
         Action::Log { expr, .. } => check_wasm_calls_in_expr(expr, export_map, errors),
         Action::Copy { expr, .. } => check_wasm_calls_in_expr(expr, export_map, errors),
         Action::Send { expr, .. } => check_wasm_calls_in_expr(expr, export_map, errors),
+        Action::SetIndex { index, expr, .. } => {
+            check_wasm_calls_in_expr(index, export_map, errors);
+            check_wasm_calls_in_expr(expr, export_map, errors);
+        }
+        Action::Conditional {
+            condition,
+            then_actions,
+            else_actions,
+            ..
+        } => {
+            check_wasm_calls_in_expr(condition, export_map, errors);
+            for a in then_actions {
+                check_wasm_calls_in_action(a, export_map, errors);
+            }
+            for a in else_actions {
+                check_wasm_calls_in_action(a, export_map, errors);
+            }
+        }
         _ => {}
     }
 }

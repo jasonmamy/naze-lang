@@ -2,7 +2,7 @@
 
 Naze is a declarative UI language designed to replace HTML/CSS/JS. It compiles `.naze` source files into a custom binary IR (`app_data.bin`), which is deserialized and rendered via Canvas2D in the browser (WASM) or via tiny-skia on the desktop (native). Naze bypasses the DOM entirely.
 
-The language is AI-native: there is one canonical form per concept, the grammar is compact (~150 rules), and every feature is designed for low token cost and constrained LLM decoding. For the long-term architecture vision, see [PROTOTYPE.md](PROTOTYPE.md).
+The language is AI-native: there is one canonical form per concept, the grammar is compact (~157 rules), and every feature is designed for low token cost and constrained LLM decoding. For the long-term architecture vision, see [PROTOTYPE.md](PROTOTYPE.md).
 
 ---
 
@@ -415,6 +415,54 @@ computed result = items
   | take 10
   | map name
 ```
+
+### shuffle
+
+The `shuffle` pipeline function randomizes the order of items in a list using Fisher-Yates shuffle.
+
+```naze
+state items = [1, 2, 3, 4, 5]
+
+on click: set items = items | shuffle
+```
+
+---
+
+## Built-in Functions
+
+Built-in functions are called with parentheses (unlike pipeline functions which use `|`). They can be used in any expression context.
+
+| Function | Arguments | Returns | Description |
+|----------|-----------|---------|-------------|
+| `length(list)` | A list | Number | Returns the number of items in the list |
+| `random(min, max)` | Two numbers | Number | Returns a random integer in [min, max] inclusive |
+
+### length
+
+Returns the number of items in a list:
+
+```naze
+state items = ["Apple", "Banana", "Cherry"]
+
+text "Count: {length(items)}"
+
+-- Use in expressions
+on click: set items[length(items) - 1] = "Replaced last"
+```
+
+### random
+
+Returns a random integer between min and max (inclusive):
+
+```naze
+state roll = 0
+
+on click: set roll = random(1, 6)
+
+text "Dice roll: {roll}"
+```
+
+Built-in functions can be used in `set` actions, `computed` declarations, `if` conditions, and any other expression context. They are distinct from pipeline functions -- `length()` takes arguments in parentheses, while `count` follows a `|` pipe.
 
 ---
 
@@ -1921,6 +1969,57 @@ on click: set index = (index + 1) % 5
 on click: set total = price * quantity
 ```
 
+#### Index Assignment
+
+Set a specific item in a list by index:
+
+```naze
+state items = ["Apple", "Banana", "Cherry"]
+
+on click: set items[0] = "Avocado"
+on click: set items[length(items) - 1] = "New last"
+```
+
+### List Mutation Actions
+
+#### append
+
+Add an item to the end of a list:
+
+```naze
+state items = ["Apple", "Banana"]
+
+on click: append "Cherry" to items
+```
+
+#### remove
+
+Remove an item from a list by index:
+
+```naze
+state items = ["Apple", "Banana", "Cherry"]
+
+on click: remove 0 from items
+on click: remove length(items) - 1 from items
+```
+
+### Multi-Action Handlers
+
+Multiple actions can be combined in a single event handler, separated by commas:
+
+```naze
+on click: set count = count + 1, set total = total + price
+on click: set loading = true, trigger fetch-data
+```
+
+### Conditional Actions
+
+Actions can be conditionally executed using `if` inside an event handler:
+
+```naze
+on click: if count > 0 { set count = count - 1 } else { set error = "Cannot go below zero" }
+```
+
 ### navigate
 
 Route to a different page within the app:
@@ -2100,6 +2199,32 @@ if posts.data {
   }
 }
 ```
+
+### Error Boundaries
+
+Wrap data-fetching subtrees with `boundary`/`catch` for graceful error recovery. If any data source inside the boundary errors, the catch block renders instead.
+
+```naze
+boundary {
+  data users: fetch "/api/users"
+  data stats: fetch "/api/stats"
+
+  column gap: 16px {
+    text "Users: {users.data}"
+    text "Stats: {stats.data}"
+  }
+} catch {
+  text "Something went wrong. Please try again." color: #dc2626
+}
+```
+
+**Semantics:**
+
+- The compiler scans the boundary block for `data` declarations
+- Generates a combined error condition: `!(users.error || stats.error)`
+- Desugars to `__if` nodes at compile time -- no runtime or IR changes
+- The boundary block must contain at least one `data` declaration (compiler error otherwise)
+- The catch block renders when any data source in the boundary has an error
 
 ---
 
@@ -2467,6 +2592,132 @@ data posts: get-latest-posts(10)
 
 ---
 
+## Database Models and Queries
+
+Naze provides declarative database access through `model` definitions and type-safe query expressions that compile to parameterized SQL at build time.
+
+### Model Definitions
+
+Define database table schemas with `model` blocks at the top level:
+
+```naze
+model users {
+  id number primary
+  name text
+  email text unique
+  active bool
+  created_at timestamp default now
+}
+
+model posts {
+  id number primary
+  title text
+  body text
+  author_id number
+  published bool
+}
+```
+
+**Field types:** `number`, `text`, `bool`, `timestamp`
+
+**Field constraints:**
+
+| Constraint | Description |
+|------------|-------------|
+| `primary` | Primary key |
+| `unique` | Unique constraint |
+| `default value` | Default value (e.g., `default now`, `default true`) |
+
+**Semantics:**
+
+- Models are compile-time only -- they inform query generation but are not included in the IR or runtime
+- The compiler validates that query expressions reference defined models
+- Models do not create database tables -- schema migration is handled externally
+
+### Query Expressions
+
+Query expressions are used inside server function bodies. They compile to parameterized SQL at build time -- no string interpolation in SQL, preventing injection.
+
+#### find
+
+Retrieve rows matching conditions:
+
+```naze
+server function get-users() {
+  let users = find users where active == true order name limit 10
+  users
+}
+
+server function get-user(id: number) {
+  let users = find users where id == id limit 1
+  users
+}
+```
+
+Compiles to: `SELECT * FROM users WHERE active = $1 ORDER BY name LIMIT $2`
+
+#### insert
+
+Insert a new row:
+
+```naze
+server function create-user(name: text, email: text) {
+  let user = insert users { name: name, email: email }
+  user
+}
+```
+
+Compiles to: `INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *`
+
+#### update
+
+Update rows matching conditions:
+
+```naze
+server function update-user(id: number, name: text) {
+  let result = update users set { name: name } where id == id
+  result
+}
+```
+
+Compiles to: `UPDATE users SET name = $1 WHERE id = $2 RETURNING *`
+
+#### delete
+
+Delete rows matching conditions:
+
+```naze
+server function remove-user(id: number) {
+  let result = delete users where id == id
+  result
+}
+```
+
+Compiles to: `DELETE FROM users WHERE id = $1 RETURNING *`
+
+### Query Clauses
+
+| Clause | Syntax | Description |
+|--------|--------|-------------|
+| `where` | `where field == value` | Filter condition (supports `==`, `!=`, `>`, `<`, `>=`, `<=`) |
+| `order` | `order field` | Sort by field (ascending) |
+| `limit` | `limit N` | Maximum number of rows |
+
+Multiple `where` conditions can be combined with `and`:
+
+```naze
+find users where active == true and role == "admin" order name limit 20
+```
+
+### Prerequisites
+
+- `env.DATABASE_URL` must be declared in `naze.toml` `[env]` section when queries are used
+- PostgreSQL supported via `tokio-postgres` (feature flag: `cargo build -p nazec --features database`)
+- SQLite supported via `rusqlite` (feature flag)
+- Results are returned as `List(Vec<Object>)` -- each row is an object with column keys
+
+---
+
 ## AI Prompts
 
 `prompt` declares an AI provider call with the same data lifecycle pattern.
@@ -2778,20 +3029,64 @@ Elements outside `page` blocks render on every page (useful for navigation bars,
 - **navigate action** -- programmatic navigation: `on click: navigate "/about"`
 - **Browser history** -- back/forward buttons work via History API integration
 
-### Dynamic Segments
+### Dynamic Route Parameters
 
-Use `param` declarations for dynamic URL segments:
+Pages can declare path parameters using `:param` syntax in the route path. Parameters are automatically extracted from the URL and bound to the `params.*` namespace.
 
 ```naze
 app "Blog" {
-  param post-id: number default: 1
+  page "/posts/:id" {
+    data post: fetch "/api/posts/{params.id}"
 
-  page "/post" {
-    data post: fetch "/api/posts/{post-id}"
-    text "{post.data.title}"
+    if post.data {
+      text "{post.data.title}"
+      text "{post.data.body}"
+    }
+  }
+
+  page "/users/:user-id/posts/:post-id" {
+    text "User: {params.user-id}, Post: {params.post-id}"
   }
 }
 ```
+
+**Semantics:**
+
+- `:name` segments in the path are extracted as route parameters
+- Access via `params.name` in interpolations and expressions
+- The compiler validates that `params.*` references match declared route parameters
+- Parameters are available in data URLs, server function calls, and element text
+
+### Catch-All Routes
+
+Use `/*` as the route path to match any URL that doesn't match a more specific page. Useful for 404 pages.
+
+```naze
+app "My App" {
+  page "/" {
+    heading "Home"
+  }
+
+  page "/about" {
+    heading "About"
+  }
+
+  page "/*" {
+    heading "Page Not Found"
+    text "The page you're looking for doesn't exist."
+  }
+}
+```
+
+**Semantics:**
+
+- Catch-all routes match any path not matched by other pages
+- The compiler warns if the catch-all is not the last page definition
+- The compiler warns on duplicate route patterns
+
+### Query String Parameters
+
+For query string parameters (e.g., `?page=2&q=search`), use `param` declarations instead of path parameters. See [Params](#params) for details.
 
 ---
 
@@ -3294,6 +3589,7 @@ analytics = "./js/analytics.js"
 |---------|-------------|
 | `[app]` | Project name and version |
 | `[build]` | Entry file and output directory |
+| `[env]` | Environment variables with defaults |
 | `[scripts]` | JavaScript files to include (for `js` interop) |
 | `[dependencies]` | Package registry dependencies |
 
@@ -3309,6 +3605,43 @@ analytics = "./js/analytics.js"
 | `app_data.bin` | Compiled render tree (custom binary IR) |
 
 The WASM runtime and JS wrapper are embedded in the `nazec` binary via `include_bytes!()`, so the CLI is a self-contained single binary.
+
+### Environment Variables
+
+The `[env]` section in `naze.toml` declares environment variables with defaults and optional requirements:
+
+```toml
+[env]
+API_URL = "https://api.example.com"
+STRIPE_KEY = { from = "STRIPE_PUBLIC_KEY", required = true }
+DEBUG = "false"
+```
+
+**Referencing in code:**
+
+Use `env.NAME` syntax to reference environment variables. In client code, values are substituted at compile time (inlined as string literals). In server functions, values are resolved at runtime via `std::env::var()`.
+
+```naze
+data users: fetch "{env.API_URL}/users"
+
+server function get-data() {
+  fetch "{env.API_URL}/internal/data" {
+    headers: { "X-Api-Key": "{env.API_SECRET}" }
+  }
+}
+```
+
+**Loading:**
+
+- `nazec dev` loads variables from a `.env` file in the project root (simple KEY=VALUE format)
+- `nazec build` validates that all `required` variables are present in the environment
+- Variables without `from` use the key name as the environment variable name
+- Variables with `from` map to a differently-named environment variable
+
+**Type checking:**
+
+- The compiler validates that all `env.*` references exist in the `[env]` table
+- Missing required variables at build time produce a compile error
 
 ---
 
@@ -3398,7 +3731,7 @@ nazec check
 
 ## Grammar Summary
 
-The Naze grammar is a PEG (Parsing Expression Grammar) with approximately 100 rules, implemented using pest. The grammar is designed to be small enough for constrained LLM decoding while expressive enough for complete UI applications.
+The Naze grammar is a PEG (Parsing Expression Grammar) with approximately 157 rules, implemented using pest. The grammar is designed to be small enough for constrained LLM decoding while expressive enough for complete UI applications.
 
 ### File Structure Rules
 
@@ -3408,7 +3741,7 @@ The Naze grammar is a PEG (Parsing Expression Grammar) with approximately 100 ru
 
 ### Statement Types
 
-The grammar supports 26 statement kinds:
+The grammar supports 30+ statement kinds:
 
 - `comment` -- line comments starting with `--`
 - `import_stmt` -- WASM/JS module imports
@@ -3420,6 +3753,9 @@ The grammar supports 26 statement kinds:
 - `theme_def` -- design token definitions with optional inheritance
 - `function_def` -- pure function definitions
 - `server_function_def` -- server-side function definitions
+- `model_def` -- database model definitions
+- `guard_def` -- route guard definitions
+- `boundary_stmt` -- error boundary with catch block
 - `let_stmt` -- immutable bindings
 - `state_stmt` -- mutable reactive state
 - `shared_state_stmt` -- cross-page shared state
@@ -3442,7 +3778,8 @@ The grammar supports 26 statement kinds:
 ### Expression Rules
 
 - `expression` -- atoms connected by binary operators
-- `expr_atom` -- number, bool, string, grouped expression, function call, reference, identifier
+- `expr_atom` -- number, bool, string, grouped expression, index access, function call, reference, identifier
+- `index_access` -- `list[expression]` (list element access by index)
 - `bin_op` -- arithmetic (`+`, `-`, `*`, `/`), comparison (`==`, `!=`, `>`, `<`, `>=`, `<=`), logical (`&&`, `||`)
 - `pipe_expression` -- expression optionally followed by pipeline stages
 - `pipe_stage` -- pipeline function with optional arguments
@@ -3471,7 +3808,9 @@ The grammar supports 26 statement kinds:
 - `on_handler` -- `on` event-name modifier? `:` action
 - `event_name` -- `click`, `hover`, `change`, `keypress`, `scroll`, `drag-start`, `drag-over`, `drop`, `click-outside`, `context-menu`, `pointer-move`, `arrow-up/down/left/right`, or custom identifier
 - `event_modifier` -- `debounce`/`throttle` followed by duration
-- `action` -- `set`, `navigate`, `scroll-to`, `log`, `trigger`, `copy`, `send`, `js`, `notify`, `emit`, `set-theme`
+- `action` -- `set`, `set-index`, `append`, `remove`, `navigate`, `scroll-to`, `log`, `trigger`, `copy`, `send`, `js`, `notify`, `emit`, `set-theme`, `start`, `stop`
+- `conditional_action` -- `if` expression `{` actions `}` (`else` `{` actions `}`)?
+- `action_list` -- comma-separated actions (multi-action handlers)
 
 ### Control Flow
 
@@ -3682,7 +4021,7 @@ Naze renders directly to Canvas2D (via WASM in the browser) or to a pixel buffer
 The language is designed from the ground up for AI code generation:
 
 - **One canonical form per concept** -- there is only one way to express each idea, eliminating ambiguity for LLM generation
-- **Small grammar** -- approximately 100 PEG rules, suitable for constrained LLM decoding via GBNF export
+- **Small grammar** -- approximately 157 PEG rules, suitable for constrained LLM decoding via GBNF export
 - **Single-file components** -- all information the AI needs is in the current file (sigma = 1), no cross-file context required
 - **Low token cost** -- concise, declarative syntax minimizes the number of tokens per unit of intent
 

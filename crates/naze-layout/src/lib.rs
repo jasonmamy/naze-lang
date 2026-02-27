@@ -246,6 +246,10 @@ fn measure_node<F: Fn(&str, f32) -> (f32, f32)>(
             // Images default to 100x100 if no explicit size
             (explicit_w.unwrap_or(100.0), explicit_h.unwrap_or(100.0))
         }
+        "path" => {
+            // Paths default to 24x24 if no explicit size
+            (explicit_w.unwrap_or(24.0), explicit_h.unwrap_or(24.0))
+        }
         "checkbox" => {
             // Checkbox: 20x20 box + 8px gap + label
             let label = get_text_content(node);
@@ -502,7 +506,7 @@ fn layout_node<F: Fn(&str, f32) -> (f32, f32)>(
     }
 
     let children = match node.kind.as_str() {
-        "text" | "heading" | "spacer" | "image" | "checkbox" | "radio" | "input"
+        "text" | "heading" | "spacer" | "image" | "path" | "checkbox" | "radio" | "input"
         | "textarea" | "select" | "option" => Vec::new(),
         "rect" => {
             // Rect with children: each child fills the rect's inner area

@@ -149,10 +149,12 @@ impl TestEnv {
         // Find and execute click handlers
         let handlers = exec::find_click_handlers(&layout_nodes, cx, cy, &self.state);
         for handler in &handlers {
-            exec::execute_action(&handler.action, &mut self.state, &[]);
-            // Handle navigate actions
-            if let IrAction::Navigate { path } = &handler.action {
-                self.current_page = path.clone();
+            for action in &handler.actions {
+                exec::execute_action(action, &mut self.state, &[]);
+                // Handle navigate actions
+                if let IrAction::Navigate { path } = action {
+                    self.current_page = path.clone();
+                }
             }
         }
 

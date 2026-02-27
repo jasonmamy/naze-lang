@@ -310,8 +310,10 @@ impl App {
         }
         let mut changed = false;
         for handler in &handlers {
-            if execute_action(&handler.action, &mut self.state_store, &self.render_tree.themes) {
-                changed = true;
+            for action in &handler.actions {
+                if execute_action(action, &mut self.state_store, &self.render_tree.themes) {
+                    changed = true;
+                }
             }
         }
         changed
@@ -647,6 +649,32 @@ fn evaluate_expr(
                 .map(|(k, v)| (k.clone(), evaluate_expr(v, state)))
                 .collect(),
         ),
+        IrExpression::Index { list, index } => {
+            let list_val = evaluate_expr(list, state);
+            let index_val = evaluate_expr(index, state);
+            if let (RenderValue::List(items), RenderValue::Num(i, _)) = (&list_val, &index_val) {
+                let idx = *i as usize;
+                items.get(idx).cloned().unwrap_or(RenderValue::Num(0.0, None))
+            } else {
+                RenderValue::Num(0.0, None)
+            }
+        }
+        IrExpression::FunctionCall { name, args } => {
+            let evaluated_args: Vec<RenderValue> = args.iter().map(|a| evaluate_expr(a, state)).collect();
+            match name.as_str() {
+                "length" => {
+                    if let Some(RenderValue::List(items)) = evaluated_args.first() {
+                        RenderValue::Num(items.len() as f64, None)
+                    } else if let Some(RenderValue::Str(s)) = evaluated_args.first() {
+                        RenderValue::Num(s.len() as f64, None)
+                    } else {
+                        RenderValue::Num(0.0, None)
+                    }
+                }
+                _ => RenderValue::Num(0.0, None),
+            }
+        }
+        _ => RenderValue::Num(0.0, None),
     }
 }
 

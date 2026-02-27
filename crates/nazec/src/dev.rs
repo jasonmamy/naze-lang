@@ -590,7 +590,9 @@ async fn run_async(
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", port);
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
+        format!("failed to start dev server on port {}: {} (is another process using this port? try --port <number>)", port, e)
+    })?;
 
     // Print server info and flush to ensure it's visible
     eprintln!();

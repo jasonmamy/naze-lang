@@ -1,10 +1,14 @@
-// Naze Grammar (Phase 2 M8)
-// Supports: app blocks, page blocks (routing), component definitions, use statements,
-// spatial primitives (row/column/stack/grid/spacer), rect, text, heading,
-// comments, properties with literals (string/number/color/bool/ref),
-// let bindings (immutable), state declarations (mutable, reactive),
-// string interpolation ({expr} in string literals),
-// theme definitions (colors, spacing tokens), link elements
+// Naze Grammar
+//
+// Grammar Tiers (for modular GBNF export and LLM training):
+//   Tier 0 — Core UI: layout, elements, state, computed, events, conditionals, each, themes, components
+//   Tier 1 — Data: data blocks (fetch/stream/SSE), server functions, storage, timers, params
+//   Tier 2 — Database: model definitions, find/insert/update/delete query expressions
+//   Tier 3 — AI: prompt blocks, provider config
+//   Tier 4 — Systems: (future) concurrency, file IO, networking
+//
+// When adding new rules, tag them with the appropriate tier.
+// Lower tiers should never depend on higher tier syntax.
 
 WHITESPACE = _{ " " | "\t" | "\r" }
 NEWLINE_CHAR = _{ "\n" }
@@ -13,6 +17,8 @@ NL = _{ NEWLINE_CHAR* }
 file = { SOI ~ (NEWLINE_CHAR | statement)* ~ EOI }
 
 statement = _{ comment | import_stmt | use_stmt | server_function_def | function_def | component_def | template_def | app_block | page_block | guard_def | model_def | theme_def | let_stmt | shared_state_stmt | state_stmt | computed_stmt | storage_stmt | server_data_stmt | prompt_stmt | data_stmt | timer_stmt | param_stmt | boundary_stmt | meta_stmt | if_stmt | match_stmt | each_stmt | on_handler | slot_stmt | fill_stmt | link_element | element }
+
+// [Tier 0: Core UI]
 
 // -- Comments
 comment = @{ "--" ~ (!NEWLINE_CHAR ~ ANY)* }
@@ -35,11 +41,15 @@ guard_ref = { "guard" ~ ":" ~ ident }
 guard_def = { "guard" ~ ident ~ NEWLINE_CHAR ~ guard_check+ }
 guard_check = { "check" ~ pipe_expression ~ "redirect" ~ string_lit ~ NEWLINE_CHAR }
 
+// [Tier 2: Database]
+
 // -- Model definition: model users { id number primary \n name text \n ... }
 model_def = { "model" ~ ident ~ "{" ~ NEWLINE_CHAR* ~ model_field+ ~ "}" ~ NEWLINE_CHAR }
 model_field = { ident ~ field_type ~ field_constraint* ~ NEWLINE_CHAR }
 field_type = { "timestamp" | "number" | "text" | "bool" }
 field_constraint = { "primary" | "unique" | ("default" ~ (ident | number_lit | string_lit)) }
+
+// [Tier 0: Core UI]
 
 // -- Meta statement: meta title: "Page Title"  |  meta description: "..."
 meta_stmt = { "meta" ~ meta_key ~ ":" ~ value ~ NEWLINE_CHAR }
@@ -80,6 +90,8 @@ shared_state_stmt = { "shared" ~ "state" ~ ident ~ "=" ~ value ~ NEWLINE_CHAR }
 // -- or with pipeline: computed total = cart | map price | sum
 computed_stmt = { "computed" ~ ident ~ "=" ~ pipe_expression ~ NEWLINE_CHAR }
 
+// [Tier 1: Data]
+
 // -- Storage declaration (persistent state): storage theme: local "theme-pref" default: "light"
 storage_stmt = { "storage" ~ ident ~ ":" ~ storage_type ~ string_lit ~ "default" ~ ":" ~ value ~ NEWLINE_CHAR }
 storage_type = { "local" | "session" }
@@ -87,12 +99,16 @@ storage_type = { "local" | "session" }
 // -- Server data declaration: data user: get-user(42)
 server_data_stmt = { "data" ~ ident ~ ":" ~ ident ~ "(" ~ call_args? ~ ")" ~ NEWLINE_CHAR }
 
+// [Tier 3: AI]
+
 // -- Prompt declaration (AI): prompt summary: from openai { system: "..." user: "..." }
 prompt_stmt = { "prompt" ~ ident ~ ":" ~ "from" ~ ident ~ prompt_block }
 prompt_block = { "{" ~ (NEWLINE_CHAR | prompt_prop)* ~ "}" }
 prompt_prop = { prompt_prop_key ~ ":" ~ prompt_prop_value ~ NEWLINE_CHAR? }
 prompt_prop_key = { "system" | "user" | "model" | "max-tokens" | "temperature" }
 prompt_prop_value = _{ value }
+
+// [Tier 1: Data]
 
 // -- Data declaration (async fetch or stream): data users: fetch "url" { ... } or data chat: stream "wss://..."
 data_stmt = { "data" ~ ident ~ ":" ~ data_source ~ string_lit ~ (data_block | NEWLINE_CHAR) }
@@ -109,13 +125,20 @@ timer_kind = { "after" | "every" }
 // -- URL param: param page: number default: 1
 param_stmt = { "param" ~ ident ~ ":" ~ type_name ~ "default" ~ ":" ~ value ~ NEWLINE_CHAR }
 
+// [Tier 0: Core UI]
+
 // -- Event handler: on click: set count = count + 1, with optional debounce/throttle
-on_handler = { "on" ~ event_name ~ event_modifier? ~ ":" ~ action ~ NEWLINE_CHAR }
+// -- Multi-action: on click: set x = 1, set y = 2
+// -- Conditional: on click: if valid { set count = count + 1 } else { set error = true }
+on_handler = { "on" ~ event_name ~ event_modifier? ~ ":" ~ action_list ~ NEWLINE_CHAR }
+action_list = { action ~ ("," ~ action)* }
 event_name = { "click-outside" | "click" | "context-menu" | "pointer-move" | "arrow-up" | "arrow-down" | "arrow-left" | "arrow-right" | "hover" | "keypress" | "change" | "drag-start" | "drag-over" | "drop" | "scroll" | ident }
 event_modifier = { modifier_kind ~ duration_lit }
 modifier_kind = { "debounce" | "throttle" }
-action = _{ set_action | append_action | remove_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action | js_action | notify_action | emit_action | set_theme_action }
-set_action = { "set" ~ ident ~ "=" ~ expression }
+action = _{ set_index_action | conditional_action | set_action | append_action | remove_action | navigate_action | scroll_to_action | trigger_action | copy_action | send_action | log_action | js_action | notify_action | emit_action | set_theme_action }
+set_index_action = { "set" ~ ident ~ "[" ~ expression ~ "]" ~ "=" ~ pipe_expression }
+conditional_action = { "if" ~ expression ~ "{" ~ action_list ~ "}" ~ ("else" ~ "{" ~ action_list ~ "}")? }
+set_action = { "set" ~ ident ~ "=" ~ pipe_expression }
 append_action = { "append" ~ expression ~ "to" ~ ident }
 remove_action = { "remove" ~ expression ~ "from" ~ ident }
 navigate_action = { "navigate" ~ string_lit }
@@ -143,6 +166,8 @@ else_clause = _{ "else" ~ (if_stmt | block) }
 // -- or with pipeline: each item in items | filter score > 80 | sort-by name { ... }
 each_stmt = { "each" ~ ident ~ "in" ~ pipe_expression ~ block }
 
+// [Tier 1: Data]
+
 // -- Server function definition: server function name(param: type, ...) { body }
 // Body can be a single expression or a sequence of let bindings + result expression
 server_function_def = { "server" ~ "function" ~ ident ~ "(" ~ (func_param ~ ("," ~ func_param)*)? ~ ")" ~ "{" ~ NEWLINE_CHAR* ~ server_body ~ NEWLINE_CHAR* ~ "}" ~ NEWLINE_CHAR }
@@ -153,6 +178,8 @@ server_expr = _{ server_fetch_expr | server_sql_expr | server_find_expr | server
 server_fetch_expr = { "fetch" ~ string_lit }
 server_sql_expr = { "sql" ~ string_lit ~ ("[" ~ sql_params ~ "]")? }
 sql_params = { pipe_expression ~ ("," ~ pipe_expression)* }
+
+// [Tier 2: Database]
 
 // -- Declarative query expressions (compile to parameterized SQL)
 server_find_expr = { "find" ~ ident ~ query_clause* }
@@ -165,6 +192,8 @@ query_condition = { ident ~ query_cmp_op ~ pipe_expression }
 query_cmp_op = { "==" | "!=" | ">=" | "<=" | ">" | "<" }
 query_order = { "order" ~ ident ~ ("asc" | "desc")? }
 query_limit = { "limit" ~ pipe_expression }
+
+// [Tier 0: Core UI]
 
 // -- Pure function definition: function name(param: type, ...) -> return_type { expression }
 function_def = { "function" ~ ident ~ func_param_list ~ "->" ~ type_name ~ "{" ~ NEWLINE_CHAR* ~ pipe_expression ~ NEWLINE_CHAR* ~ "}" }
@@ -186,12 +215,13 @@ fill_stmt = { "fill" ~ string_lit ~ block }
 // -- Pipeline expressions: source | stage | stage ...
 pipe_expression = { expression ~ ("|" ~ pipe_stage)+ | expression }
 pipe_stage = { pipe_fn ~ pipe_arg? ~ pipe_arg? }
-pipe_fn = { "sort-by" | "group-by" | "filter" | "map" | "take" | "reduce" | "flatten" | "distinct" | "sum" | "count" }
+pipe_fn = { "sort-by" | "group-by" | "filter" | "map" | "take" | "reduce" | "flatten" | "distinct" | "shuffle" | "sum" | "count" }
 pipe_arg = { expression }
 
 // -- Expressions (for event handler actions)
 expression = { expr_atom ~ (bin_op ~ expr_atom)* }
-expr_atom = { number_lit | bool_lit | string_lit | object_lit | list_lit | "(" ~ expression ~ ")" | function_call | ref_path | ident }
+expr_atom = { number_lit | bool_lit | string_lit | object_lit | list_lit | "(" ~ expression ~ ")" | function_call | index_access | ref_path | ident }
+index_access = { ident ~ "[" ~ expression ~ "]" }
 bin_op = { "==" | "!=" | ">=" | "<=" | ">" | "<" | "&&" | "||" | "+" | "-" | "*" | "/" }
 
 // -- Function call: name(arg1, arg2) or module.func(arg1, arg2)

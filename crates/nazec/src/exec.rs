@@ -219,6 +219,35 @@ pub(crate) fn evaluate_expr(
                 .map(|(k, v)| (k.clone(), evaluate_expr(v, state)))
                 .collect(),
         ),
+        IrExpression::Index { list, index } => {
+            let list_val = evaluate_expr(list, state);
+            let index_val = evaluate_expr(index, state);
+            if let (RenderValue::List(items), RenderValue::Num(i, _)) = (&list_val, &index_val) {
+                let idx = *i as usize;
+                items.get(idx).cloned().unwrap_or(RenderValue::Num(0.0, None))
+            } else {
+                RenderValue::Num(0.0, None)
+            }
+        }
+        IrExpression::FunctionCall { name, args } => {
+            let evaluated_args: Vec<RenderValue> = args.iter().map(|a| evaluate_expr(a, state)).collect();
+            match name.as_str() {
+                "length" => {
+                    if let Some(RenderValue::List(items)) = evaluated_args.first() {
+                        RenderValue::Num(items.len() as f64, None)
+                    } else if let Some(RenderValue::Str(s)) = evaluated_args.first() {
+                        RenderValue::Num(s.len() as f64, None)
+                    } else {
+                        RenderValue::Num(0.0, None)
+                    }
+                }
+                "random" => {
+                    // Return 0 in CLI executor (no random source)
+                    RenderValue::Num(0.0, None)
+                }
+                _ => RenderValue::Num(0.0, None),
+            }
+        }
     }
 }
 
@@ -570,6 +599,45 @@ pub(crate) fn execute_action(action: &IrAction, state: &mut HashMap<String, Rend
             state.insert("active-theme".to_string(), RenderValue::Str(name.clone()));
             true
         }
+        IrAction::SetIndex {
+            target,
+            index,
+            expr,
+        } => {
+            let idx_val = evaluate_expr(index, state);
+            let new_val = evaluate_expr(expr, state);
+            if let RenderValue::Num(idx, _) = idx_val {
+                let idx = idx as usize;
+                if let Some(RenderValue::List(list)) = state.get_mut(target) {
+                    if idx < list.len() {
+                        list[idx] = new_val;
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        IrAction::Conditional {
+            condition,
+            then_actions,
+            else_actions,
+        } => {
+            let cond_val = evaluate_expr(condition, state);
+            let is_true = match &cond_val {
+                RenderValue::Bool(b) => *b,
+                RenderValue::Num(n, _) => *n != 0.0,
+                RenderValue::Str(s) => !s.is_empty(),
+                _ => false,
+            };
+            let actions = if is_true { then_actions } else { else_actions };
+            let mut changed = false;
+            for action in actions {
+                if execute_action(action, state, themes) {
+                    changed = true;
+                }
+            }
+            changed
+        }
         _ => false,
     }
 }
@@ -600,10 +668,10 @@ pub(crate) fn find_click_handlers(
                 };
                 let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
                     event: "click".to_string(),
-                    action: IrAction::Set {
+                    actions: vec![IrAction::Set {
                         target: var.clone(),
                         expr: IrExpression::Bool(!current),
-                    },
+                    }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 }];
@@ -625,10 +693,10 @@ pub(crate) fn find_click_handlers(
                 };
                 let mut handlers: Vec<naze_ir::IrEventHandler> = vec![naze_ir::IrEventHandler {
                     event: "click".to_string(),
-                    action: IrAction::Set {
+                    actions: vec![IrAction::Set {
                         target: var.clone(),
                         expr: IrExpression::Str(value_str),
-                    },
+                    }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 }];

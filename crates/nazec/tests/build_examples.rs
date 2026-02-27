@@ -5,7 +5,7 @@ use naze_compiler::error::Severity;
 use naze_compiler::resolve;
 use naze_compiler::typecheck;
 
-const WASM_SIZE_LIMIT: usize = 390 * 1024; // 390KB (M41 — wasm-opt enabled, unused web-sys trimmed, format! reduced)
+const WASM_SIZE_LIMIT: usize = 405 * 1024; // 405KB (render_value_to_ir + dotted-path resolution for each-binding objects)
 
 /// Embedded runtime WASM — same as what nazec embeds.
 const RUNTIME_WASM: &[u8] = include_bytes!("../../naze-runtime/pkg/naze_runtime_bg.wasm");

@@ -1,0 +1,47 @@
+app "List Operations Demo" {
+  state items = ["apple", "banana", "cherry"]
+  state idx = 0
+  state score = 0
+  state valid = true
+
+  -- Index access in computed expressions
+  computed first = items[0]
+  computed current = items[idx]
+  computed item-count = length(items)
+  computed roll = random(1, 6)
+
+  text "First item: {first}"
+  text "Current item: {current}"
+  text "Total items: {item-count}"
+  text "Random roll: {roll}"
+  text "Score: {score}"
+
+  -- Multi-action handler: increment both idx and score
+  rect, color: #2563eb {
+    text "Next"
+    on click: set idx = idx + 1, set score = score + 1
+  }
+
+  -- Set index action: replace item at current index
+  rect, color: #059669 {
+    text "Replace Current"
+    on click: set items[idx] = "replaced"
+  }
+
+  -- Conditional action: score differently based on validity
+  rect, color: #d97706 {
+    text "Score Points"
+    on click: if valid { set score = score + 10 } else { set score = 0 }
+  }
+
+  -- Conditional with multi-action
+  rect, color: #dc2626 {
+    text "Reset Check"
+    on click: if score > 50 { set valid = true, set idx = 0 } else { set valid = false }
+  }
+
+  -- Shuffle pipeline: display items in random order
+  each item in items | shuffle {
+    text "{item}"
+  }
+}

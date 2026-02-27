@@ -28,7 +28,7 @@ echo ""
 
 # Step 2: Create package directory structure
 rm -rf "$PACKAGE_DIR"
-mkdir -p "$PACKAGE_DIR"/{bin,reference,examples/components,starter/components}
+mkdir -p "$PACKAGE_DIR"/{bin,reference,examples/components,starter/components,.claude/skills}
 
 # Step 3: Copy and strip binary
 echo "Copying nazec binary..."
@@ -121,6 +121,61 @@ app "my-app" {
 }
 NAZE
 
+# Step 6b: Install Claude Code skill for auto-discovery
+echo "Installing Claude Code skill..."
+cp -r "$REPO_ROOT/naze-dev" "$PACKAGE_DIR/.claude/skills/naze-dev"
+
+# Step 6c: Generate bootstrap CLAUDE.md
+echo "Generating CLAUDE.md..."
+cat > "$PACKAGE_DIR/CLAUDE.md" << 'CLAUDEMD'
+# Naze AI Developer Toolkit
+
+You are working with **Naze** — a declarative UI language that compiles
+.naze files to Canvas2D via WASM. No DOM, no CSS, no JavaScript.
+
+## Detailed References
+
+- Full syntax: @.claude/skills/naze-dev/references/language.md
+- Code examples: @.claude/skills/naze-dev/references/examples.md
+- CLI commands: @.claude/skills/naze-dev/references/cli.md
+
+## Essential Rules
+
+1. Every entry file: `app "Title" { ... }`
+2. Layout: `row` (horizontal), `column` (vertical), `container` (styled box)
+3. State: `state name = value` — mutated with `on click: set name = expr`
+4. Props use colon: `width: 200px` — colors unquoted: `color: #2563eb`
+5. Identifiers are kebab-case: `font-size`, `my-component`
+6. Inputs require `bind:` — `input bind: name`
+7. Components: one per file, `use components/name` to import
+8. No semicolons. No HTML/CSS/JS concepts. No DOM.
+
+## Commands
+
+    bin/nazec new my-app    # Scaffold project
+    bin/nazec build         # Compile to dist/
+    bin/nazec dev           # Dev server with hot reload
+    bin/nazec check         # Type-check only
+    bin/nazec serve         # Production SSR server
+
+Build output goes to dist/ — serve over HTTP (WASM requires it).
+
+## Directory Layout
+
+    bin/nazec                     compiler binary
+    reference/                    full language docs
+    examples/                     15 curated .naze examples
+    starter/                      ready-to-build project
+    .claude/skills/naze-dev/      skill (auto-discovered)
+
+## Global Skill Install
+
+To use the naze-dev skill in all projects:
+
+    mkdir -p ~/.claude/skills
+    cp -r .claude/skills/naze-dev ~/.claude/skills/naze-dev
+CLAUDEMD
+
 # Step 7: Generate toolkit README
 echo "Generating README.md..."
 cat > "$PACKAGE_DIR/README.md" << 'README'
@@ -169,6 +224,8 @@ reference/AGENTS.md    -- LANGUAGE REFERENCE — read this for all syntax and ru
 reference/LANGUAGE.md  -- extended reference with additional detail
 examples/              -- 15 curated examples covering all major features
 starter/               -- ready-to-build project (naze.toml + app.naze)
+.claude/skills/naze-dev/ -- Claude Code skill (auto-discovered by Claude Code)
+CLAUDE.md              -- Bootstrap context for Claude Code
 ```
 
 ### How to Build
@@ -226,6 +283,17 @@ pattern matching, animation, theming, and more.
 | slots.naze | Component content slots |
 | overlay-dialog.naze | Modal dialog with backdrop |
 | data-fetch.naze | API data with loading states |
+
+## Claude Code (AI-Assisted Development)
+
+Start Claude Code from this directory — CLAUDE.md and the naze-dev skill
+are auto-discovered. No setup required.
+
+To install the skill globally (all projects):
+\`\`\`
+mkdir -p ~/.claude/skills
+cp -r .claude/skills/naze-dev ~/.claude/skills/naze-dev
+\`\`\`
 README
 
 # Step 8: Create archive

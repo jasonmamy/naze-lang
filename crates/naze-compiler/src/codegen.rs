@@ -885,7 +885,7 @@ fn lower_node(
                     if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
                         ir_handlers.push(IrEventHandler {
                             event: "click".to_string(),
-                            action: IrAction::Set {
+                            actions: vec![IrAction::Set {
                                 target: bind_var.clone(),
                                 // Toggle: set var = var == false
                                 expr: IrExpression::BinOp {
@@ -893,7 +893,7 @@ fn lower_node(
                                     op: IrBinOp::Eq,
                                     right: Box::new(IrExpression::Bool(false)),
                                 },
-                            },
+                            }],
                             modifier_kind: 0,
                             modifier_ms: 0,
                         });
@@ -907,10 +907,10 @@ fn lower_node(
                             let expr = render_value_to_expr(value);
                             ir_handlers.push(IrEventHandler {
                                 event: "click".to_string(),
-                                action: IrAction::Set {
+                                actions: vec![IrAction::Set {
                                     target: bind_var.clone(),
                                     expr,
-                                },
+                                }],
                                 modifier_kind: 0,
                                 modifier_ms: 0,
                             });
@@ -944,7 +944,7 @@ fn lower_node(
             // Link is a special element that triggers navigation
             let navigate_handler = IrEventHandler {
                 event: "click".to_string(),
-                action: IrAction::Navigate { path: to.clone() },
+                actions: vec![IrAction::Navigate { path: to.clone() }],
                 modifier_kind: 0,
                 modifier_ms: 0,
             };
@@ -1098,14 +1098,14 @@ fn lower_nodes(
                         if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
                             ir_handlers.push(IrEventHandler {
                                 event: "click".to_string(),
-                                action: IrAction::Set {
+                                actions: vec![IrAction::Set {
                                     target: bind_var.clone(),
                                     expr: IrExpression::BinOp {
                                         left: Box::new(IrExpression::StateRef(bind_var.clone())),
                                         op: IrBinOp::Eq,
                                         right: Box::new(IrExpression::Bool(false)),
                                     },
-                                },
+                                }],
                                 modifier_kind: 0,
                                 modifier_ms: 0,
                             });
@@ -1119,10 +1119,10 @@ fn lower_nodes(
                                 let expr = render_value_to_expr(value);
                                 ir_handlers.push(IrEventHandler {
                                     event: "click".to_string(),
-                                    action: IrAction::Set {
+                                    actions: vec![IrAction::Set {
                                         target: bind_var.clone(),
                                         expr,
-                                    },
+                                    }],
                                     modifier_kind: 0,
                                     modifier_ms: 0,
                                 });
@@ -1156,7 +1156,7 @@ fn lower_nodes(
                 // Link is a special element that triggers navigation
                 let navigate_handler = IrEventHandler {
                     event: "click".to_string(),
-                    action: IrAction::Navigate { path: to.clone() },
+                    actions: vec![IrAction::Navigate { path: to.clone() }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 };
@@ -1267,10 +1267,10 @@ fn inline_component(
     components: &HashMap<&str, &ComponentDef>,
     parent_scope: &HashMap<String, RenderValue>,
 ) -> Vec<RenderNode> {
-    // Build emit map: custom event name -> call-site action
-    let emit_map: HashMap<String, &Action> = call_handlers
+    // Build emit map: custom event name -> call-site actions
+    let emit_map: HashMap<String, &Vec<Action>> = call_handlers
         .iter()
-        .map(|h| (h.event.clone(), &h.action))
+        .map(|h| (h.event.clone(), &h.actions))
         .collect();
 
     // Build component scope: start with parent, overlay defaults, then call-site props
@@ -1328,7 +1328,7 @@ fn lower_nodes_with_slots(
     caller_scope: &HashMap<String, RenderValue>,
     default_slot_nodes: &[&Node],
     fills: &HashMap<String, Vec<&Node>>,
-    emit_map: &HashMap<String, &Action>,
+    emit_map: &HashMap<String, &Vec<Action>>,
 ) -> Vec<RenderNode> {
     let mut out = Vec::new();
     for node in nodes {
@@ -1407,19 +1407,29 @@ fn lower_nodes_with_slots(
                         fills,
                         emit_map,
                     );
-                    // Resolve emit actions: replace with parent's action from emit_map
+                    // Resolve emit actions: replace with parent's actions from emit_map
                     let resolved_handlers: Vec<EventHandler> = handlers
                         .iter()
-                        .filter_map(|h| match &h.action {
-                            Action::Emit { event_name, .. } => emit_map
-                                .get(event_name.as_str())
-                                .map(|parent_action| EventHandler {
-                                    event: h.event.clone(),
-                                    action: (*parent_action).clone(),
-                                    modifier: h.modifier.clone(),
-                                    span: h.span.clone(),
-                                }),
-                            _ => Some(h.clone()),
+                        .filter_map(|h| {
+                            // Check if any action in this handler is an Emit
+                            let has_emit = h.actions.iter().any(|a| matches!(a, Action::Emit { .. }));
+                            if has_emit && h.actions.len() == 1 {
+                                // Single emit action — replace with parent's actions
+                                if let Action::Emit { event_name, .. } = &h.actions[0] {
+                                    emit_map
+                                        .get(event_name.as_str())
+                                        .map(|parent_actions| EventHandler {
+                                            event: h.event.clone(),
+                                            actions: (*parent_actions).clone(),
+                                            modifier: h.modifier.clone(),
+                                            span: h.span.clone(),
+                                        })
+                                } else {
+                                    Some(h.clone())
+                                }
+                            } else {
+                                Some(h.clone())
+                            }
                         })
                         .collect();
                     let mut ir_handlers = lower_handlers(&resolved_handlers);
@@ -1429,14 +1439,14 @@ fn lower_nodes_with_slots(
                         if let Some(RenderValue::Bind(bind_var)) = resolved_props.get("bind") {
                             ir_handlers.push(IrEventHandler {
                                 event: "click".to_string(),
-                                action: IrAction::Set {
+                                actions: vec![IrAction::Set {
                                     target: bind_var.clone(),
                                     expr: IrExpression::BinOp {
                                         left: Box::new(IrExpression::StateRef(bind_var.clone())),
                                         op: IrBinOp::Eq,
                                         right: Box::new(IrExpression::Bool(false)),
                                     },
-                                },
+                                }],
                                 modifier_kind: 0,
                                 modifier_ms: 0,
                             });
@@ -1450,10 +1460,10 @@ fn lower_nodes_with_slots(
                                 let expr = render_value_to_expr(value);
                                 ir_handlers.push(IrEventHandler {
                                     event: "click".to_string(),
-                                    action: IrAction::Set {
+                                    actions: vec![IrAction::Set {
                                         target: bind_var.clone(),
                                         expr,
-                                    },
+                                    }],
                                     modifier_kind: 0,
                                     modifier_ms: 0,
                                 });
@@ -1559,7 +1569,7 @@ fn lower_nodes_with_slots(
                 );
                 let navigate_handler = IrEventHandler {
                     event: "click".to_string(),
-                    action: IrAction::Navigate { path: to.clone() },
+                    actions: vec![IrAction::Navigate { path: to.clone() }],
                     modifier_kind: 0,
                     modifier_ms: 0,
                 };
@@ -1742,7 +1752,7 @@ fn lower_handler(h: &EventHandler) -> IrEventHandler {
     };
     IrEventHandler {
         event: h.event.clone(),
-        action: lower_action(&h.action),
+        actions: h.actions.iter().map(lower_action).collect(),
         modifier_kind,
         modifier_ms,
     }
@@ -1808,6 +1818,26 @@ fn lower_action(a: &Action) -> IrAction {
             index: lower_expression(index),
             target: target.clone(),
         },
+        Action::SetIndex {
+            target,
+            index,
+            expr,
+            ..
+        } => IrAction::SetIndex {
+            target: target.clone(),
+            index: lower_expression(index),
+            expr: lower_expression(expr),
+        },
+        Action::Conditional {
+            condition,
+            then_actions,
+            else_actions,
+            ..
+        } => IrAction::Conditional {
+            condition: lower_expression(condition),
+            then_actions: then_actions.iter().map(lower_action).collect(),
+            else_actions: else_actions.iter().map(lower_action).collect(),
+        },
     }
 }
 
@@ -1860,6 +1890,10 @@ fn substitute_ast_expr(expr: &Expression, subs: &HashMap<&str, &Expression>) -> 
         Expression::FunctionCall { name, args } => Expression::FunctionCall {
             name: name.clone(),
             args: args.iter().map(|a| substitute_ast_expr(a, subs)).collect(),
+        },
+        Expression::Index { list, index } => Expression::Index {
+            list: list.clone(),
+            index: Box::new(substitute_ast_expr(index, subs)),
         },
         Expression::Literal(_) => expr.clone(),
     }
@@ -1917,6 +1951,7 @@ fn lower_expression(e: &Expression) -> IrExpression {
                             PipelineFn::GroupBy => 7,
                             PipelineFn::Flatten => 8,
                             PipelineFn::Distinct => 9,
+                            PipelineFn::Shuffle => 10,
                         },
                         argument: s.argument.as_ref().map(lower_expression),
                         argument2: s.argument2.as_ref().map(lower_expression),
@@ -1951,10 +1986,18 @@ fn lower_expression(e: &Expression) -> IrExpression {
                     let inlined = substitute_ast_expr(body, &subs);
                     lower_expression(&inlined)
                 } else {
-                    IrExpression::Str(String::new())
+                    // Built-in functions: length(), random(), etc.
+                    IrExpression::FunctionCall {
+                        name: name.clone(),
+                        args: args.iter().map(lower_expression).collect(),
+                    }
                 }
             })
         }
+        Expression::Index { list, index } => IrExpression::Index {
+            list: Box::new(IrExpression::StateRef(list.clone())),
+            index: Box::new(lower_expression(index)),
+        },
     }
 }
 

@@ -2,7 +2,7 @@
 
 The long-term vision for Naze in six phases, from proof of concept to a full platform.
 
-**Current stats:** 11 crates, 385 workspace tests, ~153 grammar rules, 374KB WASM runtime, 69 examples.
+**Current stats:** 11 crates, 389 workspace tests, ~157 grammar rules, 395KB WASM runtime (budget: 405KB), 109 examples.
 
 ---
 
@@ -20,7 +20,7 @@ See [MVP.md](MVP.md) for details.
 
 Make apps dynamic and interactive. Add developer tooling. Prototype cross-platform rendering.
 
-See [PHASE2.md](PHASE2.md) for the detailed milestone tracker.
+See [HISTORY.md](HISTORY.md) for the consolidated milestone record.
 
 **Phase 2a (M1-M14): Complete** — state, events, conditionals, slots, images, theming, layout (flex-grow/shrink, percentages, align/justify), routing, form inputs with validation, drag & drop, accessibility (ARIA, screen reader DOM, focus management), scroll containers, data fetching, animation with easing.
 
@@ -32,7 +32,7 @@ See [PHASE2.md](PHASE2.md) for the detailed milestone tracker.
 
 Complete the language with advanced computation features, finalize tooling, add testing framework.
 
-See [PHASE3.md](PHASE3.md) for the detailed milestone tracker (M15-M22).
+See [HISTORY.md](HISTORY.md) for the consolidated milestone record (M15-M22).
 
 **Delivered:** Pipeline operators (M15), pattern matching (M16), layout templates & responsive design (M17), advanced animation (M18), component events & theme inheritance (M19), overlay system (M19b), visual properties (M19c), application logic primitives (M19d), remaining gap closures — textarea, JS interop, device APIs (M19e), testing framework (M20), build pipeline polish (M22). All milestones complete except M21 (LSP polish, moved to Phase 6 as M45).
 
@@ -42,7 +42,7 @@ See [PHASE3.md](PHASE3.md) for the detailed milestone tracker (M15-M22).
 
 Server rendering, package ecosystem, AI integration, SEO.
 
-See [PHASE4.md](PHASE4.md) for the detailed milestone tracker (M23-M30).
+See [HISTORY.md](HISTORY.md) for the consolidated milestone record (M23-M30).
 
 **Delivered:** WASM module imports (M23), server functions (M24), SSG (M25a), SSR + hydration (M25b), local package dependencies (M26a), package registry (M26b), SEO/meta-index (M27), AI grammar export (M28a), AI validation & fine-tuning (M28b), AI prompting runtime (M29), advanced dev tools — inspector, playground, size analyzer (M30). All milestones complete.
 
@@ -52,7 +52,7 @@ See [PHASE4.md](PHASE4.md) for the detailed milestone tracker (M23-M30).
 
 Harden Naze for production deployment with environment config, dynamic routing, error handling, authentication, and database integration.
 
-See [PHASE5.md](PHASE5.md) and [PHASE5B.md](PHASE5B.md) for the detailed milestone trackers.
+See [HISTORY.md](HISTORY.md) for the consolidated milestone record.
 
 **Delivered:**
 - **M31:** Environment variables (`[env]` in naze.toml, compile-time interpolation)
@@ -65,7 +65,7 @@ See [PHASE5.md](PHASE5.md) and [PHASE5B.md](PHASE5B.md) for the detailed milesto
 - **M38:** Production polish (environment-aware builds, SSR guard evaluation)
 - **M39:** Declarative database queries (Prisma-like `model` definitions, compile-time SQL generation for find/insert/update/delete)
 - **M40:** Browser API parity (textarea rendering, real Notification API, JS interop, device APIs — geolocation + accelerometer)
-- **M41:** WASM size optimization (wasm-opt enabled, unused web-sys features removed, format!() reduced → 374KB)
+- **M41:** WASM size optimization (wasm-opt enabled, unused web-sys features removed, format!() reduced → 395KB)
 
 ---
 
@@ -117,6 +117,28 @@ The grammar (GBNF/EBNF from `nazec grammar`), language documentation, and exampl
 
 The `naze-agent` crate (see [AGENT_RUNTIME_PLAN.md](AGENT_RUNTIME_PLAN.md), Phase C) runs headless binaries in-process. The user sees results rendered natively. The browser is both the human UI and the agent execution environment — the agent loads a service binary, executes actions, and the user watches state changes in real time.
 
+### Live app factory
+
+The browser is not just a viewer — it's a **generative environment**. The embedded agent can build apps on the fly:
+
+1. **Describe:** User types a natural language request in the URL bar — "build me a meal planner with a shopping list"
+2. **Discover:** The agent queries `discover.naze.dev` for reusable packages — a list component, a calendar widget, a storage adapter — pulling them from the registry
+3. **Compose:** Using the bundled grammar spec and example corpus, the agent generates a `.naze` app that imports and wires together the discovered packages with custom logic
+4. **Compile:** The `naze-playground` WASM compiler (already running in-browser) compiles the source to `app_data.bin` — no server round-trip
+5. **Render:** The browser renders the app immediately. The user is looking at a working application seconds after describing it
+
+This works because every prerequisite already exists in the architecture: `nazec ai generate` proves natural-language-to-Naze generation works, the playground proves in-browser compilation works, the package registry provides searchable reusable components, and compile-time component inlining means imports "just work" with no runtime dependency resolution.
+
+**Persistence and publishing.** Generated apps are not ephemeral. The user can:
+
+- **Save** — store the app locally in their library, like a bookmark but for a full application
+- **Fork and edit** — open the generated `.naze` source, tweak it, recompile
+- **Publish** — push the app back to the discovery registry, making it available to other users and agents
+
+This creates a **flywheel**: users generate apps from natural language → the best ones get published to the registry → the registry grows richer with higher-quality components and full applications → agents discover better building blocks → generation quality improves → more users generate more apps. The discovery server serves dual purpose — structural capability search for agents, and a browseable app store for humans. `discover.naze.dev` is simultaneously the search engine, the package manager, and the storefront.
+
+The gap between "I want an app" and "I have an app" collapses to a single conversation turn. And because every published app is also a set of composable packages, each app generated makes the next one easier to build.
+
 ### Justification
 
 This isn't "only justified once there's significant Naze content." The browser is how agents and users interact with the Naze ecosystem. It connects three concepts that are otherwise disconnected: native rendering performance, the credential wallet from the agent runtime vision, and the discovery bootstrap from the implementation plan. The `naze-agent` MCP server (Post-C) also makes the browser an integration surface — any MCP-compatible orchestrator gains Naze's typed discovery without rebuilding it. Everything in Phases 1-6 runs in standard browsers today — the dedicated browser is the upgrade path for users who want the full agent-native experience.
@@ -129,7 +151,7 @@ These hold across all phases:
 
 1. **AI-native, human-readable.** The language is designed as a compilation target for AI, but `.naze` files should be readable by anyone. No framework magic, no hidden state, no implicit behavior.
 
-2. **Kilobytes, not megabytes.** The runtime is 374KB after wasm-opt. Every dependency is justified by the bytes it costs.
+2. **Kilobytes, not megabytes.** The runtime is 395KB after wasm-opt. Every dependency is justified by the bytes it costs.
 
 3. **One source, every platform.** The same `.naze` file should render identically on web, desktop, and mobile. Platform differences are handled by the renderer, not the language.
 
