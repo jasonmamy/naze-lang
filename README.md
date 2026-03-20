@@ -1,5 +1,7 @@
 # Naze
 
+Public facing site is here: [https://naze-lang.com](https://naze-lang.com)
+
 A declarative, AI-native UI language that compiles to WebAssembly and renders via Canvas2D, bypassing the DOM entirely. Designed by AI, for AI -- this entire codebase (compiler, runtime, layout engine, tooling) was built through human-AI collaboration using Claude Code.
 
 > **Note:** Naze is a research project and work in progress. It is not yet suitable for production applications. The language, compiler, and runtime are functional and tested (400+ tests, 109 examples), but APIs may change, features may be incomplete, and the ecosystem is early-stage. Contributions and feedback are welcome.
