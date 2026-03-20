@@ -64,6 +64,20 @@ Trust is derived from the code itself, not from reviews, ratings, or payment. Th
 
 Trust scores apply equally to human-published and agent-published services. Since Naze code is fully inspectable (no opaque APIs, sigma = 1), the trust scorer works regardless of authorship.
 
+### Parametric Trust Profiles
+
+Trust scoring is not one-size-fits-all. The same behavioral signals carry different weight depending on domain context:
+
+- **Healthcare** — accessing external medical databases may be *required* and trusted. But any patient data leaving the device without encryption is a critical red flag. Personal data handling is weighted heavily; external domain count is weighted differently (regulated medical endpoints are expected).
+- **E-commerce** — accessing a payment processor is expected. Accessing a medical database would be suspicious. Device API requests (camera, location) are scrutinized more heavily.
+- **IoT / Smart Home** — device API access (camera, sensors, microphone) is the entire point, not a penalty. Data flow patterns matter more: where does sensor data go?
+- **Finance** — strict data residency requirements. External domain count matters less if connections are to regulated financial institutions. Encryption and audit trails are weighted heavily.
+- **Education** — COPPA/child safety signals dominate. Any data collection from minors triggers heightened scrutiny regardless of other factors.
+
+Trust profiles are parameterized criteria that weight the same underlying signals differently based on context. This aligns naturally with federated registries: a healthcare federation applies healthcare trust parameters, an e-commerce federation applies different ones. The base signals (external domains, data flows, device APIs) are universal; the weighting is domain-specific.
+
+This means a service can have different trust scores in different contexts — a mapping service that scores well in e-commerce (location access expected) might score lower in a privacy-focused federation (location tracking is a concern). The trust score is not a single number but a function of the service's behavior AND the evaluating context.
+
 ## Two Modes of Operation
 
 ### User-Initiated Discovery
