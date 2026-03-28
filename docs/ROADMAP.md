@@ -89,59 +89,13 @@ See [PHASE6.md](PHASE6.md) for the detailed milestone tracker (M42-M49).
 
 ---
 
-## Future: Dedicated Browser
+## Future: The Naze Browser
 
-The Naze browser is the user-facing interface for the agent ecosystem. It solves the agent bootstrap problem — how does an AI agent discover Naze services, learn the language, and manage credentials? — by embedding all of this into the app the user is already running.
+A dedicated browser where the URL bar takes natural language and responses are live, interactive applications — not text, not code, but running software built on the fly. The browser is the user-facing interface for the agent ecosystem, the Discovery Network's primary client, and the human interface to FAAD.
 
-### Rendering (native performance)
+Three modes of use: **generate** (describe intent, get a working app), **discover** (find existing services by capability, not name), and **compose** (agent discovers packages and wires them together into something new). Apps are not ephemeral — they can be saved, forked, edited, and published back to the discovery network, creating a flywheel where each generation enriches the ecosystem.
 
-- Standalone WASM runtime (no browser engine overhead)
-- Native window with GPU rendering (no Canvas indirection)
-- URL bar, navigation, tabs, bookmarks
-- HTML fallback (embedded lightweight webview for legacy content)
-- Content-type detection: route `application/naze` to native pipeline, HTML to webview
-
-### Embedded discovery
-
-The browser ships with `discover.naze.dev` built in — the same way Chrome ships with Google Search as the default. No bootstrap problem: the agent's entry point to the discovery network is the app the user already has open. Structural search from the URL bar: type a capability query ("find services with cart and checkout") and the browser queries the discovery service directly.
-
-### Agent configuration
-
-Settings page where the user enters their API key for Claude, GPT, Gemini, or other LLM providers. Model selection, token budgets, and approval policies (which actions the agent can take autonomously vs. which require confirmation). The browser becomes the single place to manage agent identity — the credential wallet described in [AGENT_RUNTIME.md](AGENT_RUNTIME.md). One location for API keys, OAuth tokens, and payment methods across all Naze services.
-
-### Embedded language spec
-
-The grammar (GBNF/EBNF from `nazec grammar`), language documentation, and example corpus are bundled into the browser. An agent operating within the browser has full Naze comprehension without searching the web — the specification is part of its runtime context. This is what makes the agent "Naze-native": it doesn't need to learn the language, the language is already loaded.
-
-### Agent execution environment
-
-The `naze-agent` crate (see [AGENT_RUNTIME_PLAN.md](AGENT_RUNTIME_PLAN.md), Phase C) runs headless binaries in-process. The user sees results rendered natively. The browser is both the human UI and the agent execution environment — the agent loads a service binary, executes actions, and the user watches state changes in real time.
-
-### Live app factory
-
-The browser is not just a viewer — it's a **generative environment**. The embedded agent can build apps on the fly:
-
-1. **Describe:** User types a natural language request in the URL bar — "build me a meal planner with a shopping list"
-2. **Discover:** The agent queries `discover.naze.dev` for reusable packages — a list component, a calendar widget, a storage adapter — pulling them from the registry
-3. **Compose:** Using the bundled grammar spec and example corpus, the agent generates a `.naze` app that imports and wires together the discovered packages with custom logic
-4. **Compile:** The `naze-playground` WASM compiler (already running in-browser) compiles the source to `app_data.bin` — no server round-trip
-5. **Render:** The browser renders the app immediately. The user is looking at a working application seconds after describing it
-
-This works because every prerequisite already exists in the architecture: `nazec ai generate` proves natural-language-to-Naze generation works, the playground proves in-browser compilation works, the package registry provides searchable reusable components, and compile-time component inlining means imports "just work" with no runtime dependency resolution.
-
-**Persistence and publishing.** Generated apps are not ephemeral. The user can:
-
-- **Save** — store the app locally in their library, like a bookmark but for a full application
-- **Fork and edit** — open the generated `.naze` source, tweak it, recompile
-- **Publish** — push the app back to the discovery registry, making it available to other users and agents
-
-This creates a **flywheel**: users generate apps from natural language → the best ones get published to the registry → the registry grows richer with higher-quality components and full applications → agents discover better building blocks → generation quality improves → more users generate more apps. The discovery server serves dual purpose — structural capability search for agents, and a browseable app store for humans. `discover.naze.dev` is simultaneously the search engine, the package manager, and the storefront.
-
-The gap between "I want an app" and "I have an app" collapses to a single conversation turn. And because every published app is also a set of composable packages, each app generated makes the next one easier to build.
-
-### Justification
-
-This isn't "only justified once there's significant Naze content." The browser is how agents and users interact with the Naze ecosystem. It connects three concepts that are otherwise disconnected: native rendering performance, the credential wallet from the agent runtime vision, and the discovery bootstrap from the implementation plan. The `naze-agent` MCP server (Post-C) also makes the browser an integration surface — any MCP-compatible orchestrator gains Naze's typed discovery without rebuilding it. Everything in Phases 1-6 runs in standard browsers today — the dedicated browser is the upgrade path for users who want the full agent-native experience.
+See [NAZE_BROWSER.md](NAZE_BROWSER.md) for the full vision.
 
 ---
 

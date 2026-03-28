@@ -186,7 +186,7 @@ The intelligence is in the accumulated structure — the web of services, compos
 
 ## Connection to FAAD
 
-FAAD (Fully Autonomous AI Development) is the paradigm — agents manage the complete software lifecycle. The Discovery Network is where FAAD's output accumulates and compounds:
+FAAD (Fully Autonomous Agentic Development) is the paradigm — agents manage the complete software lifecycle. The Discovery Network is where FAAD's output accumulates and compounds:
 
 - FAAD agents build autonomously
 - They publish to the Discovery Network

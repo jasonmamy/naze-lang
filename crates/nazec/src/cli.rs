@@ -177,6 +177,41 @@ pub enum Command {
     },
     /// Export project context as JSON for AI agents
     Context,
+    /// Announce this project to a discovery network
+    Announce {
+        /// Domain to announce as (e.g., "bakery.example.com")
+        #[arg(long)]
+        domain: String,
+        /// Discovery server URL (overrides NAZE_DISCOVERY_URL env var)
+        #[arg(long)]
+        server: Option<String>,
+        /// Service visibility: "public" or "internal"
+        #[arg(long, default_value = "public")]
+        visibility: String,
+        /// API key for the discovery server
+        #[arg(long)]
+        api_key: Option<String>,
+    },
+    /// Discover services by capability on a discovery network
+    Discover {
+        /// Structural query: "fn:order,state:price:number"
+        query: String,
+        /// Discovery server URL (overrides NAZE_DISCOVERY_URL env var)
+        #[arg(long)]
+        server: Option<String>,
+        /// Trust profile to use for ranking
+        #[arg(long, default_value = "default")]
+        profile: String,
+        /// Minimum trust score
+        #[arg(long)]
+        min_trust: Option<f64>,
+        /// Maximum results
+        #[arg(long, default_value = "10")]
+        limit: u32,
+        /// API key for the discovery server
+        #[arg(long)]
+        api_key: Option<String>,
+    },
     /// AI code generation and dataset tools
     Ai {
         #[command(subcommand)]

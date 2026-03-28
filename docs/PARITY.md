@@ -1248,9 +1248,9 @@ The measurable costs (tokens, dollars, seconds) may actually understate the impa
 
 Over a project's maintenance lifetime, a Naze codebase costs **~75% less** in AI context-loading tokens and **~65% less in wall-clock time** than an equivalent React/Next.js codebase. For a single application, this saves tens to low hundreds of dollars and hours of cumulative wait time. For a team or agency maintaining a fleet of applications over multiple years, the savings reach thousands of dollars and weeks of recovered developer time. But the largest impact is qualitative: the AI understands Naze code better because it's reading intent, not ceremony — and it can fit the entire application in its context window, enabling whole-codebase reasoning that's impossible with larger React applications.
 
-#### FAAD: Fully Autonomous AI Development
+#### FAAD: Fully Autonomous Agentic Development
 
-The estimates above model today's workflow: human developers using AI as an assistant, 5-10 interactions per week. But the trajectory of AI coding agents points toward a fundamentally different model — **Fully Autonomous AI Development (FAAD)**.
+The estimates above model today's workflow: human developers using AI as an assistant, 5-10 interactions per week. But the trajectory of AI coding agents points toward a fundamentally different model — **Fully Autonomous Agentic Development (FAAD)**.
 
 FAAD is a development paradigm where AI agents handle the entire software lifecycle — initial build, feature development, testing, debugging, code review, monitoring, and ongoing maintenance — with humans providing direction, requirements, and approval, not code. The human role shifts from *writing software* to *specifying intent and reviewing outcomes*.
 

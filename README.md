@@ -26,7 +26,7 @@ The web is shifting. Users increasingly interact with the internet through AI ag
 
 None of this was designed for a world where the primary consumer of a web application is an AI agent acting on a user's behalf.
 
-Naze is built for that world. We call the paradigm **FAAD -- Fully Autonomous AI Development** -- where AI agents handle the entire software lifecycle (build, test, debug, deploy, maintain) and humans provide direction, requirements, and approval. FAAD isn't a distant future; it's already emerging in tools like Claude Code, Cursor, and Devin. But the languages these tools write in weren't designed for them. Naze is.
+Naze is built for that world. We call the paradigm **FAAD -- Fully Autonomous Agentic Development** -- where AI agents handle the entire software lifecycle (build, test, debug, deploy, maintain) and humans provide direction, requirements, and approval. FAAD isn't a distant future; it's already emerging in tools like Claude Code, Cursor, and Devin. But the languages these tools write in weren't designed for them. Naze is.
 
 It is a language and platform designed so that AI agents can **author**, **understand**, and **interact with** applications natively -- not by scraping HTML and guessing at CSS selectors, but through a structured, typed, semantic format that an agent can parse, reason about, and compose programmatically.
 
@@ -163,7 +163,7 @@ Tests are `.test.naze` files in the same language as the app -- not Jest, not Pl
 
 **Phases 1-5 complete (41 milestones). Phase 6 (Developer Experience & Adoption) in progress.**
 
-11 crates, 400+ tests, ~157 grammar rules, 395KB WASM runtime, 109 examples.
+12 crates, 450+ tests, ~157 grammar rules, 395KB WASM runtime, 109 examples.
 
 - **Phase 1:** End-to-end pipeline -- `.naze` source to WASM + Canvas rendering
 - **Phase 2:** State, events, routing, forms, animation, accessibility, dev server, native desktop builds
@@ -503,6 +503,7 @@ naze-lang/
     naze-native/      Standalone native viewer for app_data.bin
     naze-lsp/         Language Server Protocol implementation
     naze-registry/    Package registry server
+    naze-discovery/   Discovery network reference server
     naze-playground/  Compiler-as-WASM for browser playground
   examples/           109 example .naze files
   docs/
@@ -528,6 +529,8 @@ nazec parse <file>         Dump AST as JSON
 nazec context              Export project context as JSON for AI agents
 nazec grammar [--format]   Export grammar for LLM constrained decoding
 nazec gallery              Build and serve interactive example gallery
+nazec announce             Announce project to a discovery network
+nazec discover             Discover services by capability
 nazec ai generate          AI code generation from natural language
 nazec playground           Start hosted playground server
 ```
@@ -656,7 +659,89 @@ No. Naze is a research project. The language, compiler, and runtime are function
 
 **What's the relationship between Naze and FAAD?**
 
-FAAD (Fully Autonomous AI Development) is the paradigm -- AI agents handling the entire software lifecycle. Naze is a language designed for that paradigm. Other languages could also optimize for FAAD; Naze is the first to make it a primary design goal. The [Token Complexity framework](docs/TOKEN_EFFICIENCY.md) is language-agnostic -- it can evaluate any language's FAAD fitness.
+FAAD (Fully Autonomous Agentic Development) is the paradigm -- AI agents handling the entire software lifecycle. Naze is a language designed for that paradigm. Other languages could also optimize for FAAD; Naze is the first to make it a primary design goal. The [Token Complexity framework](docs/TOKEN_EFFICIENCY.md) is language-agnostic -- it can evaluate any language's FAAD fitness.
+
+## Discovery Network (Reference Server)
+
+The discovery network enables agents to find services by structural capability matching -- not keywords or text search. A bakery that exposes an `order` server function and a `price` state field is discoverable by any agent searching for those capabilities, regardless of what the service is called.
+
+The reference server (`crates/naze-discovery/`) is a fully self-contained Rust binary backed by SQLite. It implements the complete API surface described in [docs/DISCOVERY_NETWORK.md](docs/DISCOVERY_NETWORK.md) -- 26 JSON API endpoints, parametric trust scoring, capability indexing, composition tracking, and a built-in web dashboard. The architecture uses 6 pluggable trait interfaces so any component (trust scoring, capability matching, storage, identity, federation) can be swapped without changing the API. See [docs/DISCOVERY_NETWORK_REFERENCE_IMPL.md](docs/DISCOVERY_NETWORK_REFERENCE_IMPL.md) for the full implementation spec.
+
+### Build and run
+
+```bash
+# Build the discovery server
+cargo build -p naze-discovery
+
+# Start it (default port 8889)
+cargo run -p naze-discovery
+
+# With options
+cargo run -p naze-discovery -- --port 8889 --network-id "my-network" --scope private
+
+# With API key authentication
+cargo run -p naze-discovery -- --api-key "my-secret-key"
+```
+
+Open `http://localhost:8889` in a browser to see the dashboard -- an overview of registered services, trust scores, composition patterns, and a test console for interacting with the API.
+
+### Announce a project
+
+From any Naze project directory (with `naze.toml`):
+
+```bash
+# Register with the discovery network
+nazec announce --domain bakery.example.com --server http://localhost:8889
+
+# Internal service (not exported to peers)
+nazec announce --domain payroll.internal --visibility internal --api-key "key"
+```
+
+This extracts capabilities from your project and registers them with the discovery server, which computes trust scores and indexes your service for structural search.
+
+### Discover services
+
+```bash
+# Find services with an "order" server function
+nazec discover "fn:order" --server http://localhost:8889
+
+# Find services with price state field (number type) AND order function
+nazec discover "fn:order,state:price:number" --profile ecommerce --min-trust 0.7
+```
+
+Query shorthand: `fn:order` (server function), `state:price:number` (state field with type), `action:click` (action), `data:menu` (data source).
+
+### API examples
+
+```bash
+# Register a service directly via API
+curl -X POST http://localhost:8889/api/v1/discovery/services \
+  -H 'Content-Type: application/json' \
+  -d '{"domain":"test.local","manifest":{"name":"TestService","state":{"counter":{"type":"number"}},"server_functions":["increment"]}}'
+
+# Search by capability
+curl -X POST http://localhost:8889/api/v1/discovery/search \
+  -H 'Content-Type: application/json' \
+  -d '{"require":[{"kind":"server_function","name":"increment"}]}'
+
+# Get server info
+curl http://localhost:8889/api/v1/discovery/info
+```
+
+### Tests
+
+```bash
+# Run all discovery server tests (61 tests)
+cargo test -p naze-discovery
+
+# Run just the scenario tests (full lifecycle flows)
+cargo test -p naze-discovery -- scenario
+
+# Run with output to see trust scores
+cargo test -p naze-discovery -- --nocapture
+```
+
+The test suite covers storage CRUD (15 tests), trust scoring (8), capability extraction (5), structural matching (6), API key identity (4), API integration (16), and 7 scenario tests that exercise complete flows: publish-discover-use lifecycle, composition with provenance, flag-to-deactivation cascade, version history, pattern emergence, visibility/export, and trust differentiation between clean and risky services.
 
 ## License
 

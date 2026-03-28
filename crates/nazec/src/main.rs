@@ -7,6 +7,7 @@ mod context;
 mod dep_commands;
 mod deps;
 mod dev;
+mod discovery_client;
 mod diagnostic;
 mod exec;
 mod gallery;
@@ -84,6 +85,24 @@ fn main() {
         }
         Command::Playground { port } => playground::run(port),
         Command::Context => do_context(),
+        Command::Announce {
+            domain,
+            server,
+            visibility,
+            api_key,
+        } => do_announce(&domain, server.as_deref(), &visibility, api_key.as_deref()),
+        Command::Discover {
+            query,
+            server,
+            profile,
+            min_trust,
+            limit,
+            api_key,
+        } => {
+            let url = discovery_client::resolve_url(server.as_deref());
+            let key = discovery_client::resolve_api_key(api_key.as_deref());
+            discovery_client::discover(&url, &query, &profile, min_trust, limit, key.as_deref())
+        }
         Command::Ai { subcommand } => ai::run(subcommand),
     };
 
@@ -154,6 +173,19 @@ fn do_context() -> Result<(), Box<dyn std::error::Error>> {
     let manifest = manifest::load("naze.toml")?;
     let resolved_deps = deps::resolve_deps(&manifest, std::path::Path::new("."))?;
     context::run(&manifest, &resolved_deps)
+}
+
+fn do_announce(
+    domain: &str,
+    server: Option<&str>,
+    visibility: &str,
+    api_key: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let manifest = manifest::load("naze.toml")?;
+    let resolved_deps = deps::resolve_deps(&manifest, std::path::Path::new("."))?;
+    let url = discovery_client::resolve_url(server);
+    let key = discovery_client::resolve_api_key(api_key);
+    discovery_client::announce(&url, domain, visibility, key.as_deref(), &manifest, &resolved_deps)
 }
 
 fn do_test(filter: Option<&str>, format: Format) -> Result<(), Box<dyn std::error::Error>> {

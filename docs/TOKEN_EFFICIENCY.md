@@ -1,6 +1,6 @@
 # Token Complexity: Λ(n) — Measuring AI Efficiency of Programming Languages
 
-Big O notation gives computer science a shared vocabulary for algorithmic efficiency — O(n), O(n log n), O(n²) tell you how an algorithm's cost scales with input size. As AI agents become the primary authors and maintainers of code (a paradigm we call **FAAD — Fully Autonomous AI Development**), we need an equivalent metric for a different question:
+Big O notation gives computer science a shared vocabulary for algorithmic efficiency — O(n), O(n log n), O(n²) tell you how an algorithm's cost scales with input size. As AI agents become the primary authors and maintainers of code (a paradigm we call **FAAD — Fully Autonomous Agentic Development**), we need an equivalent metric for a different question:
 
 > **How does an AI agent's token cost scale with application size for a given language?**
 
