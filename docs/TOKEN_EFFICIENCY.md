@@ -423,6 +423,74 @@ The Ψ framework transforms language design from intuition-driven ("this feels c
 
 ---
 
+## σ at Scale — Per-Operation Scatter in Multi-File Applications
+
+The σ values in the evaluation matrix represent **steady-state averages**, but σ is not a fixed property of a codebase — it is measured **per AI operation**. Different operations on the same application can have different σ values. This distinction matters as applications grow to dozens or hundreds of `.naze` files with shared, reusable components.
+
+### Operation Taxonomy
+
+Consider a 50-file Naze application with shared components (nav bars, cards, form inputs, etc.):
+
+| Operation | σ | Why |
+|---|---|---|
+| **Edit a single component** | 1 | All state, styling, layout, and event handling are in the component's file |
+| **Use an existing component** | ≈ 1 | Only the component's name and prop interface are needed — not its internals |
+| **Generate a new page using existing components** | ≈ 1 | The page file is self-contained; components are referenced by name + props |
+| **Create a new shared component AND integrate it into multiple files** | > 1 | The AI must design the prop interface, create the file, and update each consumer — inherently multi-file |
+| **Cross-cutting refactor** (rename a prop, change a theme) | > 1 | Every file using the prop/theme must be read and updated |
+
+The first three operations — which represent the vast majority of day-to-day development — maintain σ = 1. The last two are inherently multi-file in *any* language.
+
+### Transient vs Permanent σ Elevation
+
+The critical distinction is not whether σ > 1 operations exist — they do in every language — but whether the elevated σ is **transient** or **permanent**.
+
+**Naze — transient σ elevation:**
+
+When an AI creates a new shared `Card` component and integrates it into 5 pages, σ > 1 *during that operation*. But once the operation completes, every subsequent operation returns to σ = 1:
+- Editing the `Card` component requires only `card.naze` (σ = 1)
+- Editing a page that uses `Card` requires only that page file — the AI needs the component's name and props, not its implementation (σ ≈ 1)
+- The compile-time inlining means the runtime has no cross-file awareness — the `Card` is fully expanded into each consumer's render tree at build time
+
+This works because Naze components are **props-in, UI-out**: they accept props and render UI. They don't reach into caller state, subscribe to external stores, or depend on ambient context.
+
+**React + Redux — permanent σ elevation:**
+
+Once a React application introduces shared state (Redux, Context, Zustand), σ > 1 becomes **permanent** for every operation that touches that state. Editing a component that reads from the Redux store requires understanding:
+- The component file itself
+- The store definition (`store.ts`)
+- The relevant slice/reducer (`userSlice.ts`)
+- Any selectors (`selectors.ts`)
+- The action creators and their types
+- Other components that dispatch the same actions (to understand side effects)
+
+This cross-file dependency graph is not a one-time cost — it applies to **every subsequent modification** involving shared state. The σ never resets.
+
+**Angular + DI — permanent σ elevation:**
+
+Angular's dependency injection creates permanent scatter. Understanding a component that uses an injected service requires reading the service definition, the module that provides it, other services it depends on, and interceptors that modify its behavior. Each service interaction traces through the full injection chain.
+
+### Per-Operation σ Comparison
+
+| Operation | Naze | React + Redux | Angular |
+|---|---|---|---|
+| Edit a self-contained component | 1 | 1 | 1 |
+| Edit a component using shared state | 1 (no shared stores) | 3–6 files (store + slice + selectors + types) | 2–5 files (service + module + interceptors) |
+| Use an existing component | ≈ 1 (name + props) | 1–2 (may need type imports) | 1–2 (may need module registration) |
+| Generate a new page | ≈ 1 | 2–4 (routing config + layout + types) | 3–6 (module + routing + layout + service wiring) |
+| Create + integrate shared component | > 1 (transient) | > 1 (permanent if state involved) | > 1 (permanent — module + DI registration) |
+| Cross-cutting refactor | > 1 (transient) | > 1 (permanent state graph) | > 1 (permanent DI graph) |
+
+### Amortized σ
+
+Since σ = 1 operations (editing, using, generating individual components) vastly outnumber σ > 1 operations (creating shared components, cross-cutting refactors) in a typical development workflow, the **amortized σ across all operations** remains very close to 1 for Naze.
+
+For React + Redux, the amortized σ is structurally higher because the most common operations — reading and modifying components that interact with shared state — carry permanent σ > 1. The multi-file dependency graph is not an occasional cost; it is the steady-state cost of every interaction with shared concerns.
+
+This is the operational meaning of Naze's Λ-Linear classification: not that σ > 1 never occurs, but that **it never persists**. The elevated scatter is always transient, always bounded to the specific multi-file operation, and always resets to σ = 1 when the operation completes.
+
+---
+
 ## Current State — Post-Phase 5 Assessment
 
 This section documents how Naze's Token Complexity metrics have evolved since the initial design baseline, following the implementation of Phases 3–5 (M15–M41).
